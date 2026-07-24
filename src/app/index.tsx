@@ -8,6 +8,7 @@ import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
 import { signOut } from '@/lib/auth';
+import { registerPushToken } from '@/lib/notifications';
 import { fetchProfileAlias, hasCompletedOnboarding } from '@/lib/profile';
 
 export default function HomeScreen() {
@@ -19,6 +20,7 @@ export default function HomeScreen() {
     if (!session) return;
     hasCompletedOnboarding(session.user.id).then(setOnboarded).catch(() => setOnboarded(true));
     fetchProfileAlias(session.user.id).then(setAlias).catch(() => {});
+    registerPushToken(session.user.id);
   }, [session]);
 
   if (onboarded === undefined) {

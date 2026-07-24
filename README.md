@@ -57,6 +57,11 @@ El "bot" del MVP no es un proceso persistente: es la Edge Function [supabase/fun
 
 > Nota: los canales solo pueden dar acceso a usuarios que **ya son miembros del servidor comunitario**. Pon el enlace de invitación del servidor en la bienvenida de la app o en el mensaje del canal.
 
+### Notificaciones push (§8.6)
+
+- **Web**: sin push — el aviso de match es la mención del bot en el canal de Discord.
+- **iOS/Android**: Expo Push. La app registra el token del dispositivo en `push_tokens` (migración `00003_push_tokens.sql`) y la Edge Function `discord-match` envía la notificación al hacer match. Requiere un **development build con proyecto EAS** (`eas init` + `eas build --profile development`); en Expo Go el push remoto no está disponible y la app simplemente lo omite.
+
 ### Datos de prueba (probar en solitario)
 
 Para probar el feed y los matches sin necesitar una segunda cuenta, pega [supabase/seed/dev-seed.sql](supabase/seed/dev-seed.sql) en el SQL Editor: crea un GM y dos jugadores falsos, dos mesas de prueba y los likes preparados para provocar matches instantáneos con tu cuenta. Es idempotente (re-ejecútalo si creas mesas nuevas). Se limpia con [supabase/seed/dev-cleanup.sql](supabase/seed/dev-cleanup.sql). **Solo para entornos de desarrollo.**

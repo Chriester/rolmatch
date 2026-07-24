@@ -102,33 +102,67 @@ Deno.serve(async (req) => {
     .replace(/-+/g, '-')
     .slice(0, 90);
 
-  console.log(`creando canal "${channelName}" en guild ${guildId}…`);
-  const channel = await discord(`/guilds/${guildId}/channels`, 'POST', {
-    name: channelName,
-    type: 0,
-    topic: `Match de RolMatch: ${player.alias} × ${group.name}`,
-    permission_overwrites: overwrites,
-  });
-  console.log(`canal creado: ${channel.id}`);
+  // El canal de Discord y el push son independientes: si Discord falla,
+  // el push sale igualmente (y viceversa).
+  let channelId: string | null = null;
+  try {
+    console.log(`creando canal "${channelName}" en guild ${guildId}…`);
+    const channel = await discord(`/guilds/${guildId}/channels`, 'POST', {
+      name: channelName,
+      type: 0,
+      topic: `Match de RolMatch: ${player.alias} × ${group.name}`,
+      permission_overwrites: overwrites,
+    });
+    channelId = channel.id as string;
+    console.log(`canal creado: ${channelId}`);
 
-  const mentions = [player.discord_id, owner?.discord_id]
-    .filter(Boolean)
-    .map((d) => `<@${d}>`)
-    .join(' y ');
-  const inviteLine = group.discord_invite_url
-    ? `\nLa mesa también tiene su propio servidor: ${group.discord_invite_url}`
-    : '';
+    const mentions = [player.discord_id, owner?.discord_id]
+      .filter(Boolean)
+      .map((d) => `<@${d}>`)
+      .join(' y ');
+    const inviteLine = group.discord_invite_url
+      ? `\nLa mesa también tiene su propio servidor: ${group.discord_invite_url}`
+      : '';
 
-  await discord(`/channels/${channel.id}/messages`, 'POST', {
-    content:
-      `🎲 **¡Match!** ${mentions}\n` +
-      `**${player.alias}** y la mesa **${group.name}** habéis coincidido en RolMatch. ` +
-      `Este canal es vuestro para presentaros y cuadrar la primera sesión.${inviteLine}`,
-  });
+    await discord(`/channels/${channelId}/messages`, 'POST', {
+      content:
+        `🎲 **¡Match!** ${mentions}\n` +
+        `**${player.alias}** y la mesa **${group.name}** habéis coincidido en RolMatch. ` +
+        `Este canal es vuestro para presentaros y cuadrar la primera sesión.${inviteLine}`,
+    });
 
-  await supabase.from('matches').update({ discord_channel_id: channel.id }).eq('id', matchId);
+    await supabase.from('matches').update({ discord_channel_id: channelId }).eq('id', matchId);
+  } catch (error) {
+    console.error(`fallo en Discord (el push continúa): ${error}`);
+  }
 
-  return new Response(JSON.stringify({ channel_id: channel.id }), {
+  // Expo Push a los dispositivos nativos de ambas partes (§8.6). En web no
+  // hay push: el aviso es la mención del canal de Discord.
+  try {
+    const { data: tokens } = await supabase
+      .from('push_tokens')
+      .select('token')
+      .in('user_id', [user_id, group.owner_id]);
+    if (tokens && tokens.length > 0) {
+      const messages = tokens.map((t: { token: string }) => ({
+        to: t.token,
+        title: '🎲 ¡Match!',
+        body: `${player.alias} × ${group.name}. Abrid Discord para presentaros.`,
+      }));
+      const pushResponse = await fetch('https://exp.host/--/api/v2/push/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(messages),
+      });
+      console.log(`push enviado a ${tokens.length} dispositivo(s): ${pushResponse.status}`);
+    } else {
+      console.log('sin tokens de push registrados para este match');
+    }
+  } catch (error) {
+    console.error(`fallo enviando push: ${error}`);
+  }
+
+  return new Response(JSON.stringify({ channel_id: channelId }), {
     headers: { 'Content-Type': 'application/json' },
   });
 });
