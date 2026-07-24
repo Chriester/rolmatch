@@ -5,6 +5,7 @@ import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native
 import { showAlert } from '@/lib/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AppHeader } from '@/components/app-header';
 import { Chip } from '@/components/chip';
 import { PhotoPicker } from '@/components/photo-picker';
 import { StyleAxis } from '@/components/style-axis';
@@ -107,6 +108,7 @@ export default function NewGroupScreen() {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
+        <AppHeader onBack={() => (router.canGoBack() ? router.back() : router.replace('/groups'))} />
         <ScrollView contentContainerStyle={styles.scroll}>
           <ThemedText type="title">Crear mesa</ThemedText>
 

@@ -8,6 +8,8 @@ export type MyMatch = {
   /** Nombre a mostrar: la mesa (si soy jugador) o el jugador (si soy GM) */
   counterpart: string;
   groupName: string;
+  /** imagen de la contraparte (foto de mesa o avatar del jugador) */
+  imageUrl: string | null;
 };
 
 /** URL del canal del match en el servidor comunitario, si el bot ya lo creó. */
@@ -21,12 +23,14 @@ export async function fetchMyMatches(userId: string): Promise<MyMatch[]> {
   const [asPlayer, asGm] = await Promise.all([
     supabase
       .from('matches')
-      .select('id, matched_at, discord_channel_id, groups(name)')
+      .select('id, matched_at, discord_channel_id, groups(name, image_url)')
       .eq('user_id', userId)
       .order('matched_at', { ascending: false }),
     supabase
       .from('matches')
-      .select('id, matched_at, discord_channel_id, profiles(alias), groups!inner(name, owner_id)')
+      .select(
+        'id, matched_at, discord_channel_id, profiles(alias, avatar_url), groups!inner(name, owner_id)'
+      )
       .eq('groups.owner_id', userId)
       .neq('user_id', userId)
       .order('matched_at', { ascending: false }),
@@ -36,7 +40,7 @@ export async function fetchMyMatches(userId: string): Promise<MyMatch[]> {
 
   type Row = { id: string; matched_at: string; discord_channel_id: string | null };
   const playerMatches: MyMatch[] = (asPlayer.data ?? []).map((m) => {
-    const row = m as unknown as Row & { groups: { name: string } | null };
+    const row = m as unknown as Row & { groups: { name: string; image_url: string | null } | null };
     return {
       id: row.id,
       matched_at: row.matched_at,
@@ -44,11 +48,12 @@ export async function fetchMyMatches(userId: string): Promise<MyMatch[]> {
       side: 'player',
       counterpart: row.groups?.name ?? 'Mesa',
       groupName: row.groups?.name ?? 'Mesa',
+      imageUrl: row.groups?.image_url ?? null,
     };
   });
   const gmMatches: MyMatch[] = (asGm.data ?? []).map((m) => {
     const row = m as unknown as Row & {
-      profiles: { alias: string } | null;
+      profiles: { alias: string; avatar_url: string | null } | null;
       groups: { name: string } | null;
     };
     return {
@@ -58,6 +63,7 @@ export async function fetchMyMatches(userId: string): Promise<MyMatch[]> {
       side: 'gm',
       counterpart: row.profiles?.alias ?? 'Jugador/a',
       groupName: row.groups?.name ?? 'Mesa',
+      imageUrl: row.profiles?.avatar_url ?? null,
     };
   });
 

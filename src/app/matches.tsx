@@ -1,8 +1,10 @@
-import { router, useFocusEffect } from 'expo-router';
+import { Image } from 'expo-image';
+import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, FlatList, Linking, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AppHeader } from '@/components/app-header';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
@@ -28,9 +30,7 @@ export default function MatchesScreen() {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}>
-          <ThemedText type="link">← Volver</ThemedText>
-        </Pressable>
+        <AppHeader />
         <ThemedText type="title">Mis matches</ThemedText>
 
         {loadError ? (
@@ -56,13 +56,28 @@ export default function MatchesScreen() {
               const url = matchChannelUrl(item);
               return (
                 <View style={styles.card}>
-                  <ThemedText type="subtitle">
-                    {item.side === 'player' ? item.counterpart : `${item.counterpart} → ${item.groupName}`}
-                  </ThemedText>
-                  <ThemedText type="small">
-                    {item.side === 'player' ? 'Has hecho match con esta mesa' : 'Candidato/a para tu mesa'}{' '}
-                    · {new Date(item.matched_at).toLocaleDateString()}
-                  </ThemedText>
+                  <View style={styles.cardRow}>
+                    {item.imageUrl ? (
+                      <Image source={{ uri: item.imageUrl }} style={styles.thumb} />
+                    ) : (
+                      <View style={[styles.thumb, styles.thumbFallback]}>
+                        <ThemedText>{item.side === 'player' ? '🎲' : '🧙'}</ThemedText>
+                      </View>
+                    )}
+                    <View style={styles.cardBody}>
+                      <ThemedText type="subtitle" numberOfLines={1}>
+                        {item.side === 'player'
+                          ? item.counterpart
+                          : `${item.counterpart} → ${item.groupName}`}
+                      </ThemedText>
+                      <ThemedText type="small">
+                        {item.side === 'player'
+                          ? 'Has hecho match con esta mesa'
+                          : 'Candidato/a para tu mesa'}{' '}
+                        · {new Date(item.matched_at).toLocaleDateString()}
+                      </ThemedText>
+                    </View>
+                  </View>
                   {url ? (
                     <Pressable style={styles.channelButton} onPress={() => Linking.openURL(url)}>
                       <ThemedText style={styles.channelLabel}>Abrir canal en Discord</ThemedText>
@@ -120,7 +135,26 @@ const styles = StyleSheet.create({
     borderColor: '#666',
     borderRadius: Spacing.two,
     padding: Spacing.three,
-    gap: Spacing.one,
+    gap: Spacing.two,
+  },
+  cardRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
+  },
+  cardBody: {
+    flex: 1,
+    gap: 2,
+  },
+  thumb: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+  },
+  thumbFallback: {
+    backgroundColor: 'rgba(88,101,242,0.25)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   channelButton: {
     backgroundColor: '#5865F2',

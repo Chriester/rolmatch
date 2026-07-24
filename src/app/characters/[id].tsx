@@ -4,6 +4,7 @@ import { ActivityIndicator, Linking, Platform, Pressable, StyleSheet, Switch, Vi
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { showAlert } from '@/lib/alert';
+import { AppHeader } from '@/components/app-header';
 import { CharacterForm } from '@/components/character-form';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -109,17 +110,16 @@ export default function EditCharacterScreen() {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        <View style={styles.topRow}>
-          <Pressable
-            onPress={() => (router.canGoBack() ? router.back() : router.replace('/characters'))}>
-            <ThemedText type="link">← Volver</ThemedText>
-          </Pressable>
-          <Pressable onPress={handleDelete} disabled={busy}>
-            <ThemedText type="small" style={styles.deleteLabel}>
-              Borrar
-            </ThemedText>
-          </Pressable>
-        </View>
+        <AppHeader
+          onBack={() => (router.canGoBack() ? router.back() : router.replace('/characters'))}
+          right={
+            <Pressable onPress={handleDelete} disabled={busy}>
+              <ThemedText type="small" style={styles.deleteLabel}>
+                Borrar
+              </ThemedText>
+            </Pressable>
+          }
+        />
 
         {character === undefined ? (
           <ActivityIndicator style={styles.loading} />

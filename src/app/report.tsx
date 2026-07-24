@@ -4,6 +4,7 @@ import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { showAlert } from '@/lib/alert';
+import { AppHeader } from '@/components/app-header';
 import { Chip } from '@/components/chip';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -44,9 +45,9 @@ export default function ReportScreen() {
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
         <ScrollView contentContainerStyle={styles.scroll}>
-          <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}>
-            <ThemedText type="link">← Cancelar</ThemedText>
-          </Pressable>
+          <AppHeader
+            onBack={() => (router.canGoBack() ? router.back() : router.replace('/'))}
+          />
           <ThemedText type="title">
             Reportar {kind === 'group' ? 'mesa' : 'usuario'}
           </ThemedText>

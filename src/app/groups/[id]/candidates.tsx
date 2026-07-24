@@ -15,6 +15,7 @@ import { CharacterLikeButton } from '@/components/swipe/character-like-button';
 import { SwipeDeck, type SwipeChoice, type SwipeDeckHandle } from '@/components/swipe/deck';
 import { DetailsFace, sheetText } from '@/components/swipe/details-face';
 import { MatchOverlay } from '@/components/swipe/match-overlay';
+import { AppHeader } from '@/components/app-header';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
@@ -187,21 +188,16 @@ export default function GroupCandidatesScreen() {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        <View style={styles.header}>
-          <Pressable
-            onPress={() =>
-              router.canGoBack()
-                ? router.back()
-                : router.replace({ pathname: '/groups/[id]', params: { id: id! } })
-            }
-            style={styles.headerButton}>
-            <ThemedText type="link">←</ThemedText>
-          </Pressable>
-          <ThemedText type="subtitle" numberOfLines={1}>
-            Candidatos{group ? ` · ${group.name}` : ''}
-          </ThemedText>
-          <View style={styles.headerButton} />
-        </View>
+        <AppHeader
+          onBack={() =>
+            router.canGoBack()
+              ? router.back()
+              : router.replace({ pathname: '/groups/[id]', params: { id: id! } })
+          }
+        />
+        <ThemedText type="small" numberOfLines={1} style={styles.subheader}>
+          Candidatos{group ? ` · ${group.name}` : ''}
+        </ThemedText>
 
         {loadError ? (
           <View style={styles.centerBox}>
@@ -275,15 +271,8 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     paddingHorizontal: Spacing.three,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: Spacing.two,
-  },
-  headerButton: {
-    width: 44,
-    alignItems: 'flex-start',
+  subheader: {
+    marginBottom: Spacing.two,
   },
   deckArea: {
     flex: 1,

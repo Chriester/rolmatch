@@ -8,6 +8,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { showAlert } from '@/lib/alert';
+import { AppHeader } from '@/components/app-header';
 import { AppMenu } from '@/components/app-menu';
 import { Chip } from '@/components/chip';
 import { ActionBar } from '@/components/swipe/action-bar';
@@ -347,21 +348,22 @@ export default function HomeScreen() {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        <View style={styles.header}>
-          <ThemedText type="subtitle">🎲 RolMatch</ThemedText>
-          <Pressable
-            onPress={() => setMenuOpen(true)}
-            accessibilityLabel="Abrir menú"
-            style={styles.menuButton}>
-            {myAvatar ? (
-              <Image source={{ uri: myAvatar }} style={styles.menuAvatar} />
-            ) : (
-              <View style={[styles.menuAvatar, styles.menuAvatarFallback]}>
-                <Text style={styles.menuAvatarGlyph}>☰</Text>
-              </View>
-            )}
-          </Pressable>
-        </View>
+        <AppHeader
+          right={
+            <Pressable
+              onPress={() => setMenuOpen(true)}
+              accessibilityLabel="Abrir menú"
+              style={styles.menuButton}>
+              {myAvatar ? (
+                <Image source={{ uri: myAvatar }} style={styles.menuAvatar} />
+              ) : (
+                <View style={[styles.menuAvatar, styles.menuAvatarFallback]}>
+                  <Text style={styles.menuAvatarGlyph}>☰</Text>
+                </View>
+              )}
+            </Pressable>
+          }
+        />
 
         {loadError ? (
           <View style={styles.centerBox}>

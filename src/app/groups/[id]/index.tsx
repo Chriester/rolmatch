@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AppHeader } from '@/components/app-header';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
@@ -65,10 +66,9 @@ export default function GroupDetailScreen() {
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
         <ScrollView contentContainerStyle={styles.scroll}>
-          <Pressable
-            onPress={() => (router.canGoBack() ? router.back() : router.replace('/groups'))}>
-            <ThemedText type="link">← Volver</ThemedText>
-          </Pressable>
+          <AppHeader
+            onBack={() => (router.canGoBack() ? router.back() : router.replace('/groups'))}
+          />
 
           {group.image_url && (
             <Image source={{ uri: group.image_url }} style={styles.headerImage} />
