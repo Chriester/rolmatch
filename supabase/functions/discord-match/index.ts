@@ -8,7 +8,10 @@
 //   DISCORD_BOT_TOKEN   token del bot de la aplicación de Discord
 //   DISCORD_GUILD_ID    id del servidor comunitario donde crear canales
 //   WEBHOOK_SECRET      valor compartido con el webhook (cabecera x-webhook-secret)
-// SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY las inyecta Supabase automáticamente.
+//   SB_SECRET_KEY       clave sb_secret_... (Project Settings → API Keys). Se usa en
+//                       lugar del SERVICE_ROLE_KEY legado, que es un JWT y puede dar
+//                       PGRST303 "JWT issued at future" por desfase de reloj.
+// SUPABASE_URL la inyecta Supabase automáticamente.
 //
 // Desplegar con: npx supabase functions deploy discord-match --no-verify-jwt
 // (el webhook de la DB no envía JWT; la autenticación es el WEBHOOK_SECRET)
@@ -52,7 +55,7 @@ Deno.serve(async (req) => {
 
   const supabase = createClient(
     Deno.env.get('SUPABASE_URL')!,
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    Deno.env.get('SB_SECRET_KEY') ?? Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
   );
 
   const { user_id, group_id, id: matchId } = payload.record;
