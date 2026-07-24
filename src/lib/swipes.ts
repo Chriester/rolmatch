@@ -2,15 +2,23 @@ import { supabase } from '@/lib/supabase';
 
 export type SwipeDirection = 'like' | 'pass';
 
-/** Swipe del jugador sobre una mesa. Devuelve true si se produjo match. */
+/**
+ * Swipe del jugador sobre una mesa, con personaje propuesto opcional (§4.2).
+ * Devuelve true si se produjo match.
+ */
 export async function swipeOnGroup(
   userId: string,
   groupId: string,
-  direction: SwipeDirection
+  direction: SwipeDirection,
+  proposedCharacterId: string | null = null
 ): Promise<boolean> {
-  const { error } = await supabase
-    .from('swipes')
-    .insert({ user_id: userId, group_id: groupId, origin: 'user', direction });
+  const { error } = await supabase.from('swipes').insert({
+    user_id: userId,
+    group_id: groupId,
+    origin: 'user',
+    direction,
+    proposed_character_id: direction === 'like' ? proposedCharacterId : null,
+  });
   if (error) throw error;
   return direction === 'like' ? hasMatch(userId, groupId) : false;
 }

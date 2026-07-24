@@ -19,6 +19,7 @@ export type GroupCandidate = {
 };
 
 export type ShowcaseCharacter = {
+  id: string;
   name: string;
   archetype: string | null;
   status: string;
@@ -32,6 +33,10 @@ export type PlayerCandidate = {
     role: string;
     characters: ShowcaseCharacter[];
   };
+  /** true si este jugador ya dio like a la mesa */
+  likedGroup: boolean;
+  /** personaje que propone para la mesa, si eligió uno al swipear */
+  proposal: ShowcaseCharacter | null;
   result: MatchResult;
 };
 
@@ -116,11 +121,21 @@ export async function fetchGroupCandidates(
     .single();
   if (groupError) throw groupError;
 
-  const [{ data: members }, { data: groupSwipes }, blocked] = await Promise.all([
-    supabase.from('group_members').select('user_id').eq('group_id', groupId),
-    supabase.from('swipes').select('user_id').eq('group_id', groupId).eq('origin', 'group'),
-    fetchBlockRelations(viewerId),
-  ]);
+  const [{ data: members }, { data: groupSwipes }, { data: userLikes }, blocked] =
+    await Promise.all([
+      supabase.from('group_members').select('user_id').eq('group_id', groupId),
+      supabase.from('swipes').select('user_id').eq('group_id', groupId).eq('origin', 'group'),
+      supabase
+        .from('swipes')
+        .select('user_id, proposed_character_id')
+        .eq('group_id', groupId)
+        .eq('origin', 'user')
+        .eq('direction', 'like'),
+      fetchBlockRelations(viewerId),
+    ]);
+  const likesByUser = new Map(
+    (userLikes ?? []).map((like) => [like.user_id, like.proposed_character_id])
+  );
   const excluded = new Set([
     ...(members ?? []).map((m) => m.user_id),
     ...(groupSwipes ?? []).map((s) => s.user_id),
@@ -133,22 +148,33 @@ export async function fetchGroupCandidates(
       `id, alias, role, timezone, languages, open_to_any_system, bio, avatar_url,
        style_combat_narrative, style_serious_humor, style_roleplay_weight, preferred_vtt,
        availability_slots(weekday, slot), user_systems(system_id, experience),
-       characters(name, archetype, status, systems(name))`
+       characters(id, name, archetype, status, systems(name))`
     );
   if (error) throw error;
 
   return (profiles ?? [])
     .filter((p) => !excluded.has(p.id) && p.availability_slots.length > 0)
-    .map((p) => ({
-      player: {
-        ...toMatchPlayer(p),
-        id: p.id,
-        alias: p.alias,
-        role: p.role,
-        characters: (p.characters ?? []) as unknown as ShowcaseCharacter[],
-      },
-      result: matchPlayerToGroup(toMatchPlayer(p), group as unknown as MatchGroup),
-    }))
+    .map((p) => {
+      const characters = (p.characters ?? []) as unknown as ShowcaseCharacter[];
+      const likedGroup = likesByUser.has(p.id);
+      const proposedId = likesByUser.get(p.id) ?? null;
+      return {
+        player: {
+          ...toMatchPlayer(p),
+          id: p.id,
+          alias: p.alias,
+          role: p.role,
+          characters,
+        },
+        likedGroup,
+        proposal: characters.find((c) => c.id === proposedId) ?? null,
+        result: matchPlayerToGroup(toMatchPlayer(p), group as unknown as MatchGroup),
+      };
+    })
     .filter((c) => c.result.pass)
-    .sort((a, b) => b.result.score - a.result.score);
+    // Los que ya han dado like a la mesa, primero; después por score
+    .sort(
+      (a, b) =>
+        Number(b.likedGroup) - Number(a.likedGroup) || b.result.score - a.result.score
+    );
 }

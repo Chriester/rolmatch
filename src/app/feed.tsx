@@ -6,10 +6,12 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'reac
 import { showAlert } from '@/lib/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { Chip } from '@/components/chip';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
+import { fetchMyCharacters, type Character } from '@/lib/characters';
 import { fetchPlayerFeed, type GroupCandidate } from '@/lib/feed';
 import { FORMAT_LABELS, SLOT_LABELS, VTT_LABELS, WEEKDAY_LABELS } from '@/lib/groups';
 import { blockUser } from '@/lib/moderation';
@@ -21,15 +23,21 @@ export default function FeedScreen() {
   const [loadError, setLoadError] = useState(false);
   const [index, setIndex] = useState(0);
   const [busy, setBusy] = useState(false);
+  const [myCharacters, setMyCharacters] = useState<Character[]>([]);
+  const [proposedId, setProposedId] = useState<string | null>(null);
 
   const load = useCallback(() => {
     if (!session) return;
     setLoadError(false);
     setCandidates(undefined);
     setIndex(0);
+    setProposedId(null);
     fetchPlayerFeed(session.user.id)
       .then(setCandidates)
       .catch(() => setLoadError(true));
+    fetchMyCharacters(session.user.id)
+      .then((all) => setMyCharacters(all.filter((c) => c.status === 'looking')))
+      .catch(() => {});
   }, [session]);
 
   useFocusEffect(load);
@@ -55,13 +63,11 @@ export default function FeedScreen() {
     if (!session || !current) return;
     setBusy(true);
     try {
-      const matched = await swipeOnGroup(session.user.id, current.group.id, direction);
+      const matched = await swipeOnGroup(session.user.id, current.group.id, direction, proposedId);
       if (matched) {
-        showAlert(
-          '🎲 ¡Match!',
-          `A "${current.group.name}" también le interesas. La creación del canal de Discord llega en la fase del bot.`
-        );
+        showAlert('🎲 ¡Match!', `A "${current.group.name}" también le interesas. Mirad Discord.`);
       }
+      setProposedId(null);
       setIndex((i) => i + 1);
     } catch (error) {
       showAlert('Error', error instanceof Error ? error.message : String(error));
@@ -125,6 +131,22 @@ export default function FeedScreen() {
             <ThemedText type="small">
               Coincidís {current.result.overlapHours} h en horario
             </ThemedText>
+
+            {myCharacters.length > 0 && (
+              <View style={styles.proposalBox}>
+                <ThemedText type="small">Propón un personaje (opcional)</ThemedText>
+                <View style={styles.proposalRow}>
+                  {myCharacters.map((c) => (
+                    <Chip
+                      key={c.id}
+                      label={c.name}
+                      selected={proposedId === c.id}
+                      onPress={() => setProposedId(proposedId === c.id ? null : c.id)}
+                    />
+                  ))}
+                </View>
+              </View>
+            )}
 
             <View style={styles.actions}>
               <Pressable
@@ -250,6 +272,15 @@ const styles = StyleSheet.create({
   likeLabel: {
     color: '#fff',
     fontWeight: '600',
+  },
+  proposalBox: {
+    gap: Spacing.two,
+    marginTop: Spacing.one,
+  },
+  proposalRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.two,
   },
   moderationRow: {
     flexDirection: 'row',
