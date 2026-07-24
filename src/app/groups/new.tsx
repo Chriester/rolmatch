@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
 import { showAlert } from '@/lib/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -9,9 +9,9 @@ import { AppHeader } from '@/components/app-header';
 import { Chip } from '@/components/chip';
 import { PhotoPicker } from '@/components/photo-picker';
 import { StyleAxis } from '@/components/style-axis';
-import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { OutlineButton, PrimaryButton, ScreenTitle, SectionLabel } from '@/components/ui';
+import { MaxContentWidth, Rolder, RolderFonts, Spacing } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
 import {
   SLOT_LABELS,
@@ -110,7 +110,7 @@ export default function NewGroupScreen() {
       <SafeAreaView style={styles.safeArea}>
         <AppHeader onBack={() => (router.canGoBack() ? router.back() : router.replace('/groups'))} />
         <ScrollView contentContainerStyle={styles.scroll}>
-          <ThemedText type="title">Crear mesa</ThemedText>
+          <ScreenTitle>🛡️ Crear mesa</ScreenTitle>
 
           {session && (
             <PhotoPicker
@@ -123,7 +123,7 @@ export default function NewGroupScreen() {
             />
           )}
 
-          <ThemedText type="small">Nombre de la mesa</ThemedText>
+          <SectionLabel>Nombre de la mesa</SectionLabel>
           <TextInput
             style={styles.input}
             value={name}
@@ -132,7 +132,7 @@ export default function NewGroupScreen() {
             placeholderTextColor="#888"
           />
 
-          <ThemedText type="small">Sistema</ThemedText>
+          <SectionLabel>Sistema</SectionLabel>
           <View style={styles.chipRow}>
             {systems.map((system) => (
               <Chip
@@ -144,7 +144,7 @@ export default function NewGroupScreen() {
             ))}
           </View>
 
-          <ThemedText type="small">Formato</ThemedText>
+          <SectionLabel>Formato</SectionLabel>
           <View style={styles.chipRow}>
             {FORMATS.map((f) => (
               <Chip
@@ -156,7 +156,7 @@ export default function NewGroupScreen() {
             ))}
           </View>
 
-          <ThemedText type="small">Descripción (opcional)</ThemedText>
+          <SectionLabel>Descripción (opcional)</SectionLabel>
           <TextInput
             style={[styles.input, styles.multiline]}
             value={description}
@@ -166,7 +166,7 @@ export default function NewGroupScreen() {
             multiline
           />
 
-          <ThemedText type="small">Día de sesión</ThemedText>
+          <SectionLabel>Día de sesión</SectionLabel>
           <View style={styles.chipRow}>
             {WEEKDAY_LABELS.map((label, index) => (
               <Chip
@@ -178,7 +178,7 @@ export default function NewGroupScreen() {
             ))}
           </View>
 
-          <ThemedText type="small">Franja</ThemedText>
+          <SectionLabel>Franja</SectionLabel>
           <View style={styles.chipRow}>
             {SLOT_LABELS.map((label, index) => (
               <Chip
@@ -190,21 +190,21 @@ export default function NewGroupScreen() {
             ))}
           </View>
 
-          <ThemedText type="small">Frecuencia</ThemedText>
+          <SectionLabel>Frecuencia</SectionLabel>
           <View style={styles.chipRow}>
             {FREQUENCIES.map((f) => (
               <Chip key={f} label={f} selected={frequency === f} onPress={() => setFrequency(f)} />
             ))}
           </View>
 
-          <ThemedText type="small">Plazas libres</ThemedText>
+          <SectionLabel>Plazas libres</SectionLabel>
           <View style={styles.chipRow}>
             {SEAT_OPTIONS.map((n) => (
               <Chip key={n} label={String(n)} selected={seats === n} onPress={() => setSeats(n)} />
             ))}
           </View>
 
-          <ThemedText type="small">Experiencia buscada</ThemedText>
+          <SectionLabel>Experiencia buscada</SectionLabel>
           <View style={styles.chipRow}>
             {EXPERIENCE_OPTIONS.map((option) => (
               <Chip
@@ -216,7 +216,7 @@ export default function NewGroupScreen() {
             ))}
           </View>
 
-          <ThemedText type="small">Estilo de la mesa</ThemedText>
+          <SectionLabel>Estilo de la mesa</SectionLabel>
           <StyleAxis
             left="Combate"
             right="Narrativo"
@@ -231,7 +231,7 @@ export default function NewGroupScreen() {
             onChange={setRoleplayWeight}
           />
 
-          <ThemedText type="small">VTT</ThemedText>
+          <SectionLabel>VTT</SectionLabel>
           <View style={styles.chipRow}>
             {(Object.keys(VTT_LABELS) as VttType[]).map((value) => (
               <Chip
@@ -243,7 +243,7 @@ export default function NewGroupScreen() {
             ))}
           </View>
 
-          <ThemedText type="small">Invitación a vuestro Discord (opcional)</ThemedText>
+          <SectionLabel>Invitación a vuestro Discord (opcional)</SectionLabel>
           <TextInput
             style={styles.input}
             value={discordInvite}
@@ -254,17 +254,19 @@ export default function NewGroupScreen() {
           />
 
           <View style={styles.nav}>
-            <Pressable style={styles.secondaryButton} onPress={() => router.back()} disabled={busy}>
-              <ThemedText>Cancelar</ThemedText>
-            </Pressable>
-            <Pressable
-              style={[styles.primaryButton, (!valid || busy) && styles.disabled]}
+            <OutlineButton
+              label="Cancelar"
+              tone="white"
+              onPress={() => router.back()}
+              disabled={busy}
+              style={styles.cancelButton}
+            />
+            <PrimaryButton
+              label={busy ? 'Publicando…' : '🛡 Publicar mesa'}
               onPress={handleCreate}
-              disabled={!valid || busy}>
-              <ThemedText style={styles.primaryLabel}>
-                {busy ? 'Creando…' : 'Crear mesa'}
-              </ThemedText>
-            </Pressable>
+              disabled={!valid || busy}
+              style={styles.publishButton}
+            />
           </View>
         </ScrollView>
       </SafeAreaView>
@@ -283,16 +285,19 @@ const styles = StyleSheet.create({
     maxWidth: MaxContentWidth,
   },
   scroll: {
-    padding: Spacing.four,
+    padding: 20,
     gap: Spacing.three,
   },
   input: {
+    backgroundColor: Rolder.input,
     borderWidth: 1,
-    borderColor: '#666',
-    borderRadius: Spacing.two,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
-    color: '#888',
+    borderColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    color: '#fff',
+    fontSize: 15,
+    fontFamily: RolderFonts.regular,
   },
   multiline: {
     minHeight: 80,
@@ -305,28 +310,13 @@ const styles = StyleSheet.create({
   },
   nav: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: Spacing.two,
+    gap: 10,
     marginTop: Spacing.four,
   },
-  primaryButton: {
-    backgroundColor: '#5865F2',
-    borderRadius: Spacing.two,
-    paddingVertical: Spacing.two,
-    paddingHorizontal: Spacing.four,
+  cancelButton: {
+    flex: 1,
   },
-  primaryLabel: {
-    color: '#fff',
-    fontWeight: '600',
-  },
-  secondaryButton: {
-    borderWidth: 1,
-    borderColor: '#666',
-    borderRadius: Spacing.two,
-    paddingVertical: Spacing.two,
-    paddingHorizontal: Spacing.four,
-  },
-  disabled: {
-    opacity: 0.5,
+  publishButton: {
+    flex: 2,
   },
 });

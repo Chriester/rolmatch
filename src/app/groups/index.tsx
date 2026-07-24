@@ -1,13 +1,16 @@
+// Mis mesas (handoff §13): filas con thumb, meta y acciones; tarjeta
+// punteada para crear mesa nueva.
+
 import { Image } from 'expo-image';
-import { Link, router, useFocusEffect } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppHeader } from '@/components/app-header';
-import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { ListRow, OutlineButton, ScreenTitle, StatusPill } from '@/components/ui';
+import { MaxContentWidth, Rolder, RolderFonts, Spacing } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
 import { FORMAT_LABELS, fetchMyGroups, type GroupSummary } from '@/lib/groups';
 
@@ -27,51 +30,58 @@ export default function MyGroupsScreen() {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        <AppHeader />
-        <View style={styles.header}>
-          <ThemedText type="title">Mis mesas</ThemedText>
-          <Link href="/groups/new" asChild>
-            <Pressable style={styles.primaryButton}>
-              <ThemedText style={styles.primaryLabel}>Crear mesa</ThemedText>
-            </Pressable>
-          </Link>
-        </View>
+        <AppHeader onBack={router.canGoBack() ? () => router.back() : undefined} />
+        <ScreenTitle>🛡️ Mis mesas</ScreenTitle>
 
         {groups === undefined ? (
           <ActivityIndicator style={styles.loading} />
-        ) : groups.length === 0 ? (
-          <ThemedText style={styles.empty}>
-            Aún no tienes ninguna mesa. Crea una y empieza a buscar jugadores.
-          </ThemedText>
         ) : (
           <FlatList
             data={groups}
             keyExtractor={(g) => g.id}
             contentContainerStyle={styles.list}
+            ListFooterComponent={
+              <ListRow dashed onPress={() => router.push('/groups/new')}>
+                <Text style={styles.dashedLabel}>+ Crear mesa</Text>
+              </ListRow>
+            }
+            ListEmptyComponent={
+              <Text style={styles.empty}>
+                Aún no tienes ninguna mesa. Crea una y empieza a buscar jugadores.
+              </Text>
+            }
             renderItem={({ item }) => (
-              <Pressable
-                style={styles.card}
+              <ListRow
                 onPress={() => router.push({ pathname: '/groups/[id]', params: { id: item.id } })}>
                 {item.image_url ? (
                   <Image source={{ uri: item.image_url }} style={styles.thumb} />
                 ) : (
                   <View style={[styles.thumb, styles.thumbFallback]}>
-                    <ThemedText>🎲</ThemedText>
+                    <Text style={styles.thumbEmoji}>🎲</Text>
                   </View>
                 )}
-                <View style={styles.cardBody}>
-                  <ThemedText type="subtitle" numberOfLines={1}>
+                <View style={styles.body}>
+                  <Text style={styles.name} numberOfLines={1}>
                     {item.name}
-                  </ThemedText>
-                  <ThemedText type="small">
+                  </Text>
+                  <Text style={styles.meta} numberOfLines={1}>
                     {item.systems?.name ?? 'Sistema sin definir'} · {FORMAT_LABELS[item.format]}
-                    {item.is_active ? '' : ' · inactiva'}
-                  </ThemedText>
+                  </Text>
+                  <View style={styles.actions}>
+                    <StatusPill
+                      label={item.is_active ? 'ACTIVA' : 'INACTIVA'}
+                      tone={item.is_active ? 'green' : 'gray'}
+                    />
+                  </View>
                 </View>
-                <ThemedText type="small" style={styles.chevron}>
-                  ›
-                </ThemedText>
-              </Pressable>
+                <OutlineButton
+                  label="⚔ Candidatos"
+                  onPress={() =>
+                    router.push({ pathname: '/groups/[id]/candidates', params: { id: item.id } })
+                  }
+                  style={styles.candidatesButton}
+                />
+              </ListRow>
             )}
           />
         )}
@@ -89,58 +99,67 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     maxWidth: MaxContentWidth,
-    padding: Spacing.four,
+    paddingHorizontal: 20,
+    paddingTop: Spacing.two,
     gap: Spacing.three,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    width: '100%',
   },
   loading: {
     marginTop: Spacing.six,
   },
   empty: {
-    marginTop: Spacing.four,
+    color: Rolder.textSecondary,
+    fontSize: 13,
+    fontFamily: RolderFonts.regular,
     textAlign: 'center',
+    marginVertical: Spacing.four,
   },
   list: {
-    gap: Spacing.two,
-  },
-  card: {
-    borderWidth: 1,
-    borderColor: '#666',
-    borderRadius: Spacing.two,
-    padding: Spacing.three,
-    gap: Spacing.three,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  cardBody: {
-    flex: 1,
-    gap: 2,
+    gap: 12,
+    paddingBottom: Spacing.four,
   },
   thumb: {
-    width: 52,
-    height: 52,
-    borderRadius: Spacing.two,
+    width: 54,
+    height: 54,
+    borderRadius: 12,
   },
   thumbFallback: {
-    backgroundColor: 'rgba(88,101,242,0.25)',
+    backgroundColor: 'rgba(139,108,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  chevron: {
-    opacity: 0.5,
+  thumbEmoji: {
+    fontSize: 24,
   },
-  primaryButton: {
-    backgroundColor: '#5865F2',
-    borderRadius: Spacing.two,
-    paddingVertical: Spacing.two,
-    paddingHorizontal: Spacing.three,
+  body: {
+    flex: 1,
+    gap: 3,
   },
-  primaryLabel: {
+  name: {
     color: '#fff',
+    fontSize: 15,
+    fontFamily: RolderFonts.bold,
+    fontWeight: '700',
+  },
+  meta: {
+    color: Rolder.textSecondary,
+    fontSize: 12.5,
+    fontFamily: RolderFonts.regular,
+  },
+  actions: {
+    flexDirection: 'row',
+    marginTop: 3,
+  },
+  candidatesButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  dashedLabel: {
+    color: Rolder.violetSofter,
+    fontSize: 14,
+    fontFamily: RolderFonts.semibold,
     fontWeight: '600',
+    textAlign: 'center',
+    flex: 1,
   },
 });

@@ -1,17 +1,21 @@
+// Login rolder (handoff §6): logo + wordmark centrados, botón Discord,
+// acceso por enlace mágico y nota legal.
+
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, TextInput } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { showAlert } from '@/lib/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { ThemedText } from '@/components/themed-text';
+import { RolderLogo, RolderWordmark } from '@/components/brand';
 import { ThemedView } from '@/components/themed-view';
-import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { Rolder, RolderFonts } from '@/constants/theme';
 import { signInWithDiscord, signInWithEmail } from '@/lib/auth';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [busy, setBusy] = useState(false);
+  const [sent, setSent] = useState(false);
 
   const handleDiscord = async () => {
     setBusy(true);
@@ -29,7 +33,7 @@ export default function LoginScreen() {
     setBusy(true);
     try {
       await signInWithEmail(email.trim());
-      showAlert('Revisa tu correo', 'Te hemos enviado un enlace para entrar.');
+      setSent(true);
     } catch (error) {
       showAlert('Error al enviar el enlace', error instanceof Error ? error.message : String(error));
     } finally {
@@ -40,12 +44,11 @@ export default function LoginScreen() {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        <ThemedText type="title" style={styles.title}>
-          RolMatch
-        </ThemedText>
-        <ThemedText style={styles.subtitle}>
-          Encuentra mesa. Encuentra grupo. Juega.
-        </ThemedText>
+        <View style={styles.brand}>
+          <RolderLogo width={40} />
+          <RolderWordmark size={38} />
+        </View>
+        <Text style={styles.tagline}>Encuentra mesa. Encuentra grupo. Juega.</Text>
 
         <Pressable
           style={[styles.discordButton, busy && styles.disabled]}
@@ -54,18 +57,20 @@ export default function LoginScreen() {
           {busy ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <ThemedText style={styles.discordLabel}>Continuar con Discord</ThemedText>
+            <Text style={styles.discordLabel}>🎮 Continuar con Discord</Text>
           )}
         </Pressable>
 
-        <ThemedText type="small" style={styles.divider}>
-          o con tu correo
-        </ThemedText>
+        <View style={styles.dividerRow}>
+          <View style={styles.dividerLine} />
+          <Text style={styles.dividerText}>o con tu correo</Text>
+          <View style={styles.dividerLine} />
+        </View>
 
         <TextInput
           style={styles.input}
           placeholder="tu@correo.com"
-          placeholderTextColor="#888"
+          placeholderTextColor="rgba(255,255,255,0.4)"
           autoCapitalize="none"
           keyboardType="email-address"
           value={email}
@@ -76,8 +81,16 @@ export default function LoginScreen() {
           style={[styles.emailButton, busy && styles.disabled]}
           onPress={handleEmail}
           disabled={busy}>
-          <ThemedText>Enviarme enlace de acceso</ThemedText>
+          <Text style={styles.emailLabel}>Enviarme enlace de acceso</Text>
         </Pressable>
+
+        {sent && (
+          <Text style={styles.sentNotice}>✓ Enlace enviado — revisa tu correo para entrar.</Text>
+        )}
+
+        <Text style={styles.legal}>
+          Con Discord verificamos tu cuenta y el bot podrá abriros canal cuando hagas match.
+        </Text>
       </SafeAreaView>
     </ThemedView>
   );
@@ -92,44 +105,88 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     justifyContent: 'center',
-    paddingHorizontal: Spacing.four,
-    gap: Spacing.three,
-    maxWidth: MaxContentWidth,
+    paddingHorizontal: 32,
+    gap: 14,
+    maxWidth: 460,
   },
-  title: {
-    textAlign: 'center',
+  brand: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
   },
-  subtitle: {
+  tagline: {
+    color: Rolder.textSecondary,
+    fontSize: 15,
+    fontFamily: RolderFonts.regular,
     textAlign: 'center',
-    marginBottom: Spacing.four,
+    marginBottom: 18,
   },
   discordButton: {
-    backgroundColor: '#5865F2',
-    borderRadius: Spacing.two,
-    paddingVertical: Spacing.three,
+    backgroundColor: Rolder.discord,
+    borderRadius: 14,
+    paddingVertical: 15,
     alignItems: 'center',
   },
   discordLabel: {
     color: '#fff',
-    fontWeight: '600',
+    fontSize: 15,
+    fontFamily: RolderFonts.bold,
+    fontWeight: '700',
   },
-  divider: {
-    textAlign: 'center',
+  dividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginVertical: 4,
+  },
+  dividerLine: {
+    flex: 1,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+  },
+  dividerText: {
+    color: Rolder.textTertiary,
+    fontSize: 12,
+    fontFamily: RolderFonts.regular,
   },
   input: {
+    backgroundColor: Rolder.input,
     borderWidth: 1,
-    borderColor: '#666',
-    borderRadius: Spacing.two,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
-    color: '#888',
+    borderColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 13,
+    color: '#fff',
+    fontSize: 15,
+    fontFamily: RolderFonts.regular,
   },
   emailButton: {
     borderWidth: 1,
-    borderColor: '#5865F2',
-    borderRadius: Spacing.two,
-    paddingVertical: Spacing.three,
+    borderColor: 'rgba(139,108,255,0.8)',
+    borderRadius: 14,
+    paddingVertical: 14,
     alignItems: 'center',
+  },
+  emailLabel: {
+    color: Rolder.violetSofter,
+    fontSize: 15,
+    fontFamily: RolderFonts.semibold,
+    fontWeight: '600',
+  },
+  sentNotice: {
+    color: Rolder.like,
+    fontSize: 13,
+    fontFamily: RolderFonts.semibold,
+    textAlign: 'center',
+  },
+  legal: {
+    color: Rolder.textTertiary,
+    fontSize: 11,
+    fontFamily: RolderFonts.regular,
+    textAlign: 'center',
+    marginTop: 10,
+    paddingHorizontal: 12,
   },
   disabled: {
     opacity: 0.6,

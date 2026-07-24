@@ -5,6 +5,8 @@
 import type { ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { Rolder, RolderFonts } from '@/constants/theme';
+
 type DetailsFaceProps = {
   title: string;
   children: ReactNode;
@@ -25,28 +27,34 @@ export function DetailsFace({ title, children }: DetailsFaceProps) {
 
 export const sheetText = StyleSheet.create({
   label: {
-    color: 'rgba(255,255,255,0.55)',
-    fontSize: 12,
+    color: Rolder.violet,
+    fontSize: 11,
+    fontFamily: RolderFonts.bold,
     fontWeight: '700',
     textTransform: 'uppercase',
-    letterSpacing: 1,
+    letterSpacing: 0.9,
     marginTop: 10,
   },
   body: {
-    color: 'rgba(255,255,255,0.92)',
-    fontSize: 15,
-    lineHeight: 21,
+    color: 'rgba(255,255,255,0.9)',
+    fontSize: 13.5,
+    fontFamily: RolderFonts.regular,
+    lineHeight: 19,
   },
   link: {
-    color: '#F3485B',
-    fontSize: 14,
+    color: Rolder.pass,
+    fontSize: 13,
+    fontFamily: RolderFonts.semibold,
   },
 });
 
 const styles = StyleSheet.create({
   face: {
     flex: 1,
-    backgroundColor: '#16171f',
+    backgroundColor: Rolder.sheet,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 20,
     paddingHorizontal: 20,
     paddingTop: 10,
     paddingBottom: 14,
@@ -61,7 +69,8 @@ const styles = StyleSheet.create({
   },
   title: {
     color: '#fff',
-    fontSize: 22,
+    fontSize: 20,
+    fontFamily: RolderFonts.extrabold,
     fontWeight: '800',
   },
   content: {
@@ -71,7 +80,8 @@ const styles = StyleSheet.create({
   },
   hint: {
     color: 'rgba(255,255,255,0.4)',
-    fontSize: 12,
+    fontSize: 11,
+    fontFamily: RolderFonts.regular,
     textAlign: 'center',
     marginTop: 8,
   },

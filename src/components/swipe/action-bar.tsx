@@ -1,9 +1,12 @@
-// Botones circulares de acción (✕ / ♥) — disparan la misma animación que el
-// gesto vía la ref del deck. Con fondo opaco: la tarjeta nunca se ve debajo.
+// Botones circulares de acción — disparan la misma animación que el gesto
+// vía la ref del deck. Orden y estilos del handoff rolder §1:
+// ↩ rewind 46 · ✕ pass 64 · ⚔ like 64 (gradiente verde) · ⓘ info 46.
 
+import { LinearGradient } from 'expo-linear-gradient';
 import { Pressable, StyleSheet, Text } from 'react-native';
 
 import { ThemedView } from '@/components/themed-view';
+import { Rolder } from '@/constants/theme';
 
 type ActionBarProps = {
   onPass: () => void;
@@ -19,12 +22,13 @@ export function ActionBar({ onPass, onLike, onInfo, onRewind, disabled }: Action
     <ThemedView style={styles.row}>
       {onRewind && (
         <Pressable
-          style={({ pressed }) => [styles.button, styles.rewind, pressed && styles.pressed]}
+          style={({ pressed }) => [styles.button, styles.small, pressed && styles.pressed]}
           onPress={onRewind}
           accessibilityLabel="Deshacer último swipe">
-          <Text style={[styles.glyph, styles.rewindGlyph]}>↩</Text>
+          <Text style={styles.rewindGlyph}>↩</Text>
         </Pressable>
       )}
+
       <Pressable
         style={({ pressed }) => [
           styles.button,
@@ -35,30 +39,31 @@ export function ActionBar({ onPass, onLike, onInfo, onRewind, disabled }: Action
         onPress={onPass}
         disabled={disabled}
         accessibilityLabel="Pasar">
-        <Text style={[styles.glyph, styles.passGlyph]}>✕</Text>
+        <Text style={styles.passGlyph}>✕</Text>
+      </Pressable>
+
+      <Pressable
+        style={({ pressed }) => [disabled && styles.disabled, pressed && styles.pressed]}
+        onPress={onLike}
+        disabled={disabled}
+        accessibilityLabel="Me interesa">
+        <LinearGradient
+          colors={Rolder.likeGradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[styles.button, styles.like]}>
+          <Text style={styles.likeGlyph}>⚔</Text>
+        </LinearGradient>
       </Pressable>
 
       {onInfo && (
         <Pressable
-          style={({ pressed }) => [styles.button, styles.info, pressed && styles.pressed]}
+          style={({ pressed }) => [styles.button, styles.small, pressed && styles.pressed]}
           onPress={onInfo}
           accessibilityLabel="Ver detalles">
-          <Text style={[styles.glyph, styles.infoGlyph]}>i</Text>
+          <Text style={styles.infoGlyph}>i</Text>
         </Pressable>
       )}
-
-      <Pressable
-        style={({ pressed }) => [
-          styles.button,
-          styles.like,
-          disabled && styles.disabled,
-          pressed && styles.pressed,
-        ]}
-        onPress={onLike}
-        disabled={disabled}
-        accessibilityLabel="Me interesa">
-        <Text style={[styles.glyph, styles.likeGlyph]}>♥</Text>
-      </Pressable>
     </ThemedView>
   );
 }
@@ -68,7 +73,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 28,
+    gap: 18,
     paddingVertical: 14,
   },
   button: {
@@ -77,44 +82,37 @@ const styles = StyleSheet.create({
     borderRadius: 32,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 2,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: Rolder.input,
+  },
+  small: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
   },
   pass: {
-    borderColor: '#F3485B',
+    borderWidth: 2,
+    borderColor: Rolder.pass,
   },
   like: {
-    borderColor: '#3BD16F',
-  },
-  info: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    borderColor: 'rgba(255,255,255,0.4)',
-  },
-  rewind: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    borderColor: '#F5A623',
+    boxShadow: '0 6px 18px rgba(59,209,111,0.35)',
   },
   rewindGlyph: {
-    color: '#F5A623',
+    color: Rolder.gold,
     fontSize: 22,
   },
-  glyph: {
+  passGlyph: {
+    color: Rolder.pass,
     fontSize: 28,
     fontWeight: '700',
     lineHeight: 32,
   },
-  passGlyph: {
-    color: '#F3485B',
-  },
   likeGlyph: {
-    color: '#3BD16F',
+    color: '#fff',
+    fontSize: 28,
+    lineHeight: 34,
   },
   infoGlyph: {
-    color: 'rgba(255,255,255,0.8)',
+    color: Rolder.violet,
     fontSize: 20,
     fontStyle: 'italic',
     fontWeight: '800',

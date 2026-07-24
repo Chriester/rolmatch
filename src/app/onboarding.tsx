@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Switch, TextInput, View } from 'react-native';
+import { ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 
 import { showAlert } from '@/lib/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -9,9 +9,9 @@ import { AvailabilityGrid, availabilityKey } from '@/components/availability-gri
 import { Chip } from '@/components/chip';
 import { PhotoPicker } from '@/components/photo-picker';
 import { StyleAxis } from '@/components/style-axis';
-import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { OutlineButton, PrimaryButton, SectionLabel } from '@/components/ui';
+import { MaxContentWidth, Rolder, RolderFonts, Spacing } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
 import {
   detectTimezone,
@@ -44,6 +44,7 @@ const VTTS: { value: VttType; label: string }[] = [
 ];
 
 const TOTAL_STEPS = 4;
+const STEP_TITLES = ['Quién eres', 'Cuándo juegas', 'A qué juegas', 'Cómo juegas'];
 
 export default function OnboardingScreen() {
   const session = useSession();
@@ -178,13 +179,20 @@ export default function OnboardingScreen() {
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
         <ScrollView contentContainerStyle={styles.scroll}>
-          <ThemedText type="small" style={styles.progress}>
-            Paso {step + 1} de {TOTAL_STEPS}
-          </ThemedText>
+          <View style={styles.stepHeader}>
+            <Text style={styles.stepTitle}>{STEP_TITLES[step]}</Text>
+            <Text style={styles.stepCount}>
+              Paso {step + 1} de {TOTAL_STEPS}
+            </Text>
+          </View>
+          <View style={styles.progressRow}>
+            {STEP_TITLES.map((_, i) => (
+              <View key={i} style={[styles.progressSegment, i <= step && styles.progressDone]} />
+            ))}
+          </View>
 
           {step === 0 && (
             <View style={styles.section}>
-              <ThemedText type="title">¿Quién eres?</ThemedText>
               {session && (
                 <PhotoPicker
                   userId={session.user.id}
@@ -194,15 +202,15 @@ export default function OnboardingScreen() {
                   label="Tu foto"
                 />
               )}
-              <ThemedText type="small">Tu alias en las mesas</ThemedText>
+              <SectionLabel>Alias *</SectionLabel>
               <TextInput
                 style={styles.input}
                 value={alias}
                 onChangeText={setAlias}
-                placeholder="Alias"
-                placeholderTextColor="#888"
+                placeholder="Tu alias en las mesas"
+                placeholderTextColor="rgba(255,255,255,0.35)"
               />
-              <ThemedText type="small">Tu rol habitual</ThemedText>
+              <SectionLabel>Tu rol</SectionLabel>
               <View style={styles.chipRow}>
                 {ROLES.map((r) => (
                   <Chip
@@ -213,13 +221,13 @@ export default function OnboardingScreen() {
                   />
                 ))}
               </View>
-              <ThemedText type="small">Bio corta (opcional)</ThemedText>
+              <SectionLabel>Bio corta</SectionLabel>
               <TextInput
                 style={[styles.input, styles.multiline]}
                 value={bio}
                 onChangeText={setBio}
-                placeholder="Cuéntale al mundo cómo juegas…"
-                placeholderTextColor="#888"
+                placeholder="Qué buscas, cómo juegas, qué te hace reír…"
+                placeholderTextColor="rgba(255,255,255,0.35)"
                 multiline
               />
             </View>
@@ -227,13 +235,20 @@ export default function OnboardingScreen() {
 
           {step === 1 && (
             <View style={styles.section}>
-              <ThemedText type="title">¿Cuándo puedes jugar?</ThemedText>
-              <ThemedText type="small">
-                Marca tus franjas libres (en tu hora local). Es lo que usamos para no
-                emparejarte nunca con mesas imposibles.
-              </ThemedText>
+              <View style={styles.tzBanner}>
+                <Text style={styles.tzBannerText}>🌍 {timezone || 'Zona horaria'}</Text>
+              </View>
+              <Text style={styles.helper}>
+                Marca tus franjas libres (en tu hora local). Es lo que usamos para no emparejarte
+                nunca con mesas imposibles.
+              </Text>
               <AvailabilityGrid selected={availability} onToggle={toggleAvailability} />
-              <ThemedText type="small">Zona horaria (detectada automáticamente)</ThemedText>
+              <Text style={styles.counter}>
+                {availability.size === 0
+                  ? 'Marca al menos una franja'
+                  : `${availability.size} ${availability.size === 1 ? 'franja marcada' : 'franjas marcadas'}`}
+              </Text>
+              <SectionLabel>Zona horaria (detectada automáticamente)</SectionLabel>
               <TextInput
                 style={styles.input}
                 value={timezone}
@@ -245,7 +260,7 @@ export default function OnboardingScreen() {
 
           {step === 2 && (
             <View style={styles.section}>
-              <ThemedText type="title">¿A qué juegas?</ThemedText>
+              <SectionLabel>Tus sistemas</SectionLabel>
               {systems.map((system) => {
                 const experience = experienceBySystem.get(system.id);
                 return (
@@ -271,15 +286,18 @@ export default function OnboardingScreen() {
                 );
               })}
               <View style={styles.switchRow}>
-                <ThemedText>Abierto/a a cualquier sistema</ThemedText>
-                <Switch value={openToAny} onValueChange={setOpenToAny} />
+                <Text style={styles.switchLabel}>Abierto/a a cualquier sistema</Text>
+                <Switch
+                  value={openToAny}
+                  onValueChange={setOpenToAny}
+                  trackColor={{ true: Rolder.like, false: 'rgba(255,255,255,0.15)' }}
+                />
               </View>
             </View>
           )}
 
           {step === 3 && (
             <View style={styles.section}>
-              <ThemedText type="title">¿Cómo juegas?</ThemedText>
               <StyleAxis
                 left="Combate"
                 right="Narrativo"
@@ -299,14 +317,22 @@ export default function OnboardingScreen() {
                 onChange={setRoleplayWeight}
               />
               <View style={styles.switchRow}>
-                <ThemedText>Juego con voz</ThemedText>
-                <Switch value={voiceChat} onValueChange={setVoiceChat} />
+                <Text style={styles.switchLabel}>🎙 Juego con voz</Text>
+                <Switch
+                  value={voiceChat}
+                  onValueChange={setVoiceChat}
+                  trackColor={{ true: Rolder.like, false: 'rgba(255,255,255,0.15)' }}
+                />
               </View>
               <View style={styles.switchRow}>
-                <ThemedText>Cámara encendida</ThemedText>
-                <Switch value={cameraOk} onValueChange={setCameraOk} />
+                <Text style={styles.switchLabel}>🎥 Cámara encendida</Text>
+                <Switch
+                  value={cameraOk}
+                  onValueChange={setCameraOk}
+                  trackColor={{ true: Rolder.like, false: 'rgba(255,255,255,0.15)' }}
+                />
               </View>
-              <ThemedText type="small">VTT preferido</ThemedText>
+              <SectionLabel>Mesa virtual</SectionLabel>
               <View style={styles.chipRow}>
                 {VTTS.map((option) => (
                   <Chip
@@ -322,21 +348,26 @@ export default function OnboardingScreen() {
 
           <View style={styles.nav}>
             {step > 0 && (
-              <Pressable
-                style={styles.secondaryButton}
+              <OutlineButton
+                label="Atrás"
+                tone="white"
                 onPress={() => setStep((s) => s - 1)}
-                disabled={busy}>
-                <ThemedText>Anterior</ThemedText>
-              </Pressable>
+                disabled={busy}
+                style={styles.backButton}
+              />
             )}
-            <Pressable
-              style={[styles.primaryButton, (!stepValid() || busy) && styles.disabled]}
+            <PrimaryButton
+              label={
+                step < TOTAL_STEPS - 1
+                  ? 'Siguiente'
+                  : busy
+                    ? 'Guardando…'
+                    : '⚔ Guardar y buscar mesa'
+              }
               onPress={() => (step < TOTAL_STEPS - 1 ? setStep((s) => s + 1) : handleFinish())}
-              disabled={!stepValid() || busy}>
-              <ThemedText style={styles.primaryLabel}>
-                {step < TOTAL_STEPS - 1 ? 'Siguiente' : busy ? 'Guardando…' : 'Terminar'}
-              </ThemedText>
-            </Pressable>
+              disabled={!stepValid() || busy}
+              style={styles.nextButton}
+            />
           </View>
         </ScrollView>
       </SafeAreaView>
@@ -355,22 +386,80 @@ const styles = StyleSheet.create({
     maxWidth: MaxContentWidth,
   },
   scroll: {
-    padding: Spacing.four,
+    padding: 20,
     gap: Spacing.three,
   },
-  progress: {
-    textAlign: 'center',
+  stepHeader: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+  },
+  stepTitle: {
+    color: '#fff',
+    fontSize: 19,
+    fontFamily: RolderFonts.extrabold,
+    fontWeight: '800',
+  },
+  stepCount: {
+    color: Rolder.textTertiary,
+    fontSize: 12,
+    fontFamily: RolderFonts.semibold,
+  },
+  progressRow: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  progressSegment: {
+    flex: 1,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+  },
+  progressDone: {
+    backgroundColor: Rolder.violet,
   },
   section: {
     gap: Spacing.three,
   },
-  input: {
+  helper: {
+    color: Rolder.textSecondary,
+    fontSize: 13,
+    fontFamily: RolderFonts.regular,
+    lineHeight: 18,
+  },
+  counter: {
+    color: Rolder.violetSoft,
+    fontSize: 12.5,
+    fontFamily: RolderFonts.semibold,
+  },
+  tzBanner: {
+    backgroundColor: 'rgba(139,108,255,0.15)',
     borderWidth: 1,
-    borderColor: '#666',
-    borderRadius: Spacing.two,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
-    color: '#888',
+    borderColor: 'rgba(139,108,255,0.4)',
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+  },
+  tzBannerText: {
+    color: Rolder.violetSofter,
+    fontSize: 13.5,
+    fontFamily: RolderFonts.semibold,
+  },
+  switchLabel: {
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 14,
+    fontFamily: RolderFonts.regular,
+  },
+  input: {
+    backgroundColor: Rolder.input,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    color: '#fff',
+    fontSize: 15,
+    fontFamily: RolderFonts.regular,
   },
   multiline: {
     minHeight: 80,
@@ -392,28 +481,13 @@ const styles = StyleSheet.create({
   },
   nav: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: Spacing.two,
+    gap: 10,
     marginTop: Spacing.four,
   },
-  primaryButton: {
-    backgroundColor: '#5865F2',
-    borderRadius: Spacing.two,
-    paddingVertical: Spacing.two,
-    paddingHorizontal: Spacing.four,
+  backButton: {
+    flex: 1,
   },
-  primaryLabel: {
-    color: '#fff',
-    fontWeight: '600',
-  },
-  secondaryButton: {
-    borderWidth: 1,
-    borderColor: '#666',
-    borderRadius: Spacing.two,
-    paddingVertical: Spacing.two,
-    paddingHorizontal: Spacing.four,
-  },
-  disabled: {
-    opacity: 0.5,
+  nextButton: {
+    flex: 2,
   },
 });
