@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
 import { Chip } from '@/components/chip';
+import { PhotoPicker } from '@/components/photo-picker';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import {
@@ -12,15 +13,17 @@ import {
 import { fetchSystems, type System } from '@/lib/profile';
 
 type CharacterFormProps = {
+  userId: string;
   initial?: CharacterInput;
   busy: boolean;
   submitLabel: string;
   onSubmit: (input: CharacterInput) => void;
 };
 
-export function CharacterForm({ initial, busy, submitLabel, onSubmit }: CharacterFormProps) {
+export function CharacterForm({ userId, initial, busy, submitLabel, onSubmit }: CharacterFormProps) {
   const [systems, setSystems] = useState<System[]>([]);
   const [name, setName] = useState(initial?.name ?? '');
+  const [portraitUrl, setPortraitUrl] = useState<string | null>(initial?.portrait_url ?? null);
   const [systemId, setSystemId] = useState<number | null>(initial?.system_id ?? null);
   const [archetype, setArchetype] = useState(initial?.archetype ?? '');
   const [level, setLevel] = useState(initial?.level ?? '');
@@ -36,6 +39,14 @@ export function CharacterForm({ initial, busy, submitLabel, onSubmit }: Characte
 
   return (
     <ScrollView contentContainerStyle={styles.scroll}>
+      <PhotoPicker
+        userId={userId}
+        prefix="character"
+        url={portraitUrl}
+        onPicked={setPortraitUrl}
+        label="Retrato"
+      />
+
       <ThemedText type="small">Nombre del personaje</ThemedText>
       <TextInput
         style={styles.input}
@@ -117,6 +128,7 @@ export function CharacterForm({ initial, busy, submitLabel, onSubmit }: Characte
         onPress={() =>
           onSubmit({
             name: name.trim(),
+            portrait_url: portraitUrl,
             system_id: systemId,
             archetype: archetype.trim() || null,
             level: level.trim() || null,

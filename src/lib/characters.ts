@@ -23,6 +23,7 @@ export type Character = {
 
 export type CharacterInput = {
   name: string;
+  portrait_url: string | null;
   system_id: number | null;
   archetype: string | null;
   level: string | null;

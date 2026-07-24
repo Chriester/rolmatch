@@ -1,3 +1,4 @@
+import { Image } from 'expo-image';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
@@ -93,6 +94,9 @@ export default function FeedScreen() {
           </ThemedText>
         ) : (
           <View style={styles.card}>
+            {current.group.image_url && (
+              <Image source={{ uri: current.group.image_url }} style={styles.cardImage} />
+            )}
             <View style={styles.cardHeader}>
               <ThemedText type="subtitle">{current.group.name}</ThemedText>
               <View style={styles.scoreBadge}>
@@ -198,6 +202,11 @@ const styles = StyleSheet.create({
     borderRadius: Spacing.three,
     padding: Spacing.four,
     gap: Spacing.two,
+  },
+  cardImage: {
+    width: '100%',
+    aspectRatio: 16 / 9,
+    borderRadius: Spacing.two,
   },
   cardHeader: {
     flexDirection: 'row',

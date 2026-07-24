@@ -1,3 +1,4 @@
+import { Image } from 'expo-image';
 import { Link, router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, View } from 'react-native';
@@ -70,7 +71,12 @@ export default function MyCharactersScreen() {
                   router.push({ pathname: '/characters/[id]', params: { id: item.id } })
                 }>
                 <View style={styles.cardHeader}>
-                  <ThemedText type="subtitle">{item.name}</ThemedText>
+                  <View style={styles.identity}>
+                    {item.portrait_url && (
+                      <Image source={{ uri: item.portrait_url }} style={styles.portrait} />
+                    )}
+                    <ThemedText type="subtitle">{item.name}</ThemedText>
+                  </View>
                   <ThemedText type="small">{CHARACTER_STATUS_LABELS[item.status]}</ThemedText>
                 </View>
                 <ThemedText type="small">
@@ -138,6 +144,17 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     gap: Spacing.two,
+  },
+  identity: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+    flexShrink: 1,
+  },
+  portrait: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
   },
   primaryButton: {
     backgroundColor: '#5865F2',

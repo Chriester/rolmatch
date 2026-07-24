@@ -6,6 +6,7 @@ import { showAlert } from '@/lib/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Chip } from '@/components/chip';
+import { PhotoPicker } from '@/components/photo-picker';
 import { StyleAxis } from '@/components/style-axis';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -48,6 +49,7 @@ export default function NewGroupScreen() {
   const [busy, setBusy] = useState(false);
 
   const [name, setName] = useState('');
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [systems, setSystems] = useState<System[]>([]);
   const [systemId, setSystemId] = useState<number | null>(null);
   const [format, setFormat] = useState<GroupFormat>('campaign');
@@ -77,6 +79,7 @@ export default function NewGroupScreen() {
         session.user.id,
         {
           name: name.trim(),
+          image_url: imageUrl,
           system_id: systemId,
           format,
           description: description.trim() || null,
@@ -106,6 +109,17 @@ export default function NewGroupScreen() {
       <SafeAreaView style={styles.safeArea}>
         <ScrollView contentContainerStyle={styles.scroll}>
           <ThemedText type="title">Crear mesa</ThemedText>
+
+          {session && (
+            <PhotoPicker
+              userId={session.user.id}
+              prefix="group"
+              url={imageUrl}
+              onPicked={setImageUrl}
+              shape="card"
+              label="Foto de la mesa"
+            />
+          )}
 
           <ThemedText type="small">Nombre de la mesa</ThemedText>
           <TextInput

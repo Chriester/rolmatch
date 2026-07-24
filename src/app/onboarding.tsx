@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AvailabilityGrid, availabilityKey } from '@/components/availability-grid';
 import { Chip } from '@/components/chip';
+import { PhotoPicker } from '@/components/photo-picker';
 import { StyleAxis } from '@/components/style-axis';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -53,6 +54,7 @@ export default function OnboardingScreen() {
   const [alias, setAlias] = useState('');
   const [role, setRole] = useState<UserRole>('player');
   const [bio, setBio] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
   // Paso 2 — cuándo juegas
   const [timezone, setTimezone] = useState(detectTimezone());
@@ -83,6 +85,7 @@ export default function OnboardingScreen() {
         setAlias(profile.alias);
         setRole(profile.role);
         setBio(profile.bio ?? '');
+        setAvatarUrl(profile.avatar_url);
         if (profile.availability.length > 0) {
           setTimezone(profile.timezone);
           setAvailability(
@@ -148,6 +151,7 @@ export default function OnboardingScreen() {
           bio: bio.trim() || null,
           timezone: timezone.trim() || 'UTC',
           role,
+          avatar_url: avatarUrl,
           style_combat_narrative: combatNarrative,
           style_serious_humor: seriousHumor,
           style_roleplay_weight: roleplayWeight,
@@ -181,6 +185,15 @@ export default function OnboardingScreen() {
           {step === 0 && (
             <View style={styles.section}>
               <ThemedText type="title">¿Quién eres?</ThemedText>
+              {session && (
+                <PhotoPicker
+                  userId={session.user.id}
+                  prefix="avatar"
+                  url={avatarUrl}
+                  onPicked={setAvatarUrl}
+                  label="Tu foto"
+                />
+              )}
               <ThemedText type="small">Tu alias en las mesas</ThemedText>
               <TextInput
                 style={styles.input}

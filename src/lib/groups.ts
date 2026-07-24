@@ -6,6 +6,7 @@ export type MemberRole = 'gm' | 'player';
 
 export type GroupInput = {
   name: string;
+  image_url: string | null;
   system_id: number | null;
   format: GroupFormat;
   description: string | null;
@@ -24,6 +25,7 @@ export type GroupInput = {
 export type GroupSummary = {
   id: string;
   name: string;
+  image_url: string | null;
   format: GroupFormat;
   is_active: boolean;
   systems: { name: string } | null;
@@ -33,6 +35,7 @@ export type GroupDetail = {
   id: string;
   owner_id: string;
   name: string;
+  image_url: string | null;
   format: GroupFormat;
   description: string | null;
   timezone: string;
@@ -83,7 +86,7 @@ export async function createGroup(ownerId: string, group: GroupInput, seats: num
 export async function fetchMyGroups(userId: string): Promise<GroupSummary[]> {
   const { data, error } = await supabase
     .from('groups')
-    .select('id, name, format, is_active, systems(name), group_members!inner(user_id)')
+    .select('id, name, image_url, format, is_active, systems(name), group_members!inner(user_id)')
     .eq('group_members.user_id', userId)
     .order('created_at', { ascending: false });
   if (error) throw error;
@@ -94,7 +97,7 @@ export async function fetchGroup(groupId: string): Promise<GroupDetail> {
   const { data, error } = await supabase
     .from('groups')
     .select(
-      `id, owner_id, name, format, description, timezone, session_weekday, session_slot,
+      `id, owner_id, name, image_url, format, description, timezone, session_weekday, session_slot,
        frequency, experience_wanted, style_combat_narrative, style_serious_humor,
        style_roleplay_weight, vtt, discord_invite_url, is_active,
        systems(name),

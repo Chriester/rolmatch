@@ -8,6 +8,7 @@ import { CharacterForm } from '@/components/character-form';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { useSession } from '@/hooks/use-session';
 import {
   deleteCharacter,
   fetchCharacter,
@@ -18,6 +19,7 @@ import {
 
 export default function EditCharacterScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const session = useSession();
   const [character, setCharacter] = useState<Character | null | undefined>(undefined);
   const [busy, setBusy] = useState(false);
 
@@ -78,12 +80,15 @@ export default function EditCharacterScreen() {
         ) : (
           <>
             <ThemedText type="title">{character.name}</ThemedText>
-            <CharacterForm
-              initial={character}
-              busy={busy}
-              submitLabel="Guardar cambios"
-              onSubmit={handleSave}
-            />
+            {session && (
+              <CharacterForm
+                userId={session.user.id}
+                initial={character}
+                busy={busy}
+                submitLabel="Guardar cambios"
+                onSubmit={handleSave}
+              />
+            )}
           </>
         )}
       </SafeAreaView>

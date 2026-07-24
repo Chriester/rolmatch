@@ -9,6 +9,7 @@ export type GroupCandidate = {
     id: string;
     owner_id: string;
     name: string;
+    image_url: string | null;
     description: string | null;
     format: GroupFormat;
     frequency: string | null;
@@ -81,7 +82,7 @@ export async function fetchPlayerFeed(userId: string): Promise<GroupCandidate[]>
   const { data: groups, error } = await supabase
     .from('groups')
     .select(
-      `id, owner_id, name, description, format, frequency, timezone, language, system_id,
+      `id, owner_id, name, image_url, description, format, frequency, timezone, language, system_id,
        session_weekday, session_slot, experience_wanted, vtt,
        style_combat_narrative, style_serious_humor, style_roleplay_weight,
        systems(name), group_openings!inner(is_open)`

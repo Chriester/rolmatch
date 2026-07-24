@@ -35,7 +35,14 @@ export default function NewCharacterScreen() {
           <ThemedText type="link">← Cancelar</ThemedText>
         </Pressable>
         <ThemedText type="title">Nuevo personaje</ThemedText>
-        <CharacterForm busy={busy} submitLabel="Crear personaje" onSubmit={handleCreate} />
+        {session && (
+          <CharacterForm
+            userId={session.user.id}
+            busy={busy}
+            submitLabel="Crear personaje"
+            onSubmit={handleCreate}
+          />
+        )}
       </SafeAreaView>
     </ThemedView>
   );

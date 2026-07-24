@@ -1,3 +1,4 @@
+import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
@@ -69,6 +70,9 @@ export default function GroupDetailScreen() {
             <ThemedText type="link">← Volver</ThemedText>
           </Pressable>
 
+          {group.image_url && (
+            <Image source={{ uri: group.image_url }} style={styles.headerImage} />
+          )}
           <ThemedText type="title">{group.name}</ThemedText>
           <ThemedText>
             {group.systems?.name ?? 'Sistema sin definir'} · {FORMAT_LABELS[group.format]}
@@ -155,6 +159,11 @@ const styles = StyleSheet.create({
   },
   block: {
     gap: Spacing.one,
+  },
+  headerImage: {
+    width: '100%',
+    aspectRatio: 16 / 9,
+    borderRadius: Spacing.two,
   },
   primaryButton: {
     backgroundColor: '#5865F2',
