@@ -41,6 +41,10 @@ npm start              # Expo Dev Server (i = iOS, a = Android, w = web)
 2. Aplica el esquema: `supabase db push` (CLI) o pega [supabase/migrations/00001_initial_schema.sql](supabase/migrations/00001_initial_schema.sql) en el SQL Editor.
 3. Activa el provider **Discord** en Authentication → Providers con las credenciales de tu [aplicación de Discord](https://discord.com/developers/applications), y añade la redirect URL de Supabase en Discord.
 
+### Datos de prueba (probar en solitario)
+
+Para probar el feed y los matches sin necesitar una segunda cuenta, pega [supabase/seed/dev-seed.sql](supabase/seed/dev-seed.sql) en el SQL Editor: crea un GM y dos jugadores falsos, dos mesas de prueba y los likes preparados para provocar matches instantáneos con tu cuenta. Es idempotente (re-ejecútalo si creas mesas nuevas). Se limpia con [supabase/seed/dev-cleanup.sql](supabase/seed/dev-cleanup.sql). **Solo para entornos de desarrollo.**
+
 ## 📁 Estructura
 
 ```
