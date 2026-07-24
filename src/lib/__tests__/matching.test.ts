@@ -230,13 +230,37 @@ describe('score', () => {
     expect(different.breakdown.tech).toBeLessThan(same.breakdown.tech);
   });
 
-  it('el perfil incompleto baja la fiabilidad', () => {
+  it('el perfil incompleto baja la fiabilidad (proxy sin valoraciones)', () => {
     const result = matchPlayerToGroup(
       basePlayer({ bio: null, avatar_url: null }),
       baseGroup(),
       AT
     );
     expect(result.breakdown.reliability).toBe(4);
+  });
+
+  it('con valoraciones reales, la fiabilidad usa la media (1-5 → 2-10)', () => {
+    const perfect = matchPlayerToGroup(
+      basePlayer({ reliability: { average: 5, count: 3 } }),
+      baseGroup(),
+      AT
+    );
+    const half = matchPlayerToGroup(
+      basePlayer({ reliability: { average: 2.5, count: 4 } }),
+      baseGroup(),
+      AT
+    );
+    expect(perfect.breakdown.reliability).toBe(10);
+    expect(half.breakdown.reliability).toBe(5);
+  });
+
+  it('sin valoraciones (count 0) se mantiene el proxy de completitud', () => {
+    const result = matchPlayerToGroup(
+      basePlayer({ reliability: { average: 0, count: 0 } }),
+      baseGroup(),
+      AT
+    );
+    expect(result.breakdown.reliability).toBe(10); // bio + avatar del basePlayer
   });
 
   it('el score siempre queda entre 0 y 100', () => {

@@ -1,9 +1,18 @@
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Linking,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  TextInput,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { showAlert } from '@/lib/alert';
 import { AppHeader } from '@/components/app-header';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -19,6 +28,33 @@ import {
   type GroupDetail,
 } from '@/lib/groups';
 import { fetchGroupMatches, matchChannelUrl, type GroupMatch } from '@/lib/matches';
+import { boostGroup, isBoostActive } from '@/lib/premium';
+import {
+  createSession,
+  deleteSession,
+  fetchUpcomingSessions,
+  nextRegularSession,
+  parseSessionDateTime,
+  type GameSession,
+} from '@/lib/sessions';
+
+function formatSessionDate(iso: string) {
+  return new Date(iso).toLocaleString('es-ES', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+function toInputs(date: Date): { date: string; time: string } {
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return {
+    date: `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`,
+    time: `${pad(date.getHours())}:${pad(date.getMinutes())}`,
+  };
+}
 
 function styleLabel(value: number, left: string, right: string) {
   if (value <= 25) return left;
@@ -31,12 +67,46 @@ export default function GroupDetailScreen() {
   const session = useSession();
   const [group, setGroup] = useState<GroupDetail | null | undefined>(undefined);
   const [matches, setMatches] = useState<GroupMatch[]>([]);
+  const [sessions, setSessions] = useState<GameSession[]>([]);
+  const [dateText, setDateText] = useState('');
+  const [timeText, setTimeText] = useState('');
+  const [sessionBusy, setSessionBusy] = useState(false);
+  const [boostedUntil, setBoostedUntil] = useState<string | null>(null);
+  const [boostBusy, setBoostBusy] = useState(false);
+
+  const handleBoost = async () => {
+    if (!id) return;
+    setBoostBusy(true);
+    try {
+      const until = await boostGroup(id);
+      setBoostedUntil(until);
+      showAlert('🚀 Mesa destacada', 'Aparecerá primero en los feeds durante 7 días.');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (message.includes('premium')) {
+        showAlert(
+          '🚀 Destacar es premium',
+          'Los testers de la alpha tienen premium incluido — pídeselo a Chris.'
+        );
+      } else {
+        showAlert('No se pudo destacar', message);
+      }
+    } finally {
+      setBoostBusy(false);
+    }
+  };
 
   useEffect(() => {
     if (!id) return;
     fetchGroup(id)
-      .then(setGroup)
+      .then((g) => {
+        setGroup(g);
+        setBoostedUntil(g.boosted_until);
+      })
       .catch(() => setGroup(null));
+    fetchUpcomingSessions(id)
+      .then(setSessions)
+      .catch(() => {});
   }, [id]);
 
   useEffect(() => {
@@ -45,6 +115,27 @@ export default function GroupDetailScreen() {
       .then(setMatches)
       .catch(() => setMatches([]));
   }, [id, session, group?.owner_id]);
+  const handleCreateSession = async () => {
+    if (!id || !session || !group) return;
+    const startsAt = parseSessionDateTime(dateText, timeText);
+    if (!startsAt) {
+      showAlert('Fecha no válida', 'Usa el formato AAAA-MM-DD y HH:MM, con fecha futura.');
+      return;
+    }
+    setSessionBusy(true);
+    try {
+      const created = await createSession(id, session.user.id, startsAt, null);
+      setSessions((list) =>
+        [...list, created].sort((a, b) => a.starts_at.localeCompare(b.starts_at))
+      );
+      setDateText('');
+      setTimeText('');
+    } catch (error) {
+      showAlert('No se pudo programar', error instanceof Error ? error.message : String(error));
+    } finally {
+      setSessionBusy(false);
+    }
+  };
 
   if (group === undefined) {
     return (
@@ -117,12 +208,35 @@ export default function GroupDetailScreen() {
 
           <View style={styles.block}>
             <ThemedText type="subtitle">Miembros</ThemedText>
-            {group.group_members.map((member) => (
-              <ThemedText key={member.user_id}>
-                {member.profiles?.alias ?? 'Sin alias'}
-                {member.member_role === 'gm' ? ' · GM' : ''}
-              </ThemedText>
-            ))}
+            {group.group_members.map((member) => {
+              const isMe = member.user_id === session?.user.id;
+              const iAmMember = group.group_members.some((m) => m.user_id === session?.user.id);
+              return (
+                <View key={member.user_id} style={styles.memberRow}>
+                  <ThemedText style={styles.memberName}>
+                    {member.profiles?.alias ?? 'Sin alias'}
+                    {member.member_role === 'gm' ? ' · GM' : ''}
+                  </ThemedText>
+                  {iAmMember && !isMe && (
+                    <Pressable
+                      onPress={() =>
+                        router.push({
+                          pathname: '/rate',
+                          params: {
+                            userId: member.user_id,
+                            alias: member.profiles?.alias ?? '',
+                            groupId: group.id,
+                          },
+                        })
+                      }>
+                      <ThemedText type="small" style={styles.rateLink}>
+                        🎲 Valorar
+                      </ThemedText>
+                    </Pressable>
+                  )}
+                </View>
+              );
+            })}
           </View>
 
           {session?.user.id === group.owner_id && matches.length > 0 && (
@@ -154,6 +268,83 @@ export default function GroupDetailScreen() {
                   </View>
                 );
               })}
+          {group.group_members.some((m) => m.user_id === session?.user.id) && (
+            <View style={styles.block}>
+              <ThemedText type="subtitle">📅 Próximas sesiones</ThemedText>
+              {sessions.length === 0 ? (
+                <ThemedText type="small">Ninguna programada todavía.</ThemedText>
+              ) : (
+                sessions.map((s) => (
+                  <View key={s.id} style={styles.memberRow}>
+                    <ThemedText style={styles.memberName}>
+                      {formatSessionDate(s.starts_at)}
+                    </ThemedText>
+                    {session?.user.id === group.owner_id && (
+                      <Pressable
+                        onPress={async () => {
+                          try {
+                            await deleteSession(s.id);
+                            setSessions((list) => list.filter((x) => x.id !== s.id));
+                          } catch (error) {
+                            showAlert(
+                              'No se pudo borrar',
+                              error instanceof Error ? error.message : String(error)
+                            );
+                          }
+                        }}>
+                        <ThemedText type="small" style={styles.deleteLink}>
+                          Quitar
+                        </ThemedText>
+                      </Pressable>
+                    )}
+                  </View>
+                ))
+              )}
+
+              {session?.user.id === group.owner_id && (
+                <View style={styles.sessionForm}>
+                  <TextInput
+                    style={[styles.sessionInput, styles.sessionDate]}
+                    value={dateText}
+                    onChangeText={setDateText}
+                    placeholder="AAAA-MM-DD"
+                    placeholderTextColor="#888"
+                    autoCapitalize="none"
+                  />
+                  <TextInput
+                    style={[styles.sessionInput, styles.sessionTime]}
+                    value={timeText}
+                    onChangeText={setTimeText}
+                    placeholder="HH:MM"
+                    placeholderTextColor="#888"
+                    autoCapitalize="none"
+                  />
+                  <Pressable
+                    style={[styles.smallButton, sessionBusy && styles.disabled]}
+                    onPress={handleCreateSession}
+                    disabled={sessionBusy}>
+                    <ThemedText type="small" style={styles.primaryLabel}>
+                      Programar
+                    </ThemedText>
+                  </Pressable>
+                  {nextRegularSession(group.session_weekday, group.session_slot) && (
+                    <Pressable
+                      onPress={() => {
+                        const next = nextRegularSession(
+                          group.session_weekday,
+                          group.session_slot
+                        )!;
+                        const inputs = toInputs(next);
+                        setDateText(inputs.date);
+                        setTimeText(inputs.time);
+                      }}>
+                      <ThemedText type="small" style={styles.rateLink}>
+                        Usar horario habitual
+                      </ThemedText>
+                    </Pressable>
+                  )}
+                </View>
+              )}
             </View>
           )}
 
@@ -166,6 +357,26 @@ export default function GroupDetailScreen() {
               <ThemedText style={styles.primaryLabel}>Ver candidatos</ThemedText>
             </Pressable>
           )}
+
+          {session?.user.id === group.owner_id &&
+            (isBoostActive(boostedUntil) ? (
+              <ThemedText type="small" style={styles.boostActive}>
+                🚀 Mesa destacada hasta el{' '}
+                {new Date(boostedUntil!).toLocaleDateString('es-ES', {
+                  day: 'numeric',
+                  month: 'short',
+                })}
+              </ThemedText>
+            ) : (
+              <Pressable
+                style={[styles.boostButton, boostBusy && styles.boostDisabled]}
+                disabled={boostBusy}
+                onPress={handleBoost}>
+                <ThemedText style={styles.boostLabel}>
+                  🚀 Destacar mesa 7 días (premium)
+                </ThemedText>
+              </Pressable>
+            ))}
 
           {group.discord_invite_url && (
             <Pressable
@@ -206,6 +417,51 @@ const styles = StyleSheet.create({
     aspectRatio: 16 / 9,
     borderRadius: Spacing.two,
   },
+  memberRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: Spacing.two,
+  },
+  memberName: {
+    flexShrink: 1,
+  },
+  rateLink: {
+    color: '#5865F2',
+  },
+  deleteLink: {
+    color: '#d9534f',
+  },
+  sessionForm: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: Spacing.two,
+    marginTop: Spacing.one,
+  },
+  sessionInput: {
+    borderWidth: 1,
+    borderColor: '#666',
+    borderRadius: Spacing.two,
+    paddingHorizontal: Spacing.two,
+    paddingVertical: Spacing.one,
+    color: '#888',
+  },
+  sessionDate: {
+    width: 118,
+  },
+  sessionTime: {
+    width: 70,
+  },
+  smallButton: {
+    backgroundColor: '#5865F2',
+    borderRadius: Spacing.two,
+    paddingVertical: Spacing.one,
+    paddingHorizontal: Spacing.three,
+  },
+  disabled: {
+    opacity: 0.5,
+  },
   primaryButton: {
     backgroundColor: '#5865F2',
     borderRadius: Spacing.two,
@@ -238,5 +494,22 @@ const styles = StyleSheet.create({
   matchLink: {
     color: '#5865F2',
     fontWeight: '600',
+  boostButton: {
+    borderWidth: 1,
+    borderColor: '#F5A623',
+    borderRadius: Spacing.two,
+    paddingVertical: Spacing.two,
+    paddingHorizontal: Spacing.four,
+    alignSelf: 'flex-start',
+  },
+  boostLabel: {
+    color: '#F5A623',
+    fontWeight: '600',
+  },
+  boostActive: {
+    color: '#F5A623',
+  },
+  boostDisabled: {
+    opacity: 0.5,
   },
 });

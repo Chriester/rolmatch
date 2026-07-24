@@ -1,5 +1,6 @@
 import { matchPlayerToGroup, type MatchGroup, type MatchPlayer, type MatchResult } from '@/lib/matching';
 import { fetchBlockRelations } from '@/lib/moderation';
+import { fetchReliability } from '@/lib/ratings';
 import { supabase } from '@/lib/supabase';
 import type { GroupFormat } from '@/lib/groups';
 import type { VttType } from '@/lib/profile';
@@ -10,6 +11,7 @@ export type GroupCandidate = {
     owner_id: string;
     name: string;
     image_url: string | null;
+    boosted_until: string | null;
     description: string | null;
     format: GroupFormat;
     frequency: string | null;
@@ -91,7 +93,7 @@ export async function fetchPlayerFeed(userId: string): Promise<GroupCandidate[]>
   const { data: groups, error } = await supabase
     .from('groups')
     .select(
-      `id, owner_id, name, image_url, description, format, frequency, timezone, language, system_id,
+      `id, owner_id, name, image_url, boosted_until, description, format, frequency, timezone, language, system_id,
        session_weekday, session_slot, experience_wanted, vtt,
        style_combat_narrative, style_serious_humor, style_roleplay_weight,
        systems(name), group_openings!inner(is_open)`
@@ -156,15 +158,23 @@ export async function fetchGroupCandidates(
     );
   if (error) throw error;
 
-  return (profiles ?? [])
-    .filter((p) => !excluded.has(p.id) && p.availability_slots.length > 0)
+  const eligible = (profiles ?? []).filter(
+    (p) => !excluded.has(p.id) && p.availability_slots.length > 0
+  );
+  // Fiabilidad real (fase 3): media de valoraciones para el 10 % del score
+  const reliability = await fetchReliability(eligible.map((p) => p.id)).catch(
+    () => new Map<string, { average: number; count: number }>()
+  );
+
+  return eligible
     .map((p) => {
       const characters = (p.characters ?? []) as unknown as ShowcaseCharacter[];
       const likedGroup = likesByUser.has(p.id);
       const proposedId = likesByUser.get(p.id) ?? null;
+      const matchInput = { ...toMatchPlayer(p), reliability: reliability.get(p.id) ?? null };
       return {
         player: {
-          ...toMatchPlayer(p),
+          ...matchInput,
           id: p.id,
           alias: p.alias,
           role: p.role,
@@ -172,7 +182,7 @@ export async function fetchGroupCandidates(
         },
         likedGroup,
         proposal: characters.find((c) => c.id === proposedId) ?? null,
-        result: matchPlayerToGroup(toMatchPlayer(p), group as unknown as MatchGroup),
+        result: matchPlayerToGroup(matchInput, group as unknown as MatchGroup),
       };
     })
     .filter((c) => c.result.pass)
@@ -249,11 +259,17 @@ export async function fetchUnifiedFeed(userId: string): Promise<UnifiedFeed> {
     );
   }
 
-  // Likes recibidos primero; después por score
+  // Likes recibidos primero; después mesas destacadas (boost premium); después score
   const liked = (item: FeedItem) => (item.kind === 'player' && item.candidate.likedGroup ? 1 : 0);
+  const boosted = (item: FeedItem) =>
+    item.kind === 'group' &&
+    item.group.boosted_until !== null &&
+    new Date(item.group.boosted_until).getTime() > Date.now()
+      ? 1
+      : 0;
   const score = (item: FeedItem) =>
     item.kind === 'group' ? item.result.score : item.candidate.result.score;
-  items.sort((a, b) => liked(b) - liked(a) || score(b) - score(a));
+  items.sort((a, b) => liked(b) - liked(a) || boosted(b) - boosted(a) || score(b) - score(a));
 
   return { items, myAvailability: meRow.availability_slots };
 }

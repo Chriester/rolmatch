@@ -57,6 +57,24 @@ El "bot" del MVP no es un proceso persistente: es la Edge Function [supabase/fun
 
 > **Unión automática al servidor**: el OAuth pide el scope `guilds.join` y, tras cada login, la Edge Function `discord-join` (desplegar con **Verify JWT activado**, al contrario que discord-match) une al usuario al servidor comunitario con el bot — nadie necesita invitación manual. El bot necesita el permiso **Crear invitación** en el servidor.
 
+### Recordatorios de sesión y limpieza de canales (fase 3)
+
+Dos Edge Functions más (ambas con **Verify JWT desactivado**, auth por `x-webhook-secret`):
+
+- **`discord-reminders`**: recordatorios al canal de la mesa (~24 h y ~1 h antes de cada sesión de la tabla `sessions`, migración `00009`). Se dispara por cron: en el **SQL Editor**, con las extensiones `pg_cron` y `pg_net` activadas (Database → Extensions), ejecuta una vez (sustituyendo `TU_WEBHOOK_SECRET`):
+
+  ```sql
+  select cron.schedule('discord-reminders', '*/15 * * * *', $$
+    select net.http_post(
+      url := 'https://pyysoeztdtxwbtpxwdnl.supabase.co/functions/v1/discord-reminders',
+      headers := '{"Content-Type": "application/json", "x-webhook-secret": "TU_WEBHOOK_SECRET"}'::jsonb,
+      body := '{}'::jsonb
+    );
+  $$);
+  ```
+
+- **`discord-cleanup`**: al borrar una mesa, borra sus canales de Discord. Webhook en Integrations → Database Webhooks: tabla `groups`, evento **Delete**, destino `discord-cleanup`, cabecera `x-webhook-secret`.
+
 ### Notificaciones push (§8.6)
 
 - **Web**: sin push — el aviso de match es la mención del bot en el canal de Discord.
