@@ -26,12 +26,14 @@ Lee la documentación versionada exacta en https://docs.expo.dev/versions/v57.0.
 
 ## Matching v1 (§7 del PRD) — lo más delicado, pedir tests siempre
 
-Filtros duros: solape horario ≥ 1 franja **convertido a UTC**, idioma, sistema en común. Score 0-100: solape 35 %, estilo 25 %, sistema/experiencia 20 %, preferencias técnicas 10 %, fiabilidad 10 %. Implementar en SQL/Edge Function, no en el cliente.
+Filtros duros: solape horario **convertido a UTC** (mínimo `MIN_OVERLAP_HOURS`), idioma, sistema en común. Score 0-100: solape 35 %, estilo 25 %, sistema/experiencia 20 %, preferencias técnicas 10 %, fiabilidad 10 %.
+
+Implementado en `src/lib/matching.ts`: módulo **puro y sin dependencias** (celdas de 15 min sobre la semana UTC, offsets vía Intl), cubierto por `src/lib/__tests__/matching.test.ts`. En el MVP el feed (`src/lib/feed.ts`) lo ejecuta en cliente sobre listas pequeñas; cuando el volumen lo pida se porta tal cual a una Edge Function. Cualquier cambio en el matching exige actualizar los tests (zonas sin DST y fecha fija para determinismo).
 
 ## Convenciones
 
 - Conventional Commits: `feat:`, `fix:`, `chore:`, `docs:`, `refactor:`, `test:`.
 - Trabajo en ramas `feature/nombre-corto`; PR con revisión antes de mergear a `main`; squash merge.
 - Secretos solo en `.env` (ignorado); las variables públicas de Expo llevan prefijo `EXPO_PUBLIC_`.
-- Comandos: `npm start` (dev), `npm run lint`, `npm run typecheck`.
+- Comandos: `npm start` (dev), `npm run lint`, `npm run typecheck`, `npm test`.
 - UI en español; código e identificadores en inglés.

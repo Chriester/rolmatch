@@ -1,6 +1,8 @@
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Switch, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Switch, TextInput, View } from 'react-native';
+
+import { showAlert } from '@/lib/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AvailabilityGrid, availabilityKey } from '@/components/availability-grid';
@@ -143,7 +145,7 @@ export default function OnboardingScreen() {
       );
       router.replace('/');
     } catch (error) {
-      Alert.alert('No se pudo guardar', error instanceof Error ? error.message : String(error));
+      showAlert('No se pudo guardar', error instanceof Error ? error.message : String(error));
     } finally {
       setBusy(false);
     }
