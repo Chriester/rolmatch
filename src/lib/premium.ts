@@ -35,6 +35,25 @@ export async function boostGroup(groupId: string): Promise<string> {
   return boostedUntil;
 }
 
+/** Canjea un código promocional (Edge Function redeem-promo). */
+export async function redeemPromoCode(code: string): Promise<{ premiumUntil: string }> {
+  const { data, error } = await supabase.functions.invoke('redeem-promo', {
+    body: { code },
+  });
+  if (error) {
+    // El body de error de la función viene en context
+    let message = 'No se pudo canjear el código';
+    try {
+      const parsed = await (error as { context?: Response }).context?.json();
+      if (parsed?.error) message = parsed.error;
+    } catch {
+      // sin detalle
+    }
+    throw new Error(message);
+  }
+  return { premiumUntil: data.premium_until };
+}
+
 // ---- Likes recibidos (Tinder Gold) ----
 
 export type ReceivedLike =
