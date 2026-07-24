@@ -31,6 +31,9 @@ export default function RootLayout() {
           <Stack.Screen name="feed" />
           <Stack.Screen name="matches" />
           <Stack.Screen name="report" />
+          <Stack.Screen name="characters/index" />
+          <Stack.Screen name="characters/new" />
+          <Stack.Screen name="characters/[id]" />
           <Stack.Screen name="groups/index" />
           <Stack.Screen name="groups/new" />
           <Stack.Screen name="groups/[id]/index" />

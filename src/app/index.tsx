@@ -71,6 +71,11 @@ export default function HomeScreen() {
               <ThemedText>💬 Mis matches</ThemedText>
             </Pressable>
           </Link>
+          <Link href="/characters" asChild>
+            <Pressable style={styles.secondaryButton}>
+              <ThemedText>🧙 Mis personajes</ThemedText>
+            </Pressable>
+          </Link>
           <Link href="/onboarding" asChild>
             <Pressable style={styles.secondaryButton}>
               <ThemedText>👤 Editar perfil</ThemedText>

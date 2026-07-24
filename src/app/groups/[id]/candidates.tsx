@@ -118,6 +118,18 @@ export default function GroupCandidatesScreen() {
               {current.player.timezone}
             </ThemedText>
             {current.player.bio && <ThemedText>{current.player.bio}</ThemedText>}
+            {current.player.characters.filter((c) => c.status === 'looking').length > 0 && (
+              <View style={styles.showcase}>
+                <ThemedText type="smallBold">Vitrina de personajes</ThemedText>
+                {current.player.characters
+                  .filter((c) => c.status === 'looking')
+                  .map((c) => (
+                    <ThemedText key={c.name} type="small">
+                      {[c.name, c.archetype, c.systems?.name].filter(Boolean).join(' · ')}
+                    </ThemedText>
+                  ))}
+              </View>
+            )}
             <ThemedText type="small">
               Coincide {current.result.overlapHours} h con vuestra sesión
             </ThemedText>
@@ -238,6 +250,12 @@ const styles = StyleSheet.create({
   likeLabel: {
     color: '#fff',
     fontWeight: '600',
+  },
+  showcase: {
+    gap: Spacing.one,
+    borderLeftWidth: 2,
+    borderLeftColor: '#5865F2',
+    paddingLeft: Spacing.two,
   },
   moderationRow: {
     flexDirection: 'row',
