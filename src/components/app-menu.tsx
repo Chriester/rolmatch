@@ -97,10 +97,10 @@ const styles = StyleSheet.create({
   },
   panel: {
     position: 'absolute',
-    top: 64,
+    top: 60,
     right: 12,
     width: 280,
-    backgroundColor: '#16171f',
+    backgroundColor: '#16171F',
     borderRadius: 18,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255,255,255,0.18)',
@@ -131,6 +131,7 @@ const styles = StyleSheet.create({
   alias: {
     color: '#fff',
     fontSize: 17,
+    fontFamily: 'Sora_700Bold',
     fontWeight: '700',
     flexShrink: 1,
   },
@@ -156,7 +157,8 @@ const styles = StyleSheet.create({
   },
   itemLabel: {
     color: 'rgba(255,255,255,0.92)',
-    fontSize: 16,
+    fontSize: 15,
+    fontFamily: 'Sora_600SemiBold',
     fontWeight: '600',
     flex: 1,
   },

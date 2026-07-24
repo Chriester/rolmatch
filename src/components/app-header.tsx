@@ -1,12 +1,12 @@
-// Cabecera persistente de la app: la marca (🎲 RolMatch) siempre visible y
+// Cabecera persistente de la app: la marca rolder siempre visible y
 // clicable — te devuelve al feed desde cualquier pantalla.
 
 import { router } from 'expo-router';
 import type { ReactNode } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { ThemedText } from '@/components/themed-text';
-import { Spacing } from '@/constants/theme';
+import { RolderBrand } from '@/components/brand';
+import { Rolder, Spacing } from '@/constants/theme';
 
 type AppHeaderProps = {
   /** flecha de volver opcional (pantallas con padre directo) */
@@ -21,11 +21,11 @@ export function AppHeader({ onBack, right }: AppHeaderProps) {
       <View style={styles.left}>
         {onBack && (
           <Pressable onPress={onBack} style={styles.back} accessibilityLabel="Volver">
-            <ThemedText type="link">←</ThemedText>
+            <Text style={styles.backGlyph}>←</Text>
           </Pressable>
         )}
         <Pressable onPress={() => router.navigate('/')} accessibilityLabel="Ir al feed">
-          <ThemedText type="subtitle">🎲 RolMatch</ThemedText>
+          <RolderBrand logoWidth={24} wordmarkSize={21} />
         </Pressable>
       </View>
       {right ?? <View style={styles.spacer} />}
@@ -47,6 +47,10 @@ const styles = StyleSheet.create({
   },
   back: {
     width: 28,
+  },
+  backGlyph: {
+    color: Rolder.violetSoft,
+    fontSize: 20,
   },
   spacer: {
     width: 44,

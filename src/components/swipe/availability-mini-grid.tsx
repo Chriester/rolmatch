@@ -87,19 +87,21 @@ const styles = StyleSheet.create({
   },
   cell: {
     flex: 1,
-    height: 14,
-    borderRadius: 3,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    height: 18,
+    borderRadius: 5,
+    backgroundColor: 'rgba(255,255,255,0.07)',
   },
   cellActive: {
-    backgroundColor: 'rgba(88,101,242,0.85)',
+    backgroundColor: 'rgba(139,108,255,0.5)',
   },
   cellSession: {
+    backgroundColor: 'rgba(59,209,111,0.25)',
     borderWidth: 2,
-    borderColor: '#3BD16F',
+    borderColor: 'rgba(255,255,255,0.85)',
   },
   cellOverlap: {
     backgroundColor: '#3BD16F',
+    borderWidth: 0,
   },
   legend: {
     flexDirection: 'row',
