@@ -108,12 +108,35 @@ export default function GroupDetailScreen() {
 
           <View style={styles.block}>
             <ThemedText type="subtitle">Miembros</ThemedText>
-            {group.group_members.map((member) => (
-              <ThemedText key={member.user_id}>
-                {member.profiles?.alias ?? 'Sin alias'}
-                {member.member_role === 'gm' ? ' · GM' : ''}
-              </ThemedText>
-            ))}
+            {group.group_members.map((member) => {
+              const isMe = member.user_id === session?.user.id;
+              const iAmMember = group.group_members.some((m) => m.user_id === session?.user.id);
+              return (
+                <View key={member.user_id} style={styles.memberRow}>
+                  <ThemedText style={styles.memberName}>
+                    {member.profiles?.alias ?? 'Sin alias'}
+                    {member.member_role === 'gm' ? ' · GM' : ''}
+                  </ThemedText>
+                  {iAmMember && !isMe && (
+                    <Pressable
+                      onPress={() =>
+                        router.push({
+                          pathname: '/rate',
+                          params: {
+                            userId: member.user_id,
+                            alias: member.profiles?.alias ?? '',
+                            groupId: group.id,
+                          },
+                        })
+                      }>
+                      <ThemedText type="small" style={styles.rateLink}>
+                        🎲 Valorar
+                      </ThemedText>
+                    </Pressable>
+                  )}
+                </View>
+              );
+            })}
           </View>
 
           {session?.user.id === group.owner_id && (
@@ -164,6 +187,18 @@ const styles = StyleSheet.create({
     width: '100%',
     aspectRatio: 16 / 9,
     borderRadius: Spacing.two,
+  },
+  memberRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: Spacing.two,
+  },
+  memberName: {
+    flexShrink: 1,
+  },
+  rateLink: {
+    color: '#5865F2',
   },
   primaryButton: {
     backgroundColor: '#5865F2',
