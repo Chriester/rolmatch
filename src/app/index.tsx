@@ -1,4 +1,4 @@
-import { Redirect } from 'expo-router';
+import { Link, Redirect } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -43,6 +43,11 @@ export default function HomeScreen() {
           Tu perfil está listo. Aquí irá el feed de swipe: mesas buscando
           jugadores y jugadores buscando mesa.
         </ThemedText>
+        <Link href="/groups" asChild>
+          <Pressable style={styles.primaryButton}>
+            <ThemedText style={styles.primaryLabel}>Mis mesas</ThemedText>
+          </Pressable>
+        </Link>
         <Pressable style={styles.signOutButton} onPress={signOut}>
           <ThemedText>Cerrar sesión</ThemedText>
         </Pressable>
@@ -69,6 +74,18 @@ const styles = StyleSheet.create({
   },
   centered: {
     textAlign: 'center',
+  },
+  primaryButton: {
+    alignSelf: 'center',
+    backgroundColor: '#5865F2',
+    borderRadius: Spacing.two,
+    paddingVertical: Spacing.two,
+    paddingHorizontal: Spacing.four,
+    marginTop: Spacing.four,
+  },
+  primaryLabel: {
+    color: '#fff',
+    fontWeight: '600',
   },
   signOutButton: {
     alignSelf: 'center',

@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AvailabilityGrid, availabilityKey } from '@/components/availability-grid';
 import { Chip } from '@/components/chip';
+import { StyleAxis } from '@/components/style-axis';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
@@ -38,37 +39,6 @@ const VTTS: { value: VttType; label: string }[] = [
   { value: 'foundry', label: 'Foundry' },
   { value: 'other', label: 'Otro' },
 ];
-
-const STYLE_STEPS = [0, 25, 50, 75, 100];
-
-type StyleAxisProps = {
-  left: string;
-  right: string;
-  value: number;
-  onChange: (value: number) => void;
-};
-
-function StyleAxis({ left, right, value, onChange }: StyleAxisProps) {
-  return (
-    <View style={styles.axis}>
-      <View style={styles.axisLabels}>
-        <ThemedText type="small">{left}</ThemedText>
-        <ThemedText type="small">{right}</ThemedText>
-      </View>
-      <View style={styles.axisDots}>
-        {STYLE_STEPS.map((step) => (
-          <Pressable
-            key={step}
-            style={[styles.dot, value === step && styles.dotSelected]}
-            onPress={() => onChange(step)}
-            accessibilityRole="radio"
-            accessibilityState={{ selected: value === step }}
-          />
-        ))}
-      </View>
-    </View>
-  );
-}
 
 const TOTAL_STEPS = 4;
 
@@ -385,29 +355,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-  },
-  axis: {
-    gap: Spacing.two,
-  },
-  axisLabels: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  axisDots: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: Spacing.two,
-  },
-  dot: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#666',
-  },
-  dotSelected: {
-    backgroundColor: '#5865F2',
-    borderColor: '#5865F2',
   },
   nav: {
     flexDirection: 'row',
