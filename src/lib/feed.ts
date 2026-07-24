@@ -17,8 +17,20 @@ export type GroupCandidate = {
   result: MatchResult;
 };
 
+export type ShowcaseCharacter = {
+  name: string;
+  archetype: string | null;
+  status: string;
+  systems: { name: string } | null;
+};
+
 export type PlayerCandidate = {
-  player: MatchPlayer & { id: string; alias: string; role: string };
+  player: MatchPlayer & {
+    id: string;
+    alias: string;
+    role: string;
+    characters: ShowcaseCharacter[];
+  };
   result: MatchResult;
 };
 
@@ -119,14 +131,21 @@ export async function fetchGroupCandidates(
     .select(
       `id, alias, role, timezone, languages, open_to_any_system, bio, avatar_url,
        style_combat_narrative, style_serious_humor, style_roleplay_weight, preferred_vtt,
-       availability_slots(weekday, slot), user_systems(system_id, experience)`
+       availability_slots(weekday, slot), user_systems(system_id, experience),
+       characters(name, archetype, status, systems(name))`
     );
   if (error) throw error;
 
   return (profiles ?? [])
     .filter((p) => !excluded.has(p.id) && p.availability_slots.length > 0)
     .map((p) => ({
-      player: { ...toMatchPlayer(p), id: p.id, alias: p.alias, role: p.role },
+      player: {
+        ...toMatchPlayer(p),
+        id: p.id,
+        alias: p.alias,
+        role: p.role,
+        characters: (p.characters ?? []) as unknown as ShowcaseCharacter[],
+      },
       result: matchPlayerToGroup(toMatchPlayer(p), group as unknown as MatchGroup),
     }))
     .filter((c) => c.result.pass)
