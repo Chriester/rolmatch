@@ -4,6 +4,7 @@ import { useCallback, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AppHeader } from '@/components/app-header';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
@@ -33,9 +34,7 @@ export default function MyCharactersScreen() {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}>
-          <ThemedText type="link">← Volver</ThemedText>
-        </Pressable>
+        <AppHeader />
         <View style={styles.header}>
           <ThemedText type="title">Mis personajes</ThemedText>
           <Link href="/characters/new" asChild>

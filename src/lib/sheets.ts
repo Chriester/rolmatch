@@ -6,6 +6,7 @@ export type CharacterSheet = {
   id: string;
   storage_path: string;
   mime_type: string;
+  is_public: boolean;
   uploaded_at: string;
 };
 
@@ -15,7 +16,7 @@ const MAX_SIZE_BYTES = 5 * 1024 * 1024; // límite del PRD (§8.5)
 export async function fetchSheet(characterId: string): Promise<CharacterSheet | null> {
   const { data, error } = await supabase
     .from('character_sheets')
-    .select('id, storage_path, mime_type, uploaded_at')
+    .select('id, storage_path, mime_type, is_public, uploaded_at')
     .eq('character_id', characterId)
     .order('uploaded_at', { ascending: false })
     .limit(1)
@@ -63,11 +64,25 @@ export async function pickAndUploadSheet(
 
   const { data: row, error } = await supabase
     .from('character_sheets')
-    .insert({ character_id: characterId, storage_path: path, mime_type: contentType })
-    .select('id, storage_path, mime_type, uploaded_at')
+    .insert({
+      character_id: characterId,
+      storage_path: path,
+      mime_type: contentType,
+      is_public: previous?.is_public ?? false,
+    })
+    .select('id, storage_path, mime_type, is_public, uploaded_at')
     .single();
   if (error) throw error;
   return row;
+}
+
+/** Cambia la visibilidad de la hoja (privada por defecto). */
+export async function setSheetPublic(sheetId: string, isPublic: boolean) {
+  const { error } = await supabase
+    .from('character_sheets')
+    .update({ is_public: isPublic })
+    .eq('id', sheetId);
+  if (error) throw error;
 }
 
 /** URL firmada temporal para ver/descargar la hoja (el bucket es privado). */

@@ -1,9 +1,10 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, StyleSheet } from 'react-native';
+import { StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { showAlert } from '@/lib/alert';
+import { AppHeader } from '@/components/app-header';
 import { CharacterForm } from '@/components/character-form';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -30,10 +31,9 @@ export default function NewCharacterScreen() {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        <Pressable
-          onPress={() => (router.canGoBack() ? router.back() : router.replace('/characters'))}>
-          <ThemedText type="link">← Cancelar</ThemedText>
-        </Pressable>
+        <AppHeader
+          onBack={() => (router.canGoBack() ? router.back() : router.replace('/characters'))}
+        />
         <ThemedText type="title">Nuevo personaje</ThemedText>
         {session && (
           <CharacterForm

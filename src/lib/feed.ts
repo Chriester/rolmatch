@@ -22,7 +22,11 @@ export type ShowcaseCharacter = {
   id: string;
   name: string;
   archetype: string | null;
+  level: string | null;
+  concept: string | null;
+  portrait_url: string | null;
   status: string;
+  is_public: boolean;
   systems: { name: string } | null;
 };
 
@@ -148,7 +152,7 @@ export async function fetchGroupCandidates(
       `id, alias, role, timezone, languages, open_to_any_system, bio, avatar_url,
        style_combat_narrative, style_serious_humor, style_roleplay_weight, preferred_vtt,
        availability_slots(weekday, slot), user_systems(system_id, experience),
-       characters(id, name, archetype, status, systems(name))`
+       characters!characters_user_id_fkey(id, name, archetype, level, concept, portrait_url, status, is_public, systems(name))`
     );
   if (error) throw error;
 
@@ -177,4 +181,79 @@ export async function fetchGroupCandidates(
       (a, b) =>
         Number(b.likedGroup) - Number(a.likedGroup) || b.result.score - a.result.score
     );
+}
+
+// ============================================================
+// Feed unificado (§3 del PRD): mesas si eres jugador, candidatos para tus
+// mesas si eres GM, ambos mezclados si tienes rol "both".
+// ============================================================
+
+export type ForGroupRef = {
+  id: string;
+  name: string;
+  image_url: string | null;
+  session_weekday: number | null;
+  session_slot: number | null;
+  timezone: string;
+};
+
+export type FeedItem =
+  | { kind: 'group'; group: GroupCandidate['group']; result: MatchResult }
+  | { kind: 'player'; candidate: PlayerCandidate; forGroup: ForGroupRef };
+
+export type UnifiedFeed = {
+  items: FeedItem[];
+  /** mi disponibilidad, para pintar el mini-grid en los detalles de mesas */
+  myAvailability: { weekday: number; slot: number }[];
+};
+
+export async function fetchUnifiedFeed(userId: string): Promise<UnifiedFeed> {
+  const meRow = await fetchMatchPlayer(userId);
+  const role = meRow.role as 'player' | 'gm' | 'both';
+  const items: FeedItem[] = [];
+
+  if (role === 'player' || role === 'both') {
+    const groups = await fetchPlayerFeed(userId);
+    items.push(...groups.map((g) => ({ kind: 'group' as const, group: g.group, result: g.result })));
+  }
+
+  if (role === 'gm' || role === 'both') {
+    const { data: myGroups } = await supabase
+      .from('groups')
+      .select('id, name, image_url, session_weekday, session_slot, timezone, group_openings!inner(is_open)')
+      .eq('owner_id', userId)
+      .eq('is_active', true)
+      .eq('group_openings.is_open', true);
+
+    // Un candidato puede encajar en varias de mis mesas: nos quedamos con la
+    // mejor combinación (like previo gana; si no, mayor score)
+    const bestByUser = new Map<string, { candidate: PlayerCandidate; forGroup: ForGroupRef }>();
+    for (const g of myGroups ?? []) {
+      const candidates = await fetchGroupCandidates(g.id, userId);
+      for (const c of candidates) {
+        const previous = bestByUser.get(c.player.id);
+        const better =
+          !previous ||
+          Number(c.likedGroup) - Number(previous.candidate.likedGroup) > 0 ||
+          (c.likedGroup === previous.candidate.likedGroup &&
+            c.result.score > previous.candidate.result.score);
+        if (better) bestByUser.set(c.player.id, { candidate: c, forGroup: g });
+      }
+    }
+    items.push(
+      ...[...bestByUser.values()].map(({ candidate, forGroup }) => ({
+        kind: 'player' as const,
+        candidate,
+        forGroup,
+      }))
+    );
+  }
+
+  // Likes recibidos primero; después por score
+  const liked = (item: FeedItem) => (item.kind === 'player' && item.candidate.likedGroup ? 1 : 0);
+  const score = (item: FeedItem) =>
+    item.kind === 'group' ? item.result.score : item.candidate.result.score;
+  items.sort((a, b) => liked(b) - liked(a) || score(b) - score(a));
+
+  return { items, myAvailability: meRow.availability_slots };
 }

@@ -112,6 +112,8 @@ export async function fetchGroup(groupId: string): Promise<GroupDetail> {
 
 export const WEEKDAY_LABELS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 export const SLOT_LABELS = ['Mañana', 'Tarde', 'Noche', 'Madrugada'];
+// Franjas de 6 h alineadas con el algoritmo de matching (src/lib/matching.ts)
+export const SLOT_HOURS = ['08–14 h', '14–20 h', '20–02 h', '02–08 h'];
 export const VTT_LABELS: Record<VttType, string> = {
   discord_only: 'Solo Discord',
   roll20: 'Roll20',

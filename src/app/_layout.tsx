@@ -2,6 +2,7 @@ import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { useColorScheme } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { useSession } from '@/hooks/use-session';
 
@@ -23,12 +24,12 @@ export default function RootLayout() {
   }
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack screenOptions={{ headerShown: false }}>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+        <Stack screenOptions={{ headerShown: false }}>
         <Stack.Protected guard={!!session}>
           <Stack.Screen name="index" />
           <Stack.Screen name="onboarding" />
-          <Stack.Screen name="feed" />
           <Stack.Screen name="matches" />
           <Stack.Screen name="report" />
           <Stack.Screen name="characters/index" />
@@ -39,10 +40,11 @@ export default function RootLayout() {
           <Stack.Screen name="groups/[id]/index" />
           <Stack.Screen name="groups/[id]/candidates" />
         </Stack.Protected>
-        <Stack.Protected guard={!session}>
-          <Stack.Screen name="login" />
-        </Stack.Protected>
-      </Stack>
-    </ThemeProvider>
+          <Stack.Protected guard={!session}>
+            <Stack.Screen name="login" />
+          </Stack.Protected>
+        </Stack>
+      </ThemeProvider>
+    </GestureHandlerRootView>
   );
 }

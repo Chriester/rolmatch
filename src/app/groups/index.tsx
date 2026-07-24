@@ -1,8 +1,10 @@
+import { Image } from 'expo-image';
 import { Link, router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AppHeader } from '@/components/app-header';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
@@ -25,6 +27,7 @@ export default function MyGroupsScreen() {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
+        <AppHeader />
         <View style={styles.header}>
           <ThemedText type="title">Mis mesas</ThemedText>
           <Link href="/groups/new" asChild>
@@ -49,10 +52,24 @@ export default function MyGroupsScreen() {
               <Pressable
                 style={styles.card}
                 onPress={() => router.push({ pathname: '/groups/[id]', params: { id: item.id } })}>
-                <ThemedText type="subtitle">{item.name}</ThemedText>
-                <ThemedText type="small">
-                  {item.systems?.name ?? 'Sistema sin definir'} · {FORMAT_LABELS[item.format]}
-                  {item.is_active ? '' : ' · inactiva'}
+                {item.image_url ? (
+                  <Image source={{ uri: item.image_url }} style={styles.thumb} />
+                ) : (
+                  <View style={[styles.thumb, styles.thumbFallback]}>
+                    <ThemedText>🎲</ThemedText>
+                  </View>
+                )}
+                <View style={styles.cardBody}>
+                  <ThemedText type="subtitle" numberOfLines={1}>
+                    {item.name}
+                  </ThemedText>
+                  <ThemedText type="small">
+                    {item.systems?.name ?? 'Sistema sin definir'} · {FORMAT_LABELS[item.format]}
+                    {item.is_active ? '' : ' · inactiva'}
+                  </ThemedText>
+                </View>
+                <ThemedText type="small" style={styles.chevron}>
+                  ›
                 </ThemedText>
               </Pressable>
             )}
@@ -95,7 +112,26 @@ const styles = StyleSheet.create({
     borderColor: '#666',
     borderRadius: Spacing.two,
     padding: Spacing.three,
-    gap: Spacing.one,
+    gap: Spacing.three,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  cardBody: {
+    flex: 1,
+    gap: 2,
+  },
+  thumb: {
+    width: 52,
+    height: 52,
+    borderRadius: Spacing.two,
+  },
+  thumbFallback: {
+    backgroundColor: 'rgba(88,101,242,0.25)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  chevron: {
+    opacity: 0.5,
   },
   primaryButton: {
     backgroundColor: '#5865F2',

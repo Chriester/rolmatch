@@ -10,6 +10,7 @@ export const CHARACTER_STATUS_LABELS: Record<CharacterStatus, string> = {
 
 export type Character = {
   id: string;
+  is_public: boolean;
   name: string;
   system_id: number | null;
   archetype: string | null;
@@ -23,6 +24,7 @@ export type Character = {
 
 export type CharacterInput = {
   name: string;
+  is_public: boolean;
   portrait_url: string | null;
   system_id: number | null;
   archetype: string | null;
@@ -32,7 +34,7 @@ export type CharacterInput = {
   status: CharacterStatus;
 };
 
-const CHARACTER_FIELDS = `id, name, system_id, archetype, level, concept, backstory,
+const CHARACTER_FIELDS = `id, name, is_public, system_id, archetype, level, concept, backstory,
   status, portrait_url, systems(name)`;
 
 export async function fetchMyCharacters(userId: string): Promise<Character[]> {
@@ -73,4 +75,45 @@ export async function updateCharacter(id: string, input: CharacterInput) {
 export async function deleteCharacter(id: string) {
   const { error } = await supabase.from('characters').delete().eq('id', id);
   if (error) throw error;
+}
+
+// ---- Likes por personaje (valoración positiva independiente) ----
+
+export type CharacterLikeState = { count: number; liked: boolean };
+
+export async function fetchCharacterLikeState(
+  characterId: string,
+  viewerId: string
+): Promise<CharacterLikeState> {
+  const [{ count, error: countError }, { data: mine, error: mineError }] = await Promise.all([
+    supabase
+      .from('character_likes')
+      .select('character_id', { count: 'exact', head: true })
+      .eq('character_id', characterId),
+    supabase
+      .from('character_likes')
+      .select('character_id')
+      .eq('character_id', characterId)
+      .eq('liker_id', viewerId)
+      .maybeSingle(),
+  ]);
+  if (countError) throw countError;
+  if (mineError) throw mineError;
+  return { count: count ?? 0, liked: mine !== null };
+}
+
+export async function setCharacterLike(characterId: string, viewerId: string, liked: boolean) {
+  if (liked) {
+    const { error } = await supabase
+      .from('character_likes')
+      .insert({ character_id: characterId, liker_id: viewerId });
+    if (error && error.code !== '23505') throw error;
+  } else {
+    const { error } = await supabase
+      .from('character_likes')
+      .delete()
+      .eq('character_id', characterId)
+      .eq('liker_id', viewerId);
+    if (error) throw error;
+  }
 }
