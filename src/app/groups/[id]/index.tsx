@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { useSession } from '@/hooks/use-session';
 import {
   EXPERIENCE_LABELS,
   FORMAT_LABELS,
@@ -24,6 +25,7 @@ function styleLabel(value: number, left: string, right: string) {
 
 export default function GroupDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const session = useSession();
   const [group, setGroup] = useState<GroupDetail | null | undefined>(undefined);
 
   useEffect(() => {
@@ -108,6 +110,16 @@ export default function GroupDetailScreen() {
               </ThemedText>
             ))}
           </View>
+
+          {session?.user.id === group.owner_id && (
+            <Pressable
+              style={styles.primaryButton}
+              onPress={() =>
+                router.push({ pathname: '/groups/[id]/candidates', params: { id: group.id } })
+              }>
+              <ThemedText style={styles.primaryLabel}>Ver candidatos</ThemedText>
+            </Pressable>
+          )}
 
           {group.discord_invite_url && (
             <Pressable

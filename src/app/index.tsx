@@ -43,9 +43,14 @@ export default function HomeScreen() {
           Tu perfil está listo. Aquí irá el feed de swipe: mesas buscando
           jugadores y jugadores buscando mesa.
         </ThemedText>
-        <Link href="/groups" asChild>
+        <Link href="/feed" asChild>
           <Pressable style={styles.primaryButton}>
-            <ThemedText style={styles.primaryLabel}>Mis mesas</ThemedText>
+            <ThemedText style={styles.primaryLabel}>Buscar mesa</ThemedText>
+          </Pressable>
+        </Link>
+        <Link href="/groups" asChild>
+          <Pressable style={styles.secondaryButton}>
+            <ThemedText>Mis mesas</ThemedText>
           </Pressable>
         </Link>
         <Pressable style={styles.signOutButton} onPress={signOut}>
@@ -86,6 +91,14 @@ const styles = StyleSheet.create({
   primaryLabel: {
     color: '#fff',
     fontWeight: '600',
+  },
+  secondaryButton: {
+    alignSelf: 'center',
+    borderWidth: 1,
+    borderColor: '#5865F2',
+    borderRadius: Spacing.two,
+    paddingVertical: Spacing.two,
+    paddingHorizontal: Spacing.four,
   },
   signOutButton: {
     alignSelf: 'center',

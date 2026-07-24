@@ -1,0 +1,187 @@
+import { router } from 'expo-router';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
+import { ThemedText } from '@/components/themed-text';
+import { ThemedView } from '@/components/themed-view';
+import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { useSession } from '@/hooks/use-session';
+import { fetchPlayerFeed, type GroupCandidate } from '@/lib/feed';
+import { FORMAT_LABELS, SLOT_LABELS, VTT_LABELS, WEEKDAY_LABELS } from '@/lib/groups';
+import { swipeOnGroup } from '@/lib/swipes';
+
+export default function FeedScreen() {
+  const session = useSession();
+  const [candidates, setCandidates] = useState<GroupCandidate[] | undefined>(undefined);
+  const [index, setIndex] = useState(0);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (!session) return;
+    fetchPlayerFeed(session.user.id)
+      .then(setCandidates)
+      .catch(() => setCandidates([]));
+  }, [session]);
+
+  const current = candidates?.[index];
+
+  const handleSwipe = async (direction: 'like' | 'pass') => {
+    if (!session || !current) return;
+    setBusy(true);
+    try {
+      const matched = await swipeOnGroup(session.user.id, current.group.id, direction);
+      if (matched) {
+        Alert.alert(
+          '🎲 ¡Match!',
+          `A "${current.group.name}" también le interesas. La creación del canal de Discord llega en la fase del bot.`
+        );
+      }
+      setIndex((i) => i + 1);
+    } catch (error) {
+      Alert.alert('Error', error instanceof Error ? error.message : String(error));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <ThemedView style={styles.container}>
+      <SafeAreaView style={styles.safeArea}>
+        <Pressable onPress={() => router.back()}>
+          <ThemedText type="link">← Volver</ThemedText>
+        </Pressable>
+        <ThemedText type="title">Mesas para ti</ThemedText>
+
+        {candidates === undefined ? (
+          <ActivityIndicator style={styles.loading} />
+        ) : !current ? (
+          <ThemedText style={styles.empty}>
+            No hay más mesas compatibles por ahora. Vuelve más tarde, o ajusta tu
+            disponibilidad y sistemas en tu perfil.
+          </ThemedText>
+        ) : (
+          <View style={styles.card}>
+            <View style={styles.cardHeader}>
+              <ThemedText type="subtitle">{current.group.name}</ThemedText>
+              <View style={styles.scoreBadge}>
+                <ThemedText type="smallBold" style={styles.scoreLabel}>
+                  {current.result.score}%
+                </ThemedText>
+              </View>
+            </View>
+            <ThemedText type="small">
+              {current.group.systems?.name ?? 'Sistema sin definir'} ·{' '}
+              {FORMAT_LABELS[current.group.format]}
+              {current.group.frequency ? ` · ${current.group.frequency.toLowerCase()}` : ''}
+            </ThemedText>
+            {current.group.session_weekday !== null && current.group.session_slot !== null && (
+              <ThemedText type="small">
+                {WEEKDAY_LABELS[current.group.session_weekday]} ·{' '}
+                {SLOT_LABELS[current.group.session_slot]} ({current.group.timezone}) ·{' '}
+                {VTT_LABELS[current.group.vtt]}
+              </ThemedText>
+            )}
+            {current.group.description && (
+              <ScrollView style={styles.description}>
+                <ThemedText>{current.group.description}</ThemedText>
+              </ScrollView>
+            )}
+            <ThemedText type="small">
+              Coincidís {current.result.overlapHours} h en horario
+            </ThemedText>
+
+            <View style={styles.actions}>
+              <Pressable
+                style={[styles.passButton, busy && styles.disabled]}
+                onPress={() => handleSwipe('pass')}
+                disabled={busy}>
+                <ThemedText>Pasar</ThemedText>
+              </Pressable>
+              <Pressable
+                style={[styles.likeButton, busy && styles.disabled]}
+                onPress={() => handleSwipe('like')}
+                disabled={busy}>
+                <ThemedText style={styles.likeLabel}>Me interesa</ThemedText>
+              </Pressable>
+            </View>
+          </View>
+        )}
+      </SafeAreaView>
+    </ThemedView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'center',
+  },
+  safeArea: {
+    flex: 1,
+    maxWidth: MaxContentWidth,
+    padding: Spacing.four,
+    gap: Spacing.three,
+  },
+  loading: {
+    marginTop: Spacing.six,
+  },
+  empty: {
+    marginTop: Spacing.four,
+    textAlign: 'center',
+  },
+  card: {
+    borderWidth: 1,
+    borderColor: '#666',
+    borderRadius: Spacing.three,
+    padding: Spacing.four,
+    gap: Spacing.two,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: Spacing.two,
+  },
+  scoreBadge: {
+    backgroundColor: '#5865F2',
+    borderRadius: 999,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.one,
+  },
+  scoreLabel: {
+    color: '#fff',
+  },
+  description: {
+    maxHeight: 140,
+  },
+  actions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: Spacing.three,
+    gap: Spacing.two,
+  },
+  passButton: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#666',
+    borderRadius: Spacing.two,
+    paddingVertical: Spacing.three,
+    alignItems: 'center',
+  },
+  likeButton: {
+    flex: 1,
+    backgroundColor: '#5865F2',
+    borderRadius: Spacing.two,
+    paddingVertical: Spacing.three,
+    alignItems: 'center',
+  },
+  likeLabel: {
+    color: '#fff',
+    fontWeight: '600',
+  },
+  disabled: {
+    opacity: 0.5,
+  },
+});
