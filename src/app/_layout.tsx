@@ -29,6 +29,7 @@ export default function RootLayout() {
           <Stack.Screen name="index" />
           <Stack.Screen name="onboarding" />
           <Stack.Screen name="feed" />
+          <Stack.Screen name="matches" />
           <Stack.Screen name="groups/index" />
           <Stack.Screen name="groups/new" />
           <Stack.Screen name="groups/[id]/index" />

@@ -41,6 +41,22 @@ npm start              # Expo Dev Server (i = iOS, a = Android, w = web)
 2. Aplica el esquema: `supabase db push` (CLI) o pega [supabase/migrations/00001_initial_schema.sql](supabase/migrations/00001_initial_schema.sql) en el SQL Editor.
 3. Activa el provider **Discord** en Authentication → Providers con las credenciales de tu [aplicación de Discord](https://discord.com/developers/applications), y añade la redirect URL de Supabase en Discord.
 
+### Bot de Discord (canal automático al hacer match)
+
+El "bot" del MVP no es un proceso persistente: es la Edge Function [supabase/functions/discord-match](supabase/functions/discord-match/index.ts), disparada por un Database Webhook cuando se inserta un `match`. Crea un canal privado en el servidor comunitario para el jugador y el GM. Setup (una vez):
+
+1. **Bot**: en tu [aplicación de Discord](https://discord.com/developers/applications) → **Bot** → "Add Bot" (si no existe) → copia el **Token** (Reset Token).
+2. **Servidor comunitario**: crea un servidor de Discord para la app (o usa uno existente) y copia su **ID** (clic derecho sobre el servidor → "Copiar ID del servidor", con el modo desarrollador activado en Ajustes → Avanzado).
+3. **Invitar al bot** al servidor con permisos de gestionar canales: abre
+   `https://discord.com/oauth2/authorize?client_id=TU_CLIENT_ID&scope=bot&permissions=268435472`
+   (Manage Channels + Manage Roles, necesarios para crear canales privados con permisos).
+4. **Secrets** en Supabase → Edge Functions → Secrets: `DISCORD_BOT_TOKEN`, `DISCORD_GUILD_ID` y un `WEBHOOK_SECRET` inventado (largo y aleatorio).
+5. **Desplegar la función**: `npx supabase functions deploy discord-match --no-verify-jwt` (requiere `npx supabase login` y `npx supabase link --project-ref TU_REF` la primera vez).
+6. **Webhook**: Supabase → Database → Webhooks → Create: tabla `matches`, evento INSERT, tipo "Supabase Edge Function" → `discord-match`, y añade la cabecera HTTP `x-webhook-secret` con tu `WEBHOOK_SECRET`.
+7. En `.env` de la app, pon `EXPO_PUBLIC_DISCORD_GUILD_ID` con el ID del servidor para que "Mis matches" enlace a los canales.
+
+> Nota: los canales solo pueden dar acceso a usuarios que **ya son miembros del servidor comunitario**. Pon el enlace de invitación del servidor en la bienvenida de la app o en el mensaje del canal.
+
 ### Datos de prueba (probar en solitario)
 
 Para probar el feed y los matches sin necesitar una segunda cuenta, pega [supabase/seed/dev-seed.sql](supabase/seed/dev-seed.sql) en el SQL Editor: crea un GM y dos jugadores falsos, dos mesas de prueba y los likes preparados para provocar matches instantáneos con tu cuenta. Es idempotente (re-ejecútalo si creas mesas nuevas). Se limpia con [supabase/seed/dev-cleanup.sql](supabase/seed/dev-cleanup.sql). **Solo para entornos de desarrollo.**
