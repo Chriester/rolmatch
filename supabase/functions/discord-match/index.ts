@@ -44,7 +44,9 @@ Deno.serve(async (req) => {
   }
 
   const payload = (await req.json()) as WebhookPayload;
+  console.log('payload recibido:', JSON.stringify(payload));
   if (payload.type !== 'INSERT' || payload.table !== 'matches') {
+    console.log(`ignorado: type=${payload.type} table=${payload.table}`);
     return new Response('Ignored', { status: 200 });
   }
 
@@ -55,7 +57,7 @@ Deno.serve(async (req) => {
 
   const { user_id, group_id, id: matchId } = payload.record;
 
-  const [{ data: player }, { data: group }] = await Promise.all([
+  const [playerResult, groupResult] = await Promise.all([
     supabase.from('profiles').select('alias, discord_id').eq('id', user_id).single(),
     supabase
       .from('groups')
@@ -63,9 +65,16 @@ Deno.serve(async (req) => {
       .eq('id', group_id)
       .single(),
   ]);
+  const player = playerResult.data;
+  const group = groupResult.data;
   if (!player || !group) {
+    console.error(
+      `match sin datos: player=${JSON.stringify(playerResult.error ?? player)} ` +
+        `group=${JSON.stringify(groupResult.error ?? group)}`
+    );
     return new Response('Match sin datos', { status: 200 });
   }
+  console.log(`datos ok: player=${player.alias} (${player.discord_id}) group=${group.name}`);
 
   const owner = group.profiles as unknown as { alias: string; discord_id: string | null } | null;
   const guildId = Deno.env.get('DISCORD_GUILD_ID')!;
@@ -90,12 +99,14 @@ Deno.serve(async (req) => {
     .replace(/-+/g, '-')
     .slice(0, 90);
 
+  console.log(`creando canal "${channelName}" en guild ${guildId}…`);
   const channel = await discord(`/guilds/${guildId}/channels`, 'POST', {
     name: channelName,
     type: 0,
     topic: `Match de RolMatch: ${player.alias} × ${group.name}`,
     permission_overwrites: overwrites,
   });
+  console.log(`canal creado: ${channel.id}`);
 
   const mentions = [player.discord_id, owner?.discord_id]
     .filter(Boolean)
