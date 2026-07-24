@@ -27,6 +27,7 @@ import {
   fetchGroup,
   type GroupDetail,
 } from '@/lib/groups';
+import { fetchGroupMatches, matchChannelUrl, type GroupMatch } from '@/lib/matches';
 import { boostGroup, isBoostActive } from '@/lib/premium';
 import {
   createSession,
@@ -65,6 +66,7 @@ export default function GroupDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const session = useSession();
   const [group, setGroup] = useState<GroupDetail | null | undefined>(undefined);
+  const [matches, setMatches] = useState<GroupMatch[]>([]);
   const [sessions, setSessions] = useState<GameSession[]>([]);
   const [dateText, setDateText] = useState('');
   const [timeText, setTimeText] = useState('');
@@ -107,6 +109,12 @@ export default function GroupDetailScreen() {
       .catch(() => {});
   }, [id]);
 
+  useEffect(() => {
+    if (!id || !session || group?.owner_id !== session.user.id) return;
+    fetchGroupMatches(id)
+      .then(setMatches)
+      .catch(() => setMatches([]));
+  }, [id, session, group?.owner_id]);
   const handleCreateSession = async () => {
     if (!id || !session || !group) return;
     const startsAt = parseSessionDateTime(dateText, timeText);
@@ -230,6 +238,38 @@ export default function GroupDetailScreen() {
               );
             })}
           </View>
+
+          {session?.user.id === group.owner_id && matches.length > 0 && (
+            <View style={styles.block}>
+              <ThemedText type="subtitle">Jugadores con match</ThemedText>
+              {matches.map((match) => {
+                const url = matchChannelUrl(match);
+                return (
+                  <View key={match.id} style={styles.matchRow}>
+                    {match.avatar_url ? (
+                      <Image source={{ uri: match.avatar_url }} style={styles.matchThumb} />
+                    ) : (
+                      <View style={[styles.matchThumb, styles.matchThumbFallback]}>
+                        <ThemedText>🧙</ThemedText>
+                      </View>
+                    )}
+                    <View style={styles.matchBody}>
+                      <ThemedText>{match.alias}</ThemedText>
+                      {url ? (
+                        <Pressable onPress={() => Linking.openURL(url)}>
+                          <ThemedText type="small" style={styles.matchLink}>
+                            Abrir canal en Discord
+                          </ThemedText>
+                        </Pressable>
+                      ) : (
+                        <ThemedText type="small">El canal se creará en unos segundos…</ThemedText>
+                      )}
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+          )}
 
           {group.group_members.some((m) => m.user_id === session?.user.id) && (
             <View style={styles.block}>
@@ -434,6 +474,28 @@ const styles = StyleSheet.create({
   },
   primaryLabel: {
     color: '#fff',
+    fontWeight: '600',
+  },
+  matchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+  },
+  matchThumb: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+  },
+  matchThumbFallback: {
+    backgroundColor: 'rgba(88,101,242,0.25)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  matchBody: {
+    gap: 2,
+  },
+  matchLink: {
+    color: '#5865F2',
     fontWeight: '600',
   },
   boostButton: {

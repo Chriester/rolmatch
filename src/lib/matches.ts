@@ -13,7 +13,7 @@ export type MyMatch = {
 };
 
 /** URL del canal del match en el servidor comunitario, si el bot ya lo creó. */
-export function matchChannelUrl(match: MyMatch): string | null {
+export function matchChannelUrl(match: { discord_channel_id: string | null }): string | null {
   const guildId = process.env.EXPO_PUBLIC_DISCORD_GUILD_ID;
   if (!match.discord_channel_id || !guildId) return null;
   return `https://discord.com/channels/${guildId}/${match.discord_channel_id}`;
@@ -70,4 +70,42 @@ export async function fetchMyMatches(userId: string): Promise<MyMatch[]> {
   return [...playerMatches, ...gmMatches].sort((a, b) =>
     b.matched_at.localeCompare(a.matched_at)
   );
+}
+
+export type GroupMatch = {
+  id: string;
+  matched_at: string;
+  discord_channel_id: string | null;
+  user_id: string;
+  alias: string;
+  avatar_url: string | null;
+};
+
+/** Jugadores con los que esta mesa ha hecho match (solo el dueño puede verlos, por RLS). */
+export async function fetchGroupMatches(groupId: string): Promise<GroupMatch[]> {
+  const { data, error } = await supabase
+    .from('matches')
+    .select('id, matched_at, discord_channel_id, user_id, profiles(alias, avatar_url)')
+    .eq('group_id', groupId)
+    .order('matched_at', { ascending: false });
+  if (error) throw error;
+
+  type Row = {
+    id: string;
+    matched_at: string;
+    discord_channel_id: string | null;
+    user_id: string;
+    profiles: { alias: string; avatar_url: string | null } | null;
+  };
+  return (data ?? []).map((row) => {
+    const r = row as unknown as Row;
+    return {
+      id: r.id,
+      matched_at: r.matched_at,
+      discord_channel_id: r.discord_channel_id,
+      user_id: r.user_id,
+      alias: r.profiles?.alias ?? 'Jugador/a',
+      avatar_url: r.profiles?.avatar_url ?? null,
+    };
+  });
 }
