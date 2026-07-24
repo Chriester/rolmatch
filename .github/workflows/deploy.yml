@@ -1,0 +1,35 @@
+name: Deploy
+
+# Despliega producción en Vercel en cada push a main, vía token — el deploy
+# sale siempre "como el dueño del proyecto", da igual quién hiciera el commit
+# (el plan Hobby de Vercel bloquea deploys de commits de otros autores si se
+# usa su integración Git; por eso la desconectamos y desplegamos desde aquí).
+#
+# Secrets necesarios (Settings → Secrets and variables → Actions):
+#   VERCEL_TOKEN       token personal de Vercel (Account Settings → Tokens)
+#   VERCEL_ORG_ID      id de la cuenta/equipo de Vercel
+#   VERCEL_PROJECT_ID  id del proyecto rolmatch
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Pull Vercel project config (env vars incluidas)
+        run: npx vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+      - name: Build
+        run: npx vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+      - name: Deploy
+        run: npx vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}

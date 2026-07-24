@@ -88,7 +88,7 @@ El repo incluye [vercel.json](vercel.json): build `npx expo export -p web`, sali
 2. En **Environment Variables** del proyecto añade las tres del `.env`: `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY` y `EXPO_PUBLIC_DISCORD_GUILD_ID` → Deploy.
 3. En Supabase → Authentication → **URL Configuration** → añade la URL de producción (`https://…vercel.app`) a **Redirect URLs** (y como Site URL si quieres que sea la principal) — sin esto el OAuth de Discord no vuelve a la app desplegada.
 
-Cada push a `main` redespliega automáticamente.
+**El deploy de producción va por GitHub Actions** (`.github/workflows/deploy.yml`), no por la integración Git de Vercel: el plan Hobby bloquea deploys de commits de otros autores, y con el token del workflow los dos colaboradores despliegan por igual al mergear a `main`. Requiere 3 secrets en GitHub (Settings → Secrets → Actions): `VERCEL_TOKEN` (Vercel → Account Settings → Tokens), `VERCEL_ORG_ID` y `VERCEL_PROJECT_ID` (Vercel → proyecto → Settings → General). La integración Git de Vercel debe quedar **desconectada** para no duplicar/bloquear deploys.
 
 ### Datos de prueba (probar en solitario)
 
