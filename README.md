@@ -90,6 +90,28 @@ El repo incluye [vercel.json](vercel.json): build `npx expo export -p web`, sali
 
 **El deploy de producción va por GitHub Actions** (`.github/workflows/deploy.yml`), no por la integración Git de Vercel: el plan Hobby bloquea deploys de commits de otros autores, y con el token del workflow los dos colaboradores despliegan por igual al mergear a `main`. Requiere 3 secrets en GitHub (Settings → Secrets → Actions): `VERCEL_TOKEN` (Vercel → Account Settings → Tokens), `VERCEL_ORG_ID` y `VERCEL_PROJECT_ID` (Vercel → proyecto → Settings → General). La integración Git de Vercel debe quedar **desconectada** para no duplicar/bloquear deploys.
 
+### App Android (beta por APK, sin tiendas)
+
+Builds con EAS (free tier) y actualizaciones OTA con EAS Update — el APK solo se
+recompila al tocar código nativo; todo lo demás llega solo en cada merge a `main`.
+
+Setup (una vez, requiere cuenta gratuita en [expo.dev](https://expo.dev)):
+
+```bash
+npx eas-cli login
+npx eas-cli init                # vincula el proyecto (escribe projectId en app.json)
+npx eas-cli update:configure    # configura runtimeVersion + updates.url
+# commitear los cambios de app.json que generan estos comandos
+npx eas-cli build -p android --profile preview   # genera el APK (~15 min, enlace de descarga)
+```
+
+Para que cada merge a `main` actualice también los APK instalados (OTA), crea un
+token en expo.dev → Account Settings → **Access tokens** y añádelo como secret
+`EXPO_TOKEN` del repo.
+
+> Push en Android: requiere además credenciales FCM (proyecto de Firebase gratis
+> + `npx eas-cli credentials`). Hasta entonces la app omite el push sin fallar.
+
 ### Datos de prueba (probar en solitario)
 
 Para probar el feed y los matches sin necesitar una segunda cuenta, pega [supabase/seed/dev-seed.sql](supabase/seed/dev-seed.sql) en el SQL Editor: crea un GM y dos jugadores falsos, dos mesas de prueba y los likes preparados para provocar matches instantáneos con tu cuenta. Es idempotente (re-ejecútalo si creas mesas nuevas). Se limpia con [supabase/seed/dev-cleanup.sql](supabase/seed/dev-cleanup.sql). **Solo para entornos de desarrollo.**
