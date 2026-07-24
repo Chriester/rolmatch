@@ -6,22 +6,41 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { showAlert } from '@/lib/alert';
 import { Chip } from '@/components/chip';
 import { ActionBar } from '@/components/swipe/action-bar';
+import {
+  AvailabilityMiniGrid,
+  availabilityCellKey,
+} from '@/components/swipe/availability-mini-grid';
+import { CardFlip } from '@/components/swipe/card-flip';
 import { CardShell, cardText } from '@/components/swipe/card-shell';
 import { SwipeDeck, type SwipeChoice, type SwipeDeckHandle } from '@/components/swipe/deck';
 import { DetailsSheet, sheetText } from '@/components/swipe/details-sheet';
 import { MatchOverlay } from '@/components/swipe/match-overlay';
+import { ShowcaseBack } from '@/components/swipe/showcase-back';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
 import { fetchMyCharacters, type Character } from '@/lib/characters';
-import { fetchPlayerFeed, type GroupCandidate } from '@/lib/feed';
-import { FORMAT_LABELS, SLOT_LABELS, VTT_LABELS, WEEKDAY_LABELS } from '@/lib/groups';
+import { fetchUnifiedFeed, type FeedItem } from '@/lib/feed';
+import {
+  EXPERIENCE_LABELS,
+  FORMAT_LABELS,
+  SLOT_HOURS,
+  SLOT_LABELS,
+  VTT_LABELS,
+  WEEKDAY_LABELS,
+} from '@/lib/groups';
 import { blockUser } from '@/lib/moderation';
 import { fetchProfileData } from '@/lib/profile';
-import { swipeOnGroup } from '@/lib/swipes';
+import { groupSwipeOnUser, swipeOnGroup } from '@/lib/swipes';
 
 const DECK_MAX_WIDTH = 420;
+
+const ROLE_LABELS: Record<string, string> = {
+  player: 'Jugador/a',
+  gm: 'GM',
+  both: 'Jugador/a y GM',
+};
 
 function styleLabel(value: number, low: string, high: string) {
   if (value <= 25) return low;
@@ -29,28 +48,43 @@ function styleLabel(value: number, low: string, high: string) {
   return `${low}/${high} equilibrado`;
 }
 
+function scheduleLine(weekday: number | null, slot: number | null, timezone: string) {
+  if (weekday === null || slot === null) return 'Horario por definir';
+  return `${WEEKDAY_LABELS[weekday]} · ${SLOT_LABELS[slot]} (${SLOT_HOURS[slot]}, ${timezone})`;
+}
+
+function itemKey(item: FeedItem) {
+  return item.kind === 'group' ? `g-${item.group.id}` : `p-${item.candidate.player.id}`;
+}
+
 export default function FeedScreen() {
   const session = useSession();
   const deckRef = useRef<SwipeDeckHandle | null>(null);
 
-  const [candidates, setCandidates] = useState<GroupCandidate[] | undefined>(undefined);
+  const [items, setItems] = useState<FeedItem[] | undefined>(undefined);
+  const [myAvailability, setMyAvailability] = useState<Set<string>>(new Set());
   const [loadError, setLoadError] = useState(false);
   const [index, setIndex] = useState(0);
   const [myCharacters, setMyCharacters] = useState<Character[]>([]);
   const [proposedId, setProposedId] = useState<string | null>(null);
   const [showDetails, setShowDetails] = useState(false);
-  const [matchWith, setMatchWith] = useState<GroupCandidate | null>(null);
+  const [matchWith, setMatchWith] = useState<FeedItem | null>(null);
   const [myAvatar, setMyAvatar] = useState<string | null>(null);
 
   const load = useCallback(() => {
     if (!session) return;
     setLoadError(false);
-    setCandidates(undefined);
+    setItems(undefined);
     setIndex(0);
     setProposedId(null);
     setShowDetails(false);
-    fetchPlayerFeed(session.user.id)
-      .then(setCandidates)
+    fetchUnifiedFeed(session.user.id)
+      .then((feed) => {
+        setItems(feed.items);
+        setMyAvailability(
+          new Set(feed.myAvailability.map((a) => availabilityCellKey(a.weekday, a.slot)))
+        );
+      })
       .catch(() => setLoadError(true));
     fetchMyCharacters(session.user.id)
       .then((all) => setMyCharacters(all.filter((c) => c.status === 'looking')))
@@ -62,15 +96,22 @@ export default function FeedScreen() {
 
   useFocusEffect(load);
 
-  const current = candidates?.[index];
+  const current = items?.[index];
 
-  const handleSwiped = (item: GroupCandidate, choice: SwipeChoice) => {
+  const handleSwiped = (item: FeedItem, choice: SwipeChoice) => {
     if (!session) return;
     const proposal = proposedId;
     setShowDetails(false);
     setProposedId(null);
     setIndex((i) => i + 1);
-    swipeOnGroup(session.user.id, item.group.id, choice === 'like' ? 'like' : 'pass', proposal)
+
+    const direction = choice === 'like' ? ('like' as const) : ('pass' as const);
+    const request =
+      item.kind === 'group'
+        ? swipeOnGroup(session.user.id, item.group.id, direction, proposal)
+        : groupSwipeOnUser(item.forGroup.id, item.candidate.player.id, direction);
+
+    request
       .then((matched) => {
         if (matched) setMatchWith(item);
       })
@@ -82,41 +123,182 @@ export default function FeedScreen() {
   const handleBlock = async () => {
     if (!session || !current) return;
     try {
-      const ownerId = current.group.owner_id;
-      await blockUser(session.user.id, ownerId);
+      const blockedId =
+        current.kind === 'group' ? current.group.owner_id : current.candidate.player.id;
+      await blockUser(session.user.id, blockedId);
       setShowDetails(false);
-      setCandidates((list) => list?.filter((c) => c.group.owner_id !== ownerId));
+      setItems((list) =>
+        list?.filter((i) =>
+          i.kind === 'group' ? i.group.owner_id !== blockedId : i.candidate.player.id !== blockedId
+        )
+      );
     } catch (error) {
       showAlert('Error', error instanceof Error ? error.message : String(error));
     }
   };
 
-  const renderCard = (c: GroupCandidate) => {
-    const schedule =
-      c.group.session_weekday !== null && c.group.session_slot !== null
-        ? `${WEEKDAY_LABELS[c.group.session_weekday]} · ${SLOT_LABELS[c.group.session_slot]} (${c.group.timezone})`
-        : 'Horario por definir';
-    return (
+  const renderCard = (item: FeedItem) => {
+    if (item.kind === 'group') {
+      const g = item.group;
+      return (
+        <CardShell
+          imageUrl={g.image_url}
+          fallbackEmoji="🎲"
+          topRight={
+            <View style={styles.scoreBadge}>
+              <Text style={styles.scoreText}>{item.result.score}%</Text>
+            </View>
+          }>
+          <Text style={cardText.title} numberOfLines={2}>
+            {g.name}
+          </Text>
+          <Text style={cardText.line}>
+            {g.systems?.name ?? 'Sistema sin definir'} · {FORMAT_LABELS[g.format]}
+            {g.frequency ? ` · ${g.frequency.toLowerCase()}` : ''}
+          </Text>
+          <Text style={cardText.soft}>
+            📅 {scheduleLine(g.session_weekday, g.session_slot, g.timezone)}
+          </Text>
+          <Text style={cardText.soft}>⏱ Coincidís {item.result.overlapHours} h en horario</Text>
+        </CardShell>
+      );
+    }
+
+    const c = item.candidate;
+    const publicLooking = c.player.characters.filter(
+      (ch) => ch.status === 'looking' && ch.is_public
+    );
+    const front = (
       <CardShell
-        imageUrl={c.group.image_url}
-        fallbackEmoji="🎲"
+        imageUrl={c.player.avatar_url}
+        fallbackEmoji="🧙"
         topRight={
           <View style={styles.scoreBadge}>
             <Text style={styles.scoreText}>{c.result.score}%</Text>
           </View>
+        }
+        banner={
+          c.likedGroup ? (
+            <View style={styles.likedBanner}>
+              <Text style={styles.likedText} numberOfLines={1}>
+                💘 Le gustáis{c.proposal ? ` — propone a ${c.proposal.name}` : ''}
+              </Text>
+            </View>
+          ) : undefined
         }>
-        <Text style={cardText.title} numberOfLines={2}>
-          {c.group.name}
+        <Text style={cardText.title} numberOfLines={1}>
+          {c.player.alias}
         </Text>
         <Text style={cardText.line}>
-          {c.group.systems?.name ?? 'Sistema sin definir'} · {FORMAT_LABELS[c.group.format]}
-          {c.group.frequency ? ` · ${c.group.frequency.toLowerCase()}` : ''}
+          {ROLE_LABELS[c.player.role] ?? c.player.role} · {c.player.timezone}
         </Text>
-        <Text style={cardText.soft}>📅 {schedule}</Text>
+        <Text style={cardText.soft}>🛡️ Candidato para «{item.forGroup.name}»</Text>
         <Text style={cardText.soft}>
-          ⏱ Coincidís {c.result.overlapHours} h · {VTT_LABELS[c.group.vtt]}
+          ⏱ Coincide {c.result.overlapHours} h con vuestra sesión
+          {publicLooking.length > 0 ? ' · toca para ver su vitrina' : ''}
         </Text>
       </CardShell>
+    );
+    return <CardFlip front={front} back={<ShowcaseBack alias={c.player.alias} characters={publicLooking} />} />;
+  };
+
+  const detailsFor = (item: FeedItem) => {
+    if (item.kind === 'group') {
+      const g = item.group;
+      return (
+        <>
+          {g.description && (
+            <>
+              <Text style={sheetText.label}>Sobre la mesa</Text>
+              <Text style={sheetText.body}>{g.description}</Text>
+            </>
+          )}
+          <Text style={sheetText.label}>Horario</Text>
+          <Text style={sheetText.body}>
+            {scheduleLine(g.session_weekday, g.session_slot, g.timezone)}
+            {g.frequency ? ` · ${g.frequency.toLowerCase()}` : ''}
+          </Text>
+          <AvailabilityMiniGrid
+            cells={myAvailability}
+            highlight={
+              g.session_weekday !== null && g.session_slot !== null
+                ? { weekday: g.session_weekday, slot: g.session_slot }
+                : null
+            }
+          />
+          <Text style={sheetText.label}>Estilo y mesa</Text>
+          <Text style={sheetText.body}>
+            {styleLabel(g.style_combat_narrative, 'Combate', 'Narrativo')} ·{' '}
+            {styleLabel(g.style_serious_humor, 'Serio', 'Humor')} ·{' '}
+            {styleLabel(g.style_roleplay_weight, 'Roleo ligero', 'Roleo pesado')}
+          </Text>
+          <Text style={sheetText.body}>
+            {VTT_LABELS[g.vtt]}
+            {g.experience_wanted
+              ? ` · busca nivel ${EXPERIENCE_LABELS[g.experience_wanted].toLowerCase()}`
+              : ' · cualquier nivel de experiencia'}
+          </Text>
+          <Text style={sheetText.label}>Compatibilidad</Text>
+          <Text style={sheetText.body}>
+            {item.result.score}% — coincidís {item.result.overlapHours} h en horario
+          </Text>
+          <View style={styles.moderationRow}>
+            <Pressable
+              onPress={() => {
+                setShowDetails(false);
+                router.push({
+                  pathname: '/report',
+                  params: { kind: 'group', id: g.id, name: g.name },
+                });
+              }}>
+              <Text style={sheetText.link}>Reportar mesa</Text>
+            </Pressable>
+            <Pressable onPress={handleBlock}>
+              <Text style={sheetText.link}>Bloquear al GM</Text>
+            </Pressable>
+          </View>
+        </>
+      );
+    }
+
+    const c = item.candidate;
+    return (
+      <>
+        {c.player.bio && (
+          <>
+            <Text style={sheetText.label}>Bio</Text>
+            <Text style={sheetText.body}>{c.player.bio}</Text>
+          </>
+        )}
+        <Text style={sheetText.label}>Su semana vs vuestra sesión</Text>
+        <AvailabilityMiniGrid
+          cells={new Set(c.player.availability.map((a) => availabilityCellKey(a.weekday, a.slot)))}
+          highlight={
+            item.forGroup.session_weekday !== null && item.forGroup.session_slot !== null
+              ? { weekday: item.forGroup.session_weekday, slot: item.forGroup.session_slot }
+              : null
+          }
+        />
+        <Text style={sheetText.label}>Compatibilidad</Text>
+        <Text style={sheetText.body}>
+          {c.result.score}% para «{item.forGroup.name}» — coincide {c.result.overlapHours} h
+        </Text>
+        <View style={styles.moderationRow}>
+          <Pressable
+            onPress={() => {
+              setShowDetails(false);
+              router.push({
+                pathname: '/report',
+                params: { kind: 'user', id: c.player.id, name: c.player.alias },
+              });
+            }}>
+            <Text style={sheetText.link}>Reportar</Text>
+          </Pressable>
+          <Pressable onPress={handleBlock}>
+            <Text style={sheetText.link}>Bloquear</Text>
+          </Pressable>
+        </View>
+      </>
     );
   };
 
@@ -129,7 +311,7 @@ export default function FeedScreen() {
             style={styles.headerButton}>
             <ThemedText type="link">←</ThemedText>
           </Pressable>
-          <ThemedText type="subtitle">Mesas para ti</ThemedText>
+          <ThemedText type="subtitle">Descubrir</ThemedText>
           <View style={styles.headerButton} />
         </View>
 
@@ -141,7 +323,7 @@ export default function FeedScreen() {
               <ThemedText>Reintentar</ThemedText>
             </Pressable>
           </View>
-        ) : candidates === undefined ? (
+        ) : items === undefined ? (
           <View style={styles.centerBox}>
             <ActivityIndicator />
           </View>
@@ -149,8 +331,8 @@ export default function FeedScreen() {
           <View style={styles.centerBox}>
             <Text style={styles.centerEmoji}>🃏</Text>
             <ThemedText style={styles.centerText}>
-              No hay más mesas compatibles por ahora. Vuelve más tarde, o amplía tu
-              disponibilidad y sistemas en tu perfil.
+              No hay más mesas ni candidatos compatibles por ahora. Amplía tu
+              disponibilidad y sistemas, o vuelve más tarde.
             </ThemedText>
             <Pressable style={styles.retryButton} onPress={() => router.push('/onboarding')}>
               <ThemedText>Ajustar mi perfil</ThemedText>
@@ -160,53 +342,24 @@ export default function FeedScreen() {
           <>
             <View style={styles.deckArea}>
               <SwipeDeck
-                items={candidates}
+                items={items}
                 index={index}
-                keyFor={(c) => c.group.id}
+                keyFor={itemKey}
                 renderCard={renderCard}
                 onSwiped={handleSwiped}
+                onSwipeUp={() => setShowDetails(true)}
+                likeLabel={current.kind === 'group' ? 'ME INTERESA' : 'NOS INTERESA'}
                 deckRef={deckRef}
               />
               <DetailsSheet
                 visible={showDetails}
-                title={current.group.name}
+                title={current.kind === 'group' ? current.group.name : current.candidate.player.alias}
                 onClose={() => setShowDetails(false)}>
-                {current.group.description && (
-                  <>
-                    <Text style={sheetText.label}>Sobre la mesa</Text>
-                    <Text style={sheetText.body}>{current.group.description}</Text>
-                  </>
-                )}
-                <Text style={sheetText.label}>Estilo</Text>
-                <Text style={sheetText.body}>
-                  {styleLabel(current.group.style_combat_narrative, 'Combate', 'Narrativo')} ·{' '}
-                  {styleLabel(current.group.style_serious_humor, 'Serio', 'Humor')} ·{' '}
-                  {styleLabel(current.group.style_roleplay_weight, 'Roleo ligero', 'Roleo pesado')}
-                </Text>
-                <Text style={sheetText.label}>Compatibilidad</Text>
-                <Text style={sheetText.body}>
-                  {current.result.score}% — coincidís {current.result.overlapHours} h en horario ·{' '}
-                  {VTT_LABELS[current.group.vtt]}
-                </Text>
-                <View style={styles.moderationRow}>
-                  <Pressable
-                    onPress={() => {
-                      setShowDetails(false);
-                      router.push({
-                        pathname: '/report',
-                        params: { kind: 'group', id: current.group.id, name: current.group.name },
-                      });
-                    }}>
-                    <Text style={sheetText.link}>Reportar mesa</Text>
-                  </Pressable>
-                  <Pressable onPress={handleBlock}>
-                    <Text style={sheetText.link}>Bloquear al GM</Text>
-                  </Pressable>
-                </View>
+                {detailsFor(current)}
               </DetailsSheet>
             </View>
 
-            {myCharacters.length > 0 && (
+            {current.kind === 'group' && myCharacters.length > 0 && (
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
@@ -237,12 +390,23 @@ export default function FeedScreen() {
 
       <MatchOverlay
         visible={matchWith !== null}
-        left={{ imageUrl: myAvatar, fallbackEmoji: '🧙' }}
-        right={{ imageUrl: matchWith?.group.image_url ?? null, fallbackEmoji: '🎲' }}
+        left={{
+          imageUrl: matchWith?.kind === 'player' ? matchWith.forGroup.image_url : myAvatar,
+          fallbackEmoji: matchWith?.kind === 'player' ? '🎲' : '🧙',
+        }}
+        right={{
+          imageUrl:
+            matchWith?.kind === 'group'
+              ? matchWith.group.image_url
+              : (matchWith?.candidate.player.avatar_url ?? null),
+          fallbackEmoji: matchWith?.kind === 'group' ? '🎲' : '🧙',
+        }}
         subtitle={
-          matchWith
+          matchWith?.kind === 'group'
             ? `A «${matchWith.group.name}» también le interesas. El bot os está abriendo un canal en Discord.`
-            : ''
+            : matchWith
+              ? `${matchWith.candidate.player.alias} también quiere jugar en «${matchWith.forGroup.name}». El bot os está abriendo un canal en Discord.`
+              : ''
         }
         onClose={() => setMatchWith(null)}
       />
@@ -307,6 +471,17 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '800',
     fontSize: 15,
+  },
+  likedBanner: {
+    backgroundColor: 'rgba(88,101,242,0.85)',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+  },
+  likedText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 14,
+    textAlign: 'center',
   },
   proposalStrip: {
     flexGrow: 0,

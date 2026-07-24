@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Switch, TextInput, View } from 'react-native';
 
 import { Chip } from '@/components/chip';
 import { PhotoPicker } from '@/components/photo-picker';
@@ -30,6 +30,7 @@ export function CharacterForm({ userId, initial, busy, submitLabel, onSubmit }: 
   const [concept, setConcept] = useState(initial?.concept ?? '');
   const [backstory, setBackstory] = useState(initial?.backstory ?? '');
   const [status, setStatus] = useState<CharacterStatus>(initial?.status ?? 'looking');
+  const [isPublic, setIsPublic] = useState(initial?.is_public ?? true);
 
   useEffect(() => {
     fetchSystems().then(setSystems).catch(() => {});
@@ -122,12 +123,23 @@ export function CharacterForm({ userId, initial, busy, submitLabel, onSubmit }: 
         ))}
       </View>
 
+      <View style={styles.switchRow}>
+        <View style={styles.switchLabel}>
+          <ThemedText>Personaje público</ThemedText>
+          <ThemedText type="small">
+            Los públicos aparecen en tu vitrina cuando los GMs te ven como candidato
+          </ThemedText>
+        </View>
+        <Switch value={isPublic} onValueChange={setIsPublic} />
+      </View>
+
       <Pressable
         style={[styles.submitButton, (!valid || busy) && styles.disabled]}
         disabled={!valid || busy}
         onPress={() =>
           onSubmit({
             name: name.trim(),
+            is_public: isPublic,
             portrait_url: portraitUrl,
             system_id: systemId,
             archetype: archetype.trim() || null,
@@ -172,6 +184,16 @@ const styles = StyleSheet.create({
   column: {
     flex: 1,
     gap: Spacing.three,
+  },
+  switchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: Spacing.three,
+  },
+  switchLabel: {
+    flex: 1,
+    gap: 2,
   },
   submitButton: {
     backgroundColor: '#5865F2',

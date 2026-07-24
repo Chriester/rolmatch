@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Linking, Platform, Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Linking, Platform, Pressable, StyleSheet, Switch, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { showAlert } from '@/lib/alert';
@@ -20,6 +20,7 @@ import {
   deleteSheet,
   fetchSheet,
   pickAndUploadSheet,
+  setSheetPublic,
   sheetSignedUrl,
   type CharacterSheet,
 } from '@/lib/sheets';
@@ -151,6 +152,27 @@ export default function EditCharacterScreen() {
                   <ThemedText type="small">⬆️ Subir hoja (PDF o imagen, máx. 5 MB)</ThemedText>
                 </Pressable>
               )}
+              {sheet && (
+                <View style={styles.sheetVisibilityRow}>
+                  <ThemedText type="small">
+                    Hoja pública (visible para otros usuarios)
+                  </ThemedText>
+                  <Switch
+                    value={sheet.is_public}
+                    onValueChange={async (value) => {
+                      try {
+                        await setSheetPublic(sheet.id, value);
+                        setSheet({ ...sheet, is_public: value });
+                      } catch (error) {
+                        showAlert(
+                          'No se pudo cambiar la visibilidad',
+                          error instanceof Error ? error.message : String(error)
+                        );
+                      }
+                    }}
+                  />
+                </View>
+              )}
             </View>
 
             {session && (
@@ -213,5 +235,11 @@ const styles = StyleSheet.create({
   },
   sheetRemove: {
     color: '#d9534f',
+  },
+  sheetVisibilityRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: Spacing.two,
   },
 });

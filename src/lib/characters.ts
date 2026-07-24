@@ -10,6 +10,7 @@ export const CHARACTER_STATUS_LABELS: Record<CharacterStatus, string> = {
 
 export type Character = {
   id: string;
+  is_public: boolean;
   name: string;
   system_id: number | null;
   archetype: string | null;
@@ -23,6 +24,7 @@ export type Character = {
 
 export type CharacterInput = {
   name: string;
+  is_public: boolean;
   portrait_url: string | null;
   system_id: number | null;
   archetype: string | null;
@@ -32,7 +34,7 @@ export type CharacterInput = {
   status: CharacterStatus;
 };
 
-const CHARACTER_FIELDS = `id, name, system_id, archetype, level, concept, backstory,
+const CHARACTER_FIELDS = `id, name, is_public, system_id, archetype, level, concept, backstory,
   status, portrait_url, systems(name)`;
 
 export async function fetchMyCharacters(userId: string): Promise<Character[]> {

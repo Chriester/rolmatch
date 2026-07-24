@@ -5,10 +5,16 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { showAlert } from '@/lib/alert';
 import { ActionBar } from '@/components/swipe/action-bar';
+import {
+  AvailabilityMiniGrid,
+  availabilityCellKey,
+} from '@/components/swipe/availability-mini-grid';
+import { CardFlip } from '@/components/swipe/card-flip';
 import { CardShell, cardText } from '@/components/swipe/card-shell';
 import { SwipeDeck, type SwipeChoice, type SwipeDeckHandle } from '@/components/swipe/deck';
 import { DetailsSheet, sheetText } from '@/components/swipe/details-sheet';
 import { MatchOverlay } from '@/components/swipe/match-overlay';
+import { ShowcaseBack } from '@/components/swipe/showcase-back';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
@@ -81,43 +87,45 @@ export default function GroupCandidatesScreen() {
     }
   };
 
-  const renderCard = (c: PlayerCandidate) => (
-    <CardShell
-      imageUrl={c.player.avatar_url}
-      fallbackEmoji="🧙"
-      topRight={
-        <View style={styles.scoreBadge}>
-          <Text style={styles.scoreText}>{c.result.score}%</Text>
-        </View>
-      }
-      banner={
-        c.likedGroup ? (
-          <View style={styles.likedBanner}>
-            <Text style={styles.likedText} numberOfLines={1}>
-              💘 Le gustáis
-              {c.proposal ? ` — propone a ${c.proposal.name}` : ''}
-            </Text>
+  const renderCard = (c: PlayerCandidate) => {
+    const publicLooking = c.player.characters.filter(
+      (ch) => ch.status === 'looking' && ch.is_public
+    );
+    const front = (
+      <CardShell
+        imageUrl={c.player.avatar_url}
+        fallbackEmoji="🧙"
+        topRight={
+          <View style={styles.scoreBadge}>
+            <Text style={styles.scoreText}>{c.result.score}%</Text>
           </View>
-        ) : undefined
-      }>
-      <Text style={cardText.title} numberOfLines={1}>
-        {c.player.alias}
-      </Text>
-      <Text style={cardText.line}>
-        {ROLE_LABELS[c.player.role] ?? c.player.role} · {c.player.timezone}
-      </Text>
-      <Text style={cardText.soft}>⏱ Coincide {c.result.overlapHours} h con vuestra sesión</Text>
-      {c.player.characters.filter((ch) => ch.status === 'looking').length > 0 && (
-        <Text style={cardText.soft} numberOfLines={1}>
-          🧝{' '}
-          {c.player.characters
-            .filter((ch) => ch.status === 'looking')
-            .map((ch) => ch.name)
-            .join(' · ')}
+        }
+        banner={
+          c.likedGroup ? (
+            <View style={styles.likedBanner}>
+              <Text style={styles.likedText} numberOfLines={1}>
+                💘 Le gustáis
+                {c.proposal ? ` — propone a ${c.proposal.name}` : ''}
+              </Text>
+            </View>
+          ) : undefined
+        }>
+        <Text style={cardText.title} numberOfLines={1}>
+          {c.player.alias}
         </Text>
-      )}
-    </CardShell>
-  );
+        <Text style={cardText.line}>
+          {ROLE_LABELS[c.player.role] ?? c.player.role} · {c.player.timezone}
+        </Text>
+        <Text style={cardText.soft}>
+          ⏱ Coincide {c.result.overlapHours} h con vuestra sesión
+          {publicLooking.length > 0 ? ' · toca para ver su vitrina' : ''}
+        </Text>
+      </CardShell>
+    );
+    return (
+      <CardFlip front={front} back={<ShowcaseBack alias={c.player.alias} characters={publicLooking} />} />
+    );
+  };
 
   return (
     <ThemedView style={styles.container}>
@@ -167,6 +175,7 @@ export default function GroupCandidatesScreen() {
                 keyFor={(c) => c.player.id}
                 renderCard={renderCard}
                 onSwiped={handleSwiped}
+                onSwipeUp={() => setShowDetails(true)}
                 likeLabel="NOS INTERESA"
                 deckRef={deckRef}
               />
@@ -180,11 +189,12 @@ export default function GroupCandidatesScreen() {
                     <Text style={sheetText.body}>{current.player.bio}</Text>
                   </>
                 )}
-                {current.player.characters.filter((ch) => ch.status === 'looking').length > 0 && (
+                {current.player.characters.filter((ch) => ch.status === 'looking' && ch.is_public)
+                  .length > 0 && (
                   <>
                     <Text style={sheetText.label}>Vitrina de personajes</Text>
                     {current.player.characters
-                      .filter((ch) => ch.status === 'looking')
+                      .filter((ch) => ch.status === 'looking' && ch.is_public)
                       .map((ch) => (
                         <Text key={ch.id} style={sheetText.body}>
                           {[ch.name, ch.archetype, ch.systems?.name].filter(Boolean).join(' · ')}
@@ -192,6 +202,19 @@ export default function GroupCandidatesScreen() {
                       ))}
                   </>
                 )}
+                <Text style={sheetText.label}>Su semana vs vuestra sesión</Text>
+                <AvailabilityMiniGrid
+                  cells={
+                    new Set(
+                      current.player.availability.map((a) => availabilityCellKey(a.weekday, a.slot))
+                    )
+                  }
+                  highlight={
+                    group && group.session_weekday !== null && group.session_slot !== null
+                      ? { weekday: group.session_weekday, slot: group.session_slot }
+                      : null
+                  }
+                />
                 <Text style={sheetText.label}>Compatibilidad</Text>
                 <Text style={sheetText.body}>
                   {current.result.score}% — coincide {current.result.overlapHours} h con vuestra

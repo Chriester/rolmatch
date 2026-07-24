@@ -15,7 +15,7 @@ import {
   type MutableRefObject,
   type ReactNode,
 } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Dimensions, StyleSheet, Text, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   Extrapolation,
@@ -38,9 +38,10 @@ const THRESHOLD_FRACTION = 0.35;
 const FLING_VELOCITY = 900;
 // El swipe es manipulación directa, no animación decorativa: se anima siempre,
 // aunque el sistema tenga "movimiento reducido" activado.
-const EXIT_TIMING = { duration: 250, reduceMotion: ReduceMotion.Never };
-const RETURN_SPRING = { damping: 15, stiffness: 150, reduceMotion: ReduceMotion.Never };
+const EXIT_TIMING = { duration: 260, reduceMotion: ReduceMotion.Never };
+const RETURN_SPRING = { damping: 16, stiffness: 190, reduceMotion: ReduceMotion.Never };
 const NEXT_CARD_SCALE = 0.95;
+const SWIPE_UP_DISTANCE = 110;
 
 type TopCardHandle = { fly: (dir: 1 | -1) => void };
 
@@ -51,21 +52,25 @@ type TopCardProps = {
   likeLabel: string;
   passLabel: string;
   onSwiped: (choice: SwipeChoice) => void;
+  onSwipeUp?: () => void;
   children: ReactNode;
 };
 
 const TopCard = forwardRef<TopCardHandle, TopCardProps>(function TopCard(
-  { width, enabled, progress, likeLabel, passLabel, onSwiped, children },
+  { width, enabled, progress, likeLabel, passLabel, onSwiped, onSwipeUp, children },
   ref
 ) {
   const tx = useSharedValue(0);
   const ty = useSharedValue(0);
   const threshold = width * THRESHOLD_FRACTION;
+  // La tarjeta debe salir de la PANTALLA, no solo del mazo (en escritorio la
+  // ventana es más ancha que el deck y desaparecía a medio vuelo).
+  const exitDistance = Math.max(width * 1.6, Dimensions.get('window').width * 1.1);
 
   const finish = (dir: number) => onSwiped(dir > 0 ? 'like' : 'pass');
 
   const fly = (dir: 1 | -1, verticalVelocity = 0) => {
-    tx.value = withTiming(dir * width * 1.6, EXIT_TIMING, (done) => {
+    tx.value = withTiming(dir * exitDistance, EXIT_TIMING, (done) => {
       if (done) runOnJS(finish)(dir);
     });
     ty.value = withTiming(ty.value + verticalVelocity * 0.12, EXIT_TIMING);
@@ -83,10 +88,15 @@ const TopCard = forwardRef<TopCardHandle, TopCardProps>(function TopCard(
     .onEnd((event) => {
       const decided =
         Math.abs(tx.value) > threshold || Math.abs(event.velocityX) > FLING_VELOCITY;
+      const swipedUp =
+        onSwipeUp !== undefined &&
+        (ty.value < -SWIPE_UP_DISTANCE || event.velocityY < -FLING_VELOCITY) &&
+        Math.abs(tx.value) < threshold * 0.6;
       if (decided) {
         const dir = (tx.value !== 0 ? Math.sign(tx.value) : Math.sign(event.velocityX)) as 1 | -1;
         runOnJS(fly)(dir, event.velocityY);
       } else {
+        if (swipedUp && onSwipeUp) runOnJS(onSwipeUp)();
         tx.value = withSpring(0, RETURN_SPRING);
         ty.value = withSpring(0, RETURN_SPRING);
         progress.value = withSpring(0, RETURN_SPRING);
@@ -135,6 +145,8 @@ type SwipeDeckProps<T> = {
   keyFor: (item: T) => string;
   renderCard: (item: T, isTop: boolean) => ReactNode;
   onSwiped: (item: T, choice: SwipeChoice) => void;
+  /** arrastrar hacia arriba (patrón Tinder): abre los detalles */
+  onSwipeUp?: () => void;
   enabled?: boolean;
   likeLabel?: string;
   passLabel?: string;
@@ -148,6 +160,7 @@ export function SwipeDeck<T>({
   keyFor,
   renderCard,
   onSwiped,
+  onSwipeUp,
   enabled = true,
   likeLabel = 'ME INTERESA',
   passLabel = 'PASO',
@@ -203,7 +216,8 @@ export function SwipeDeck<T>({
           progress={progress}
           likeLabel={likeLabel}
           passLabel={passLabel}
-          onSwiped={handleSwiped}>
+          onSwiped={handleSwiped}
+          onSwipeUp={onSwipeUp}>
           {renderCard(current, true)}
         </TopCard>
       )}

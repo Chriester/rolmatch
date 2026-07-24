@@ -18,8 +18,15 @@ significa eso en concreto para poder evaluar el resultado sin dar vueltas.
    0.95, y crece hasta 1 mientras la de arriba se va). Sin pantallas en blanco entre
    swipes.
 5. **La información esencial cabe en un vistazo**; el resto vive en un panel de
-   detalles que se abre con «ⓘ» (descripción, estilo, vitrina, reportar/bloquear).
+   detalles que se abre **arrastrando la tarjeta hacia arriba** (patrón Tinder) o
+   con «ⓘ»: descripción, horario detallado con **mini-grid visual de la semana**
+   (disponibilidad vs sesión, solape en verde), estilo, vitrina y moderación.
    La tarjeta no scrollea.
+6. **Tap = girar la tarjeta** (jugadores): el dorso muestra su vitrina pública de
+   personajes. Los personajes y hojas tienen visibilidad pública/privada
+   (migración 00005) y solo lo público se enseña.
+7. **El feed es unificado por rol**: mesas si eres jugador, candidatos a tus mesas
+   si eres GM, ambos mezclados con rol «ambos» — los likes recibidos, primero.
 6. **El match es un momento.** Overlay a pantalla completa («🎲 ¡Es un match!») con
    las dos fotos, no un alert del navegador.
 
