@@ -30,7 +30,6 @@ export default function RootLayout() {
         <Stack.Protected guard={!!session}>
           <Stack.Screen name="index" />
           <Stack.Screen name="onboarding" />
-          <Stack.Screen name="feed" />
           <Stack.Screen name="matches" />
           <Stack.Screen name="report" />
           <Stack.Screen name="characters/index" />

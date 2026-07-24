@@ -25,6 +25,7 @@ import {
 import { Dimensions, StyleSheet, Text, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
+  Easing,
   Extrapolation,
   interpolate,
   ReduceMotion,
@@ -47,9 +48,19 @@ const MAX_ROTATION_DEG = 12;
 const THRESHOLD_FRACTION = 0.35;
 const FLING_VELOCITY = 900;
 const EXIT_TIMING = { duration: 260, reduceMotion: ReduceMotion.Never };
-const RETURN_SPRING = { damping: 16, stiffness: 190, reduceMotion: ReduceMotion.Never };
-const SHEET_SPRING = { damping: 19, stiffness: 200, reduceMotion: ReduceMotion.Never };
+// Horizontal: muelle rígido con un pelín de baile (permitido por diseño)
+const RETURN_SPRING = { damping: 20, stiffness: 260, reduceMotion: ReduceMotion.Never };
+// Vertical: SIN rebote — timing seco con easing de salida
+const SHEET_TIMING = {
+  duration: 210,
+  easing: Easing.out(Easing.cubic),
+  reduceMotion: ReduceMotion.Never,
+};
 const NEXT_CARD_SCALE = 0.95;
+// Bloqueo de eje: se decide con el primer movimiento; las diagonales
+// cuentan como like/pass (solo lo claramente vertical mueve la tira)
+const AXIS_LOCK_DISTANCE = 12;
+const VERTICAL_BIAS = 1.4;
 
 type TopCardHandle = {
   fly: (dir: 1 | -1) => void;
@@ -76,6 +87,8 @@ const TopCard = forwardRef<TopCardHandle, TopCardProps>(function TopCard(
   // 0 = tarjeta visible · 1 = descripción visible
   const sheet = useSharedValue(0);
   const sheetAtStart = useSharedValue(0);
+  // 0 = sin decidir · 1 = horizontal (like/pass) · 2 = vertical (tira)
+  const axis = useSharedValue(0);
   const threshold = width * THRESHOLD_FRACTION;
   const exitDistance = Math.max(width * 1.6, Dimensions.get('window').width * 1.1);
   const hasDetails = details !== undefined;
@@ -89,7 +102,7 @@ const TopCard = forwardRef<TopCardHandle, TopCardProps>(function TopCard(
   };
 
   const toggleSheet = () => {
-    sheet.value = withSpring(sheet.value > 0.5 ? 0 : 1, SHEET_SPRING);
+    sheet.value = withTiming(sheet.value > 0.5 ? 0 : 1, SHEET_TIMING);
   };
 
   useImperativeHandle(ref, () => ({ fly, toggleSheet }));
@@ -98,37 +111,54 @@ const TopCard = forwardRef<TopCardHandle, TopCardProps>(function TopCard(
     .enabled(enabled)
     .onStart(() => {
       sheetAtStart.value = sheet.value;
+      axis.value = 0;
     })
     .onUpdate((event) => {
-      // La tira sigue al dedo en vertical (arriba abre, abajo cierra)
-      if (hasDetails && height > 0) {
+      // Bloqueo de eje: el primer movimiento decide y el gesto se queda ahí.
+      if (axis.value === 0) {
+        const dx = Math.abs(event.translationX);
+        const dy = Math.abs(event.translationY);
+        if (dx > AXIS_LOCK_DISTANCE || dy > AXIS_LOCK_DISTANCE) {
+          // Con la descripción abierta solo hay gesto vertical (cerrarla)
+          if (sheet.value > 0.5) axis.value = 2;
+          else axis.value = dy > dx * VERTICAL_BIAS ? 2 : 1;
+        }
+      }
+      if (axis.value === 1) {
+        tx.value = event.translationX;
+        progress.value = Math.min(Math.abs(tx.value) / threshold, 1);
+      } else if (axis.value === 2 && hasDetails && height > 0) {
         sheet.value = Math.min(
           Math.max(sheetAtStart.value - event.translationY / height, 0),
           1
         );
       }
-      // El swipe horizontal se desvanece a medida que la descripción se abre
-      tx.value = event.translationX * (1 - sheet.value);
-      progress.value = Math.min(Math.abs(tx.value) / threshold, 1);
     })
     .onEnd((event) => {
-      const decided =
-        sheet.value < 0.3 &&
-        (Math.abs(tx.value) > threshold || Math.abs(event.velocityX) > FLING_VELOCITY);
-      if (decided) {
-        const dir = (tx.value !== 0 ? Math.sign(tx.value) : Math.sign(event.velocityX)) as 1 | -1;
-        runOnJS(fly)(dir);
-        return;
+      if (axis.value === 1) {
+        const decided =
+          sheet.value < 0.3 &&
+          (Math.abs(tx.value) > threshold || Math.abs(event.velocityX) > FLING_VELOCITY);
+        if (decided) {
+          const dir = (tx.value !== 0 ? Math.sign(tx.value) : Math.sign(event.velocityX)) as
+            | 1
+            | -1;
+          axis.value = 0;
+          runOnJS(fly)(dir);
+          return;
+        }
+        tx.value = withSpring(0, RETURN_SPRING);
+        progress.value = withSpring(0, RETURN_SPRING);
+      } else if (axis.value === 2) {
+        // La tira encaja seca, sin rebote, según posición y velocidad
+        const target =
+          event.velocityY < -FLING_VELOCITY ? 1
+          : event.velocityY > FLING_VELOCITY ? 0
+          : sheet.value > 0.5 ? 1
+          : 0;
+        sheet.value = withTiming(hasDetails ? target : 0, SHEET_TIMING);
       }
-      tx.value = withSpring(0, RETURN_SPRING);
-      progress.value = withSpring(0, RETURN_SPRING);
-      // La tira encaja en tarjeta o descripción según posición y velocidad
-      const target =
-        event.velocityY < -FLING_VELOCITY ? 1
-        : event.velocityY > FLING_VELOCITY ? 0
-        : sheet.value > 0.5 ? 1
-        : 0;
-      sheet.value = withSpring(hasDetails ? target : 0, SHEET_SPRING);
+      axis.value = 0;
     });
 
   const frameStyle = useAnimatedStyle(() => ({
