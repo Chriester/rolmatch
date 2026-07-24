@@ -50,7 +50,7 @@ El "bot" del MVP no es un proceso persistente: es la Edge Function [supabase/fun
 3. **Invitar al bot** al servidor con permisos de gestionar canales: abre
    `https://discord.com/oauth2/authorize?client_id=TU_CLIENT_ID&scope=bot&permissions=268435472`
    (Manage Channels + Manage Roles, necesarios para crear canales privados con permisos).
-4. **Secrets** en Supabase → Edge Functions → Secrets: `DISCORD_BOT_TOKEN`, `DISCORD_GUILD_ID` y un `WEBHOOK_SECRET` inventado (largo y aleatorio).
+4. **Secrets** en Supabase → Edge Functions → Secrets: `DISCORD_BOT_TOKEN` (⚠️ de la **misma aplicación** cuyo bot invitaste al servidor), `DISCORD_GUILD_ID`, un `WEBHOOK_SECRET` inventado (largo y aleatorio) y `SB_SECRET_KEY` con la clave `sb_secret_...` de Project Settings → API Keys (la clave service_role legada es un JWT y puede fallar con `PGRST303` por desfase de reloj en proyectos recién creados).
 5. **Desplegar la función**: `npx supabase functions deploy discord-match --no-verify-jwt` (requiere `npx supabase login` y `npx supabase link --project-ref TU_REF` la primera vez).
 6. **Webhook**: Supabase → Database → Webhooks → Create: tabla `matches`, evento INSERT, tipo "Supabase Edge Function" → `discord-match`, y añade la cabecera HTTP `x-webhook-secret` con tu `WEBHOOK_SECRET`.
 7. En `.env` de la app, pon `EXPO_PUBLIC_DISCORD_GUILD_ID` con el ID del servidor para que "Mis matches" enlace a los canales.
