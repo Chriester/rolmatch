@@ -1,5 +1,5 @@
-import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useState } from 'react';
 import { ActivityIndicator, FlatList, Linking, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -12,13 +12,18 @@ import { fetchMyMatches, matchChannelUrl, type MyMatch } from '@/lib/matches';
 export default function MatchesScreen() {
   const session = useSession();
   const [matches, setMatches] = useState<MyMatch[] | undefined>(undefined);
+  const [loadError, setLoadError] = useState(false);
 
-  useEffect(() => {
+  const load = useCallback(() => {
     if (!session) return;
+    setLoadError(false);
+    setMatches(undefined);
     fetchMyMatches(session.user.id)
       .then(setMatches)
-      .catch(() => setMatches([]));
+      .catch(() => setLoadError(true));
   }, [session]);
+
+  useFocusEffect(load);
 
   return (
     <ThemedView style={styles.container}>
@@ -28,7 +33,14 @@ export default function MatchesScreen() {
         </Pressable>
         <ThemedText type="title">Mis matches</ThemedText>
 
-        {matches === undefined ? (
+        {loadError ? (
+          <View style={styles.errorBox}>
+            <ThemedText style={styles.empty}>No se pudieron cargar tus matches.</ThemedText>
+            <Pressable style={styles.retryButton} onPress={load}>
+              <ThemedText>Reintentar</ThemedText>
+            </Pressable>
+          </View>
+        ) : matches === undefined ? (
           <ActivityIndicator style={styles.loading} />
         ) : matches.length === 0 ? (
           <ThemedText style={styles.empty}>
@@ -88,6 +100,17 @@ const styles = StyleSheet.create({
   empty: {
     marginTop: Spacing.four,
     textAlign: 'center',
+  },
+  errorBox: {
+    alignItems: 'center',
+    gap: Spacing.three,
+  },
+  retryButton: {
+    borderWidth: 1,
+    borderColor: '#666',
+    borderRadius: Spacing.two,
+    paddingVertical: Spacing.two,
+    paddingHorizontal: Spacing.four,
   },
   list: {
     gap: Spacing.two,

@@ -14,7 +14,7 @@ import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
 import {
   detectTimezone,
-  fetchProfileAlias,
+  fetchProfileData,
   fetchSystems,
   saveOnboarding,
   type ExperienceLevel,
@@ -73,13 +73,32 @@ export default function OnboardingScreen() {
   const [cameraOk, setCameraOk] = useState(false);
   const [vtt, setVtt] = useState<VttType>('discord_only');
 
+  // Precarga el perfil actual: la misma pantalla sirve de onboarding
+  // inicial y de editor de perfil.
   useEffect(() => {
     fetchSystems().then(setSystems).catch(() => {});
-    if (session) {
-      fetchProfileAlias(session.user.id)
-        .then((current) => current && setAlias(current))
-        .catch(() => {});
-    }
+    if (!session) return;
+    fetchProfileData(session.user.id)
+      .then((profile) => {
+        setAlias(profile.alias);
+        setRole(profile.role);
+        setBio(profile.bio ?? '');
+        if (profile.availability.length > 0) {
+          setTimezone(profile.timezone);
+          setAvailability(
+            new Set(profile.availability.map((a) => availabilityKey(a.weekday, a.slot)))
+          );
+        }
+        setExperienceBySystem(new Map(profile.systems.map((s) => [s.system_id, s.experience])));
+        setOpenToAny(profile.open_to_any_system);
+        setCombatNarrative(profile.style_combat_narrative);
+        setSeriousHumor(profile.style_serious_humor);
+        setRoleplayWeight(profile.style_roleplay_weight);
+        setVoiceChat(profile.voice_chat);
+        setCameraOk(profile.camera_ok);
+        setVtt(profile.preferred_vtt);
+      })
+      .catch(() => {});
   }, [session]);
 
   const toggleAvailability = (weekday: number, slot: number) => {

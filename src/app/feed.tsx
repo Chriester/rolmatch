@@ -1,5 +1,5 @@
-import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { showAlert } from '@/lib/alert';
@@ -17,15 +17,21 @@ import { swipeOnGroup } from '@/lib/swipes';
 export default function FeedScreen() {
   const session = useSession();
   const [candidates, setCandidates] = useState<GroupCandidate[] | undefined>(undefined);
+  const [loadError, setLoadError] = useState(false);
   const [index, setIndex] = useState(0);
   const [busy, setBusy] = useState(false);
 
-  useEffect(() => {
+  const load = useCallback(() => {
     if (!session) return;
+    setLoadError(false);
+    setCandidates(undefined);
+    setIndex(0);
     fetchPlayerFeed(session.user.id)
       .then(setCandidates)
-      .catch(() => setCandidates([]));
+      .catch(() => setLoadError(true));
   }, [session]);
+
+  useFocusEffect(load);
 
   const current = candidates?.[index];
 
@@ -71,7 +77,14 @@ export default function FeedScreen() {
         </Pressable>
         <ThemedText type="title">Mesas para ti</ThemedText>
 
-        {candidates === undefined ? (
+        {loadError ? (
+          <View style={styles.errorBox}>
+            <ThemedText style={styles.empty}>No se pudo cargar el feed.</ThemedText>
+            <Pressable style={styles.retryButton} onPress={load}>
+              <ThemedText>Reintentar</ThemedText>
+            </Pressable>
+          </View>
+        ) : candidates === undefined ? (
           <ActivityIndicator style={styles.loading} />
         ) : !current ? (
           <ThemedText style={styles.empty}>
@@ -167,6 +180,17 @@ const styles = StyleSheet.create({
   empty: {
     marginTop: Spacing.four,
     textAlign: 'center',
+  },
+  errorBox: {
+    alignItems: 'center',
+    gap: Spacing.three,
+  },
+  retryButton: {
+    borderWidth: 1,
+    borderColor: '#666',
+    borderRadius: Spacing.two,
+    paddingVertical: Spacing.two,
+    paddingHorizontal: Spacing.four,
   },
   card: {
     borderWidth: 1,

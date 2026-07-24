@@ -1,6 +1,7 @@
+import { Image } from 'expo-image';
 import { Link, Redirect } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
@@ -9,17 +10,23 @@ import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
 import { signOut } from '@/lib/auth';
 import { registerPushToken } from '@/lib/notifications';
-import { fetchProfileAlias, hasCompletedOnboarding } from '@/lib/profile';
+import { fetchProfileData, hasCompletedOnboarding } from '@/lib/profile';
 
 export default function HomeScreen() {
   const session = useSession();
   const [alias, setAlias] = useState<string | null>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [onboarded, setOnboarded] = useState<boolean | undefined>(undefined);
 
   useEffect(() => {
     if (!session) return;
     hasCompletedOnboarding(session.user.id).then(setOnboarded).catch(() => setOnboarded(true));
-    fetchProfileAlias(session.user.id).then(setAlias).catch(() => {});
+    fetchProfileData(session.user.id)
+      .then((profile) => {
+        setAlias(profile.alias);
+        setAvatarUrl(profile.avatar_url);
+      })
+      .catch(() => {});
     registerPushToken(session.user.id);
   }, [session]);
 
@@ -38,30 +45,43 @@ export default function HomeScreen() {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        <ThemedText type="title" style={styles.centered}>
-          {alias ? `¡Hola, ${alias}!` : '¡Hola!'}
-        </ThemedText>
-        <ThemedText style={styles.centered}>
-          Tu perfil está listo. Aquí irá el feed de swipe: mesas buscando
-          jugadores y jugadores buscando mesa.
-        </ThemedText>
-        <Link href="/feed" asChild>
-          <Pressable style={styles.primaryButton}>
-            <ThemedText style={styles.primaryLabel}>Buscar mesa</ThemedText>
-          </Pressable>
-        </Link>
-        <Link href="/groups" asChild>
-          <Pressable style={styles.secondaryButton}>
-            <ThemedText>Mis mesas</ThemedText>
-          </Pressable>
-        </Link>
-        <Link href="/matches" asChild>
-          <Pressable style={styles.secondaryButton}>
-            <ThemedText>Mis matches</ThemedText>
-          </Pressable>
-        </Link>
-        <Pressable style={styles.signOutButton} onPress={signOut}>
-          <ThemedText>Cerrar sesión</ThemedText>
+        <View style={styles.header}>
+          {avatarUrl && <Image source={{ uri: avatarUrl }} style={styles.avatar} />}
+          <ThemedText type="title" style={styles.centered}>
+            {alias ? `¡Hola, ${alias}!` : '¡Hola!'}
+          </ThemedText>
+          <ThemedText type="small" style={styles.centered}>
+            ¿Jugamos hoy?
+          </ThemedText>
+        </View>
+
+        <View style={styles.menu}>
+          <Link href="/feed" asChild>
+            <Pressable style={styles.primaryButton}>
+              <ThemedText style={styles.primaryLabel}>🎲 Buscar mesa</ThemedText>
+            </Pressable>
+          </Link>
+          <Link href="/groups" asChild>
+            <Pressable style={styles.secondaryButton}>
+              <ThemedText>🛡️ Mis mesas</ThemedText>
+            </Pressable>
+          </Link>
+          <Link href="/matches" asChild>
+            <Pressable style={styles.secondaryButton}>
+              <ThemedText>💬 Mis matches</ThemedText>
+            </Pressable>
+          </Link>
+          <Link href="/onboarding" asChild>
+            <Pressable style={styles.secondaryButton}>
+              <ThemedText>👤 Editar perfil</ThemedText>
+            </Pressable>
+          </Link>
+        </View>
+
+        <Pressable style={styles.signOut} onPress={signOut}>
+          <ThemedText type="small" style={styles.signOutLabel}>
+            Cerrar sesión
+          </ThemedText>
         </Pressable>
       </SafeAreaView>
     </ThemedView>
@@ -76,44 +96,51 @@ const styles = StyleSheet.create({
   },
   loading: {
     alignItems: 'center',
+    justifyContent: 'center',
   },
   safeArea: {
     flex: 1,
     justifyContent: 'center',
     paddingHorizontal: Spacing.four,
-    gap: Spacing.three,
+    gap: Spacing.five,
     maxWidth: MaxContentWidth,
+  },
+  header: {
+    alignItems: 'center',
+    gap: Spacing.two,
+  },
+  avatar: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
   },
   centered: {
     textAlign: 'center',
   },
+  menu: {
+    gap: Spacing.two,
+  },
   primaryButton: {
-    alignSelf: 'center',
     backgroundColor: '#5865F2',
     borderRadius: Spacing.two,
-    paddingVertical: Spacing.two,
-    paddingHorizontal: Spacing.four,
-    marginTop: Spacing.four,
+    paddingVertical: Spacing.three,
+    alignItems: 'center',
   },
   primaryLabel: {
     color: '#fff',
     fontWeight: '600',
   },
   secondaryButton: {
-    alignSelf: 'center',
     borderWidth: 1,
     borderColor: '#5865F2',
     borderRadius: Spacing.two,
-    paddingVertical: Spacing.two,
-    paddingHorizontal: Spacing.four,
+    paddingVertical: Spacing.three,
+    alignItems: 'center',
   },
-  signOutButton: {
+  signOut: {
     alignSelf: 'center',
-    borderWidth: 1,
-    borderColor: '#666',
-    borderRadius: Spacing.two,
-    paddingVertical: Spacing.two,
-    paddingHorizontal: Spacing.four,
-    marginTop: Spacing.four,
+  },
+  signOutLabel: {
+    textDecorationLine: 'underline',
   },
 });
