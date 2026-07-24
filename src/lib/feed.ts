@@ -11,6 +11,7 @@ export type GroupCandidate = {
     owner_id: string;
     name: string;
     image_url: string | null;
+    boosted_until: string | null;
     description: string | null;
     format: GroupFormat;
     frequency: string | null;
@@ -92,7 +93,7 @@ export async function fetchPlayerFeed(userId: string): Promise<GroupCandidate[]>
   const { data: groups, error } = await supabase
     .from('groups')
     .select(
-      `id, owner_id, name, image_url, description, format, frequency, timezone, language, system_id,
+      `id, owner_id, name, image_url, boosted_until, description, format, frequency, timezone, language, system_id,
        session_weekday, session_slot, experience_wanted, vtt,
        style_combat_narrative, style_serious_humor, style_roleplay_weight,
        systems(name), group_openings!inner(is_open)`
@@ -258,11 +259,17 @@ export async function fetchUnifiedFeed(userId: string): Promise<UnifiedFeed> {
     );
   }
 
-  // Likes recibidos primero; después por score
+  // Likes recibidos primero; después mesas destacadas (boost premium); después score
   const liked = (item: FeedItem) => (item.kind === 'player' && item.candidate.likedGroup ? 1 : 0);
+  const boosted = (item: FeedItem) =>
+    item.kind === 'group' &&
+    item.group.boosted_until !== null &&
+    new Date(item.group.boosted_until).getTime() > Date.now()
+      ? 1
+      : 0;
   const score = (item: FeedItem) =>
     item.kind === 'group' ? item.result.score : item.candidate.result.score;
-  items.sort((a, b) => liked(b) - liked(a) || score(b) - score(a));
+  items.sort((a, b) => liked(b) - liked(a) || boosted(b) - boosted(a) || score(b) - score(a));
 
   return { items, myAvailability: meRow.availability_slots };
 }

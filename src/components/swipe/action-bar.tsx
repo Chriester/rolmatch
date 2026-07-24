@@ -9,12 +9,22 @@ type ActionBarProps = {
   onPass: () => void;
   onLike: () => void;
   onInfo?: () => void;
+  /** rewind premium (↩); se muestra siempre y la pantalla decide el gate */
+  onRewind?: () => void;
   disabled?: boolean;
 };
 
-export function ActionBar({ onPass, onLike, onInfo, disabled }: ActionBarProps) {
+export function ActionBar({ onPass, onLike, onInfo, onRewind, disabled }: ActionBarProps) {
   return (
     <ThemedView style={styles.row}>
+      {onRewind && (
+        <Pressable
+          style={({ pressed }) => [styles.button, styles.rewind, pressed && styles.pressed]}
+          onPress={onRewind}
+          accessibilityLabel="Deshacer último swipe">
+          <Text style={[styles.glyph, styles.rewindGlyph]}>↩</Text>
+        </Pressable>
+      )}
       <Pressable
         style={({ pressed }) => [
           styles.button,
@@ -81,6 +91,16 @@ const styles = StyleSheet.create({
     height: 44,
     borderRadius: 22,
     borderColor: 'rgba(255,255,255,0.4)',
+  },
+  rewind: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    borderColor: '#F5A623',
+  },
+  rewindGlyph: {
+    color: '#F5A623',
+    fontSize: 22,
   },
   glyph: {
     fontSize: 28,

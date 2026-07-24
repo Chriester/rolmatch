@@ -36,6 +36,7 @@ export default function RootLayout() {
           <Stack.Screen name="index" />
           <Stack.Screen name="onboarding" />
           <Stack.Screen name="matches" />
+          <Stack.Screen name="likes" />
           <Stack.Screen name="report" />
           <Stack.Screen name="rate" />
           <Stack.Screen name="characters/index" />

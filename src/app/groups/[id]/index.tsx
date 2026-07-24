@@ -27,6 +27,7 @@ import {
   fetchGroup,
   type GroupDetail,
 } from '@/lib/groups';
+import { boostGroup, isBoostActive } from '@/lib/premium';
 import {
   createSession,
   deleteSession,
@@ -68,11 +69,38 @@ export default function GroupDetailScreen() {
   const [dateText, setDateText] = useState('');
   const [timeText, setTimeText] = useState('');
   const [sessionBusy, setSessionBusy] = useState(false);
+  const [boostedUntil, setBoostedUntil] = useState<string | null>(null);
+  const [boostBusy, setBoostBusy] = useState(false);
+
+  const handleBoost = async () => {
+    if (!id) return;
+    setBoostBusy(true);
+    try {
+      const until = await boostGroup(id);
+      setBoostedUntil(until);
+      showAlert('🚀 Mesa destacada', 'Aparecerá primero en los feeds durante 7 días.');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (message.includes('premium')) {
+        showAlert(
+          '🚀 Destacar es premium',
+          'Los testers de la alpha tienen premium incluido — pídeselo a Chris.'
+        );
+      } else {
+        showAlert('No se pudo destacar', message);
+      }
+    } finally {
+      setBoostBusy(false);
+    }
+  };
 
   useEffect(() => {
     if (!id) return;
     fetchGroup(id)
-      .then(setGroup)
+      .then((g) => {
+        setGroup(g);
+        setBoostedUntil(g.boosted_until);
+      })
       .catch(() => setGroup(null));
     fetchUpcomingSessions(id)
       .then(setSessions)
@@ -293,6 +321,26 @@ export default function GroupDetailScreen() {
             </Pressable>
           )}
 
+          {session?.user.id === group.owner_id &&
+            (isBoostActive(boostedUntil) ? (
+              <ThemedText type="small" style={styles.boostActive}>
+                🚀 Mesa destacada hasta el{' '}
+                {new Date(boostedUntil!).toLocaleDateString('es-ES', {
+                  day: 'numeric',
+                  month: 'short',
+                })}
+              </ThemedText>
+            ) : (
+              <Pressable
+                style={[styles.boostButton, boostBusy && styles.boostDisabled]}
+                disabled={boostBusy}
+                onPress={handleBoost}>
+                <ThemedText style={styles.boostLabel}>
+                  🚀 Destacar mesa 7 días (premium)
+                </ThemedText>
+              </Pressable>
+            ))}
+
           {group.discord_invite_url && (
             <Pressable
               style={styles.primaryButton}
@@ -387,5 +435,23 @@ const styles = StyleSheet.create({
   primaryLabel: {
     color: '#fff',
     fontWeight: '600',
+  },
+  boostButton: {
+    borderWidth: 1,
+    borderColor: '#F5A623',
+    borderRadius: Spacing.two,
+    paddingVertical: Spacing.two,
+    paddingHorizontal: Spacing.four,
+    alignSelf: 'flex-start',
+  },
+  boostLabel: {
+    color: '#F5A623',
+    fontWeight: '600',
+  },
+  boostActive: {
+    color: '#F5A623',
+  },
+  boostDisabled: {
+    opacity: 0.5,
   },
 });

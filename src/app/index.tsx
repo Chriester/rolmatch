@@ -38,8 +38,14 @@ import {
 } from '@/lib/groups';
 import { blockUser } from '@/lib/moderation';
 import { registerPushToken } from '@/lib/notifications';
+import { fetchPremiumStatus, isBoostActive } from '@/lib/premium';
 import { fetchProfileData, hasCompletedOnboarding } from '@/lib/profile';
-import { groupSwipeOnUser, swipeOnGroup } from '@/lib/swipes';
+import {
+  groupSwipeOnUser,
+  swipeOnGroup,
+  undoGroupSwipeOnUser,
+  undoSwipeOnGroup,
+} from '@/lib/swipes';
 
 const DECK_MAX_WIDTH = 420;
 
@@ -79,6 +85,8 @@ export default function HomeScreen() {
   const [proposedId, setProposedId] = useState<string | null>(null);
   const [matchWith, setMatchWith] = useState<FeedItem | null>(null);
   const [myAvatar, setMyAvatar] = useState<string | null>(null);
+  const [premium, setPremium] = useState(false);
+  const [lastSwiped, setLastSwiped] = useState<FeedItem | null>(null);
 
   const load = useCallback(() => {
     if (!session) return;
@@ -86,10 +94,14 @@ export default function HomeScreen() {
     setItems(undefined);
     setIndex(0);
     setProposedId(null);
+    setLastSwiped(null);
     hasCompletedOnboarding(session.user.id)
       .then(setOnboarded)
       .catch(() => setOnboarded(true));
     registerPushToken(session.user.id);
+    fetchPremiumStatus(session.user.id)
+      .then((status) => setPremium(status.active))
+      .catch(() => {});
     fetchUnifiedFeed(session.user.id)
       .then((feed) => {
         setItems(feed.items);
@@ -125,13 +137,40 @@ export default function HomeScreen() {
         ? swipeOnGroup(session.user.id, item.group.id, direction, proposal)
         : groupSwipeOnUser(item.forGroup.id, item.candidate.player.id, direction);
 
+    setLastSwiped(item);
     request
       .then((matched) => {
-        if (matched) setMatchWith(item);
+        if (matched) {
+          setMatchWith(item);
+          setLastSwiped(null); // un match no se puede deshacer
+        }
       })
       .catch((error) =>
         showAlert('No se pudo guardar el swipe', error instanceof Error ? error.message : String(error))
       );
+  };
+
+  const handleRewind = async () => {
+    if (!session) return;
+    if (!premium) {
+      showAlert(
+        '↩ Rewind es premium',
+        'Deshacer el último swipe es una función premium. Los testers de la alpha la tienen incluida — pídesela a Chris.'
+      );
+      return;
+    }
+    if (!lastSwiped || index === 0) return;
+    try {
+      if (lastSwiped.kind === 'group') {
+        await undoSwipeOnGroup(session.user.id, lastSwiped.group.id);
+      } else {
+        await undoGroupSwipeOnUser(lastSwiped.forGroup.id, lastSwiped.candidate.player.id);
+      }
+      setLastSwiped(null);
+      setIndex((i) => Math.max(0, i - 1));
+    } catch (error) {
+      showAlert('No se pudo deshacer', error instanceof Error ? error.message : String(error));
+    }
   };
 
   const handleBlock = async () => {
@@ -163,7 +202,13 @@ export default function HomeScreen() {
             </View>
           }
           banner={
-            g.format === 'oneshot' ? (
+            isBoostActive(g.boosted_until) ? (
+              <View style={styles.boostBanner}>
+                <Text style={styles.oneshotText} numberOfLines={1}>
+                  🚀 Mesa destacada
+                </Text>
+              </View>
+            ) : g.format === 'oneshot' ? (
               <View style={styles.oneshotBanner}>
                 <Text style={styles.oneshotText} numberOfLines={1}>
                   🎬 One-shot — la primera cita perfecta
@@ -448,6 +493,7 @@ export default function HomeScreen() {
               onPass={() => deckRef.current?.swipe('pass')}
               onLike={() => deckRef.current?.swipe('like')}
               onInfo={() => deckRef.current?.toggleDetails()}
+              onRewind={handleRewind}
             />
           </>
         )}
@@ -567,6 +613,11 @@ const styles = StyleSheet.create({
   },
   oneshotBanner: {
     backgroundColor: 'rgba(59,209,111,0.8)',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+  },
+  boostBanner: {
+    backgroundColor: 'rgba(245,166,35,0.85)',
     paddingVertical: 8,
     paddingHorizontal: 16,
   },
