@@ -161,6 +161,15 @@ export default function HomeScreen() {
             <View style={styles.scoreBadge}>
               <Text style={styles.scoreText}>{item.result.score}%</Text>
             </View>
+          }
+          banner={
+            g.format === 'oneshot' ? (
+              <View style={styles.oneshotBanner}>
+                <Text style={styles.oneshotText} numberOfLines={1}>
+                  🎬 One-shot — la primera cita perfecta
+                </Text>
+              </View>
+            ) : undefined
           }>
           <Text style={cardText.title} numberOfLines={2}>
             {g.name}
@@ -555,6 +564,17 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(88,101,242,0.85)',
     paddingVertical: 8,
     paddingHorizontal: 16,
+  },
+  oneshotBanner: {
+    backgroundColor: 'rgba(59,209,111,0.8)',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+  },
+  oneshotText: {
+    color: '#0b2416',
+    fontWeight: '800',
+    fontSize: 14,
+    textAlign: 'center',
   },
   likedText: {
     color: '#fff',

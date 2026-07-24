@@ -1,9 +1,18 @@
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Linking,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  TextInput,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { showAlert } from '@/lib/alert';
 import { AppHeader } from '@/components/app-header';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -18,6 +27,32 @@ import {
   fetchGroup,
   type GroupDetail,
 } from '@/lib/groups';
+import {
+  createSession,
+  deleteSession,
+  fetchUpcomingSessions,
+  nextRegularSession,
+  parseSessionDateTime,
+  type GameSession,
+} from '@/lib/sessions';
+
+function formatSessionDate(iso: string) {
+  return new Date(iso).toLocaleString('es-ES', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+function toInputs(date: Date): { date: string; time: string } {
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return {
+    date: `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`,
+    time: `${pad(date.getHours())}:${pad(date.getMinutes())}`,
+  };
+}
 
 function styleLabel(value: number, left: string, right: string) {
   if (value <= 25) return left;
@@ -29,13 +64,42 @@ export default function GroupDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const session = useSession();
   const [group, setGroup] = useState<GroupDetail | null | undefined>(undefined);
+  const [sessions, setSessions] = useState<GameSession[]>([]);
+  const [dateText, setDateText] = useState('');
+  const [timeText, setTimeText] = useState('');
+  const [sessionBusy, setSessionBusy] = useState(false);
 
   useEffect(() => {
     if (!id) return;
     fetchGroup(id)
       .then(setGroup)
       .catch(() => setGroup(null));
+    fetchUpcomingSessions(id)
+      .then(setSessions)
+      .catch(() => {});
   }, [id]);
+
+  const handleCreateSession = async () => {
+    if (!id || !session || !group) return;
+    const startsAt = parseSessionDateTime(dateText, timeText);
+    if (!startsAt) {
+      showAlert('Fecha no válida', 'Usa el formato AAAA-MM-DD y HH:MM, con fecha futura.');
+      return;
+    }
+    setSessionBusy(true);
+    try {
+      const created = await createSession(id, session.user.id, startsAt, null);
+      setSessions((list) =>
+        [...list, created].sort((a, b) => a.starts_at.localeCompare(b.starts_at))
+      );
+      setDateText('');
+      setTimeText('');
+    } catch (error) {
+      showAlert('No se pudo programar', error instanceof Error ? error.message : String(error));
+    } finally {
+      setSessionBusy(false);
+    }
+  };
 
   if (group === undefined) {
     return (
@@ -139,6 +203,86 @@ export default function GroupDetailScreen() {
             })}
           </View>
 
+          {group.group_members.some((m) => m.user_id === session?.user.id) && (
+            <View style={styles.block}>
+              <ThemedText type="subtitle">📅 Próximas sesiones</ThemedText>
+              {sessions.length === 0 ? (
+                <ThemedText type="small">Ninguna programada todavía.</ThemedText>
+              ) : (
+                sessions.map((s) => (
+                  <View key={s.id} style={styles.memberRow}>
+                    <ThemedText style={styles.memberName}>
+                      {formatSessionDate(s.starts_at)}
+                    </ThemedText>
+                    {session?.user.id === group.owner_id && (
+                      <Pressable
+                        onPress={async () => {
+                          try {
+                            await deleteSession(s.id);
+                            setSessions((list) => list.filter((x) => x.id !== s.id));
+                          } catch (error) {
+                            showAlert(
+                              'No se pudo borrar',
+                              error instanceof Error ? error.message : String(error)
+                            );
+                          }
+                        }}>
+                        <ThemedText type="small" style={styles.deleteLink}>
+                          Quitar
+                        </ThemedText>
+                      </Pressable>
+                    )}
+                  </View>
+                ))
+              )}
+
+              {session?.user.id === group.owner_id && (
+                <View style={styles.sessionForm}>
+                  <TextInput
+                    style={[styles.sessionInput, styles.sessionDate]}
+                    value={dateText}
+                    onChangeText={setDateText}
+                    placeholder="AAAA-MM-DD"
+                    placeholderTextColor="#888"
+                    autoCapitalize="none"
+                  />
+                  <TextInput
+                    style={[styles.sessionInput, styles.sessionTime]}
+                    value={timeText}
+                    onChangeText={setTimeText}
+                    placeholder="HH:MM"
+                    placeholderTextColor="#888"
+                    autoCapitalize="none"
+                  />
+                  <Pressable
+                    style={[styles.smallButton, sessionBusy && styles.disabled]}
+                    onPress={handleCreateSession}
+                    disabled={sessionBusy}>
+                    <ThemedText type="small" style={styles.primaryLabel}>
+                      Programar
+                    </ThemedText>
+                  </Pressable>
+                  {nextRegularSession(group.session_weekday, group.session_slot) && (
+                    <Pressable
+                      onPress={() => {
+                        const next = nextRegularSession(
+                          group.session_weekday,
+                          group.session_slot
+                        )!;
+                        const inputs = toInputs(next);
+                        setDateText(inputs.date);
+                        setTimeText(inputs.time);
+                      }}>
+                      <ThemedText type="small" style={styles.rateLink}>
+                        Usar horario habitual
+                      </ThemedText>
+                    </Pressable>
+                  )}
+                </View>
+              )}
+            </View>
+          )}
+
           {session?.user.id === group.owner_id && (
             <Pressable
               style={styles.primaryButton}
@@ -199,6 +343,39 @@ const styles = StyleSheet.create({
   },
   rateLink: {
     color: '#5865F2',
+  },
+  deleteLink: {
+    color: '#d9534f',
+  },
+  sessionForm: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: Spacing.two,
+    marginTop: Spacing.one,
+  },
+  sessionInput: {
+    borderWidth: 1,
+    borderColor: '#666',
+    borderRadius: Spacing.two,
+    paddingHorizontal: Spacing.two,
+    paddingVertical: Spacing.one,
+    color: '#888',
+  },
+  sessionDate: {
+    width: 118,
+  },
+  sessionTime: {
+    width: 70,
+  },
+  smallButton: {
+    backgroundColor: '#5865F2',
+    borderRadius: Spacing.two,
+    paddingVertical: Spacing.one,
+    paddingHorizontal: Spacing.three,
+  },
+  disabled: {
+    opacity: 0.5,
   },
   primaryButton: {
     backgroundColor: '#5865F2',
