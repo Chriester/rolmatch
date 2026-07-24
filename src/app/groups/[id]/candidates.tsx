@@ -1,5 +1,5 @@
-import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 
 import { showAlert } from '@/lib/alert';
@@ -26,12 +26,19 @@ export default function GroupCandidatesScreen() {
   const [index, setIndex] = useState(0);
   const [busy, setBusy] = useState(false);
 
-  useEffect(() => {
+  const [loadError, setLoadError] = useState(false);
+
+  const load = useCallback(() => {
     if (!id || !session) return;
+    setLoadError(false);
+    setCandidates(undefined);
+    setIndex(0);
     fetchGroupCandidates(id, session.user.id)
       .then(setCandidates)
-      .catch(() => setCandidates([]));
+      .catch(() => setLoadError(true));
   }, [id, session]);
+
+  useFocusEffect(load);
 
   const current = candidates?.[index];
 
@@ -82,7 +89,14 @@ export default function GroupCandidatesScreen() {
         </Pressable>
         <ThemedText type="title">Candidatos</ThemedText>
 
-        {candidates === undefined ? (
+        {loadError ? (
+          <View style={styles.errorBox}>
+            <ThemedText style={styles.empty}>No se pudieron cargar los candidatos.</ThemedText>
+            <Pressable style={styles.retryButton} onPress={load}>
+              <ThemedText>Reintentar</ThemedText>
+            </Pressable>
+          </View>
+        ) : candidates === undefined ? (
           <ActivityIndicator style={styles.loading} />
         ) : !current ? (
           <ThemedText style={styles.empty}>
@@ -166,6 +180,17 @@ const styles = StyleSheet.create({
   empty: {
     marginTop: Spacing.four,
     textAlign: 'center',
+  },
+  errorBox: {
+    alignItems: 'center',
+    gap: Spacing.three,
+  },
+  retryButton: {
+    borderWidth: 1,
+    borderColor: '#666',
+    borderRadius: Spacing.two,
+    paddingVertical: Spacing.two,
+    paddingHorizontal: Spacing.four,
   },
   card: {
     borderWidth: 1,

@@ -24,6 +24,43 @@ export type ProfileUpdate = {
 
 export type UserSystemInput = { system_id: number; experience: ExperienceLevel };
 
+export type ProfileData = ProfileUpdate & {
+  avatar_url: string | null;
+  availability: AvailabilityCell[];
+  systems: UserSystemInput[];
+};
+
+/** Perfil completo con disponibilidad y sistemas, para precargar el editor. */
+export async function fetchProfileData(userId: string): Promise<ProfileData> {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select(
+      `alias, bio, timezone, role, avatar_url, open_to_any_system,
+       style_combat_narrative, style_serious_humor, style_roleplay_weight,
+       voice_chat, camera_ok, preferred_vtt,
+       availability_slots(weekday, slot), user_systems(system_id, experience)`
+    )
+    .eq('id', userId)
+    .single();
+  if (error) throw error;
+  return {
+    alias: data.alias,
+    bio: data.bio,
+    timezone: data.timezone,
+    role: data.role as UserRole,
+    avatar_url: data.avatar_url,
+    open_to_any_system: data.open_to_any_system,
+    style_combat_narrative: data.style_combat_narrative,
+    style_serious_humor: data.style_serious_humor,
+    style_roleplay_weight: data.style_roleplay_weight,
+    voice_chat: data.voice_chat,
+    camera_ok: data.camera_ok,
+    preferred_vtt: data.preferred_vtt as VttType,
+    availability: data.availability_slots,
+    systems: data.user_systems as UserSystemInput[],
+  };
+}
+
 export async function fetchProfileAlias(userId: string): Promise<string | null> {
   const { data, error } = await supabase
     .from('profiles')
