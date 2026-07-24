@@ -25,6 +25,8 @@ export type MatchPlayer = {
   avatar_url: string | null;
   availability: AvailabilitySlot[];
   systems: { system_id: number; experience: ExperienceLevel }[];
+  /** media de valoraciones recibidas (fase 3); null/ausente = sin valoraciones */
+  reliability?: { average: number; count: number } | null;
 };
 
 export type MatchGroup = {
@@ -145,10 +147,13 @@ function styleScore(player: MatchPlayer, group: MatchGroup): number {
 }
 
 /**
- * Fiabilidad (10 %): sin valoraciones todavía (fase 3), usamos un proxy de
- * completitud de perfil para no dejar el componente a cero.
+ * Fiabilidad (10 %): con valoraciones reales usa su media (1-5 → 2-10);
+ * sin valoraciones, proxy de completitud de perfil para no dejarlo a cero.
  */
 function reliabilityScore(player: MatchPlayer): number {
+  if (player.reliability && player.reliability.count > 0) {
+    return (player.reliability.average / 5) * 10;
+  }
   let score = 4;
   if (player.bio && player.bio.trim().length > 0) score += 3;
   if (player.avatar_url) score += 3;

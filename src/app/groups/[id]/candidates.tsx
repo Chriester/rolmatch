@@ -168,6 +168,13 @@ export default function GroupCandidatesScreen() {
       <Text style={sheetText.body}>
         {c.result.score}% — coincide {c.result.overlapHours} h con vuestra sesión
       </Text>
+      {c.player.reliability && c.player.reliability.count > 0 && (
+        <Text style={sheetText.body}>
+          Fiabilidad: 🎲 {c.player.reliability.average.toFixed(1)}/5 (
+          {c.player.reliability.count}{' '}
+          {c.player.reliability.count === 1 ? 'valoración' : 'valoraciones'})
+        </Text>
+      )}
       <View style={styles.moderationRow}>
         <Pressable
           onPress={() =>

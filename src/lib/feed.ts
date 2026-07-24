@@ -1,5 +1,6 @@
 import { matchPlayerToGroup, type MatchGroup, type MatchPlayer, type MatchResult } from '@/lib/matching';
 import { fetchBlockRelations } from '@/lib/moderation';
+import { fetchReliability } from '@/lib/ratings';
 import { supabase } from '@/lib/supabase';
 import type { GroupFormat } from '@/lib/groups';
 import type { VttType } from '@/lib/profile';
@@ -156,15 +157,23 @@ export async function fetchGroupCandidates(
     );
   if (error) throw error;
 
-  return (profiles ?? [])
-    .filter((p) => !excluded.has(p.id) && p.availability_slots.length > 0)
+  const eligible = (profiles ?? []).filter(
+    (p) => !excluded.has(p.id) && p.availability_slots.length > 0
+  );
+  // Fiabilidad real (fase 3): media de valoraciones para el 10 % del score
+  const reliability = await fetchReliability(eligible.map((p) => p.id)).catch(
+    () => new Map<string, { average: number; count: number }>()
+  );
+
+  return eligible
     .map((p) => {
       const characters = (p.characters ?? []) as unknown as ShowcaseCharacter[];
       const likedGroup = likesByUser.has(p.id);
       const proposedId = likesByUser.get(p.id) ?? null;
+      const matchInput = { ...toMatchPlayer(p), reliability: reliability.get(p.id) ?? null };
       return {
         player: {
-          ...toMatchPlayer(p),
+          ...matchInput,
           id: p.id,
           alias: p.alias,
           role: p.role,
@@ -172,7 +181,7 @@ export async function fetchGroupCandidates(
         },
         likedGroup,
         proposal: characters.find((c) => c.id === proposedId) ?? null,
-        result: matchPlayerToGroup(toMatchPlayer(p), group as unknown as MatchGroup),
+        result: matchPlayerToGroup(matchInput, group as unknown as MatchGroup),
       };
     })
     .filter((c) => c.result.pass)
