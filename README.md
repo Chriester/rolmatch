@@ -62,6 +62,16 @@ El "bot" del MVP no es un proceso persistente: es la Edge Function [supabase/fun
 - **Web**: sin push — el aviso de match es la mención del bot en el canal de Discord.
 - **iOS/Android**: Expo Push. La app registra el token del dispositivo en `push_tokens` (migración `00003_push_tokens.sql`) y la Edge Function `discord-match` envía la notificación al hacer match. Requiere un **development build con proyecto EAS** (`eas init` + `eas build --profile development`); en Expo Go el push remoto no está disponible y la app simplemente lo omite.
 
+### Deploy web (Vercel)
+
+El repo incluye [vercel.json](vercel.json): build `npx expo export -p web`, salida `dist/`, y rewrite SPA (la app usa `web.output: "single"`). Para desplegar:
+
+1. [vercel.com](https://vercel.com) → login con GitHub → **Import** del repo `rolmatch` (Vercel lee `vercel.json`, no hay que tocar los ajustes de build).
+2. En **Environment Variables** del proyecto añade las tres del `.env`: `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY` y `EXPO_PUBLIC_DISCORD_GUILD_ID` → Deploy.
+3. En Supabase → Authentication → **URL Configuration** → añade la URL de producción (`https://…vercel.app`) a **Redirect URLs** (y como Site URL si quieres que sea la principal) — sin esto el OAuth de Discord no vuelve a la app desplegada.
+
+Cada push a `main` redespliega automáticamente.
+
 ### Datos de prueba (probar en solitario)
 
 Para probar el feed y los matches sin necesitar una segunda cuenta, pega [supabase/seed/dev-seed.sql](supabase/seed/dev-seed.sql) en el SQL Editor: crea un GM y dos jugadores falsos, dos mesas de prueba y los likes preparados para provocar matches instantáneos con tu cuenta. Es idempotente (re-ejecútalo si creas mesas nuevas). Se limpia con [supabase/seed/dev-cleanup.sql](supabase/seed/dev-cleanup.sql). **Solo para entornos de desarrollo.**
