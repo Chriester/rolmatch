@@ -126,6 +126,21 @@ export function ListRow({
   );
 }
 
+/** Barra de estilo (handoff §8): pista de 6px con punto violeta en el % */
+export function StyleBar({ left, right, value }: { left: string; right: string; value: number }) {
+  return (
+    <View style={styles.axisBlock}>
+      <View style={styles.axisLabels}>
+        <Text style={styles.axisLabel}>{left}</Text>
+        <Text style={styles.axisLabel}>{right}</Text>
+      </View>
+      <View style={styles.axisTrack}>
+        <View style={[styles.axisDot, { left: `${value}%` }]} />
+      </View>
+    </View>
+  );
+}
+
 /** Pill de estado (EN JUEGO / BUSCANDO MESA / COMPLETA…) */
 export function StatusPill({
   label,
@@ -219,6 +234,32 @@ const styles = StyleSheet.create({
     borderStyle: 'dashed',
     borderColor: 'rgba(139,108,255,0.5)',
     justifyContent: 'center',
+  },
+  axisBlock: {
+    gap: 5,
+  },
+  axisLabels: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  axisLabel: {
+    color: Rolder.textSecondary,
+    fontSize: 11.5,
+    fontFamily: RolderFonts.regular,
+  },
+  axisTrack: {
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+  },
+  axisDot: {
+    position: 'absolute',
+    top: -4,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    marginLeft: -7,
+    backgroundColor: Rolder.violet,
   },
   pill: {
     borderRadius: 999,
