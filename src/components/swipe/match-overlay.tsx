@@ -8,9 +8,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeIn, ReduceMotion, ZoomIn } from 'react-native-reanimated';
-import Svg, { Defs, LinearGradient as SvgGradient, Stop, Text as SvgText } from 'react-native-svg';
 
-import { RolderLogo } from '@/components/brand';
+import { RolderGradientText, RolderLogo } from '@/components/brand';
 import { Rolder, RolderFonts } from '@/constants/theme';
 
 type Side = { imageUrl: string | null; fallbackEmoji: string };
@@ -35,30 +34,6 @@ function Portrait({ side, offset }: { side: Side; offset: number }) {
   );
 }
 
-// Título con gradiente coral→violeta (SVG: igual en web y nativo)
-function MatchTitle() {
-  return (
-    <Svg width={300} height={48} viewBox="0 0 300 48">
-      <Defs>
-        <SvgGradient id="match-title" x1="0" y1="0" x2="1" y2="0">
-          <Stop offset="0" stopColor={Rolder.coral} />
-          <Stop offset="1" stopColor={Rolder.violet} />
-        </SvgGradient>
-      </Defs>
-      <SvgText
-        x="150"
-        y="36"
-        fill="url(#match-title)"
-        fontFamily="Sora_800ExtraBold"
-        fontSize={34}
-        fontWeight="800"
-        textAnchor="middle">
-        ¡Es un match!
-      </SvgText>
-    </Svg>
-  );
-}
-
 export function MatchOverlay({ visible, left, right, subtitle, onClose }: MatchOverlayProps) {
   if (!visible) return null;
   return (
@@ -69,7 +44,7 @@ export function MatchOverlay({ visible, left, right, subtitle, onClose }: MatchO
         entering={ZoomIn.springify().damping(14).reduceMotion(ReduceMotion.Never)}
         style={styles.content}>
         <RolderLogo width={56} />
-        <MatchTitle />
+        <RolderGradientText text="¡Es un match!" size={34} />
         <View style={styles.portraits}>
           <Portrait side={left} offset={9} />
           <Portrait side={right} offset={-9} />

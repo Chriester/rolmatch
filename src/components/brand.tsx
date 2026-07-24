@@ -76,6 +76,32 @@ export function RolderWordmark({ size = 21 }: WordmarkProps) {
   );
 }
 
+/** Texto arbitrario con el gradiente de marca (p. ej. «¡Es un match!») */
+export function RolderGradientText({ text, size = 34 }: { text: string; size?: number }) {
+  const width = Math.max(text.length * size * 0.62, size * 4);
+  const height = size * 1.4;
+  return (
+    <Svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
+      <Defs>
+        <SvgGradient id="rolder-gtext" x1="0" y1="0" x2="1" y2="0">
+          <Stop offset="0" stopColor={Rolder.coral} />
+          <Stop offset="1" stopColor={Rolder.violet} />
+        </SvgGradient>
+      </Defs>
+      <SvgText
+        x={width / 2}
+        y={size * 1.05}
+        fill="url(#rolder-gtext)"
+        fontFamily="Sora_800ExtraBold"
+        fontSize={size}
+        fontWeight="800"
+        textAnchor="middle">
+        {text}
+      </SvgText>
+    </Svg>
+  );
+}
+
 /** Logo + wordmark en fila, el lockup de las cabeceras */
 export function RolderBrand({
   logoWidth = 24,

@@ -3,7 +3,7 @@
 
 import { Image } from 'expo-image';
 import { router, type Href } from 'expo-router';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeIn, FadeInDown, ReduceMotion } from 'react-native-reanimated';
 
 import { signOut } from '@/lib/auth';
@@ -27,7 +27,10 @@ const ITEMS: { icon: string; label: string; href: Href }[] = [
 export function AppMenu({ visible, alias, avatarUrl, onClose }: AppMenuProps) {
   if (!visible) return null;
   return (
-    <View style={styles.overlay}>
+    // Modal: el menú se superpone a CUALQUIER pantalla (la cabecera lo abre
+    // desde todas), sin depender del layout del padre.
+    <Modal transparent visible animationType="none" onRequestClose={onClose}>
+      <View style={styles.overlay}>
       <Animated.View
         entering={FadeIn.duration(150).reduceMotion(ReduceMotion.Never)}
         style={StyleSheet.absoluteFill}>
@@ -78,7 +81,8 @@ export function AppMenu({ visible, alias, avatarUrl, onClose }: AppMenuProps) {
           <Text style={[styles.itemLabel, styles.signOut]}>Cerrar sesión</Text>
         </Pressable>
       </Animated.View>
-    </View>
+      </View>
+    </Modal>
   );
 }
 

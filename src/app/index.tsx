@@ -1,7 +1,6 @@
 // Página principal: el feed de descubrimiento (estilo Tinder). Los menús
 // viven en el panel superior derecho (avatar).
 
-import { Image } from 'expo-image';
 import { Redirect, router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -17,7 +16,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { showAlert } from '@/lib/alert';
 import { AppHeader } from '@/components/app-header';
-import { AppMenu } from '@/components/app-menu';
 import { Chip } from '@/components/chip';
 import { ActionBar } from '@/components/swipe/action-bar';
 import {
@@ -85,8 +83,6 @@ export default function HomeScreen() {
   const deckRef = useRef<SwipeDeckHandle | null>(null);
 
   const [onboarded, setOnboarded] = useState<boolean | undefined>(undefined);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [myAlias, setMyAlias] = useState<string | null>(null);
   const [items, setItems] = useState<FeedItem[] | undefined>(undefined);
   const [myAvailability, setMyAvailability] = useState<Set<string>>(new Set());
   const [loadError, setLoadError] = useState(false);
@@ -124,10 +120,7 @@ export default function HomeScreen() {
       .then((all) => setMyCharacters(all.filter((c) => c.status === 'looking')))
       .catch(() => {});
     fetchProfileData(session.user.id)
-      .then((p) => {
-        setMyAvatar(p.avatar_url);
-        setMyAlias(p.alias);
-      })
+      .then((p) => setMyAvatar(p.avatar_url))
       .catch(() => {});
   }, [session]);
 
@@ -452,22 +445,7 @@ export default function HomeScreen() {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        <AppHeader
-          right={
-            <Pressable
-              onPress={() => setMenuOpen(true)}
-              accessibilityLabel="Abrir menú"
-              style={styles.menuButton}>
-              {myAvatar ? (
-                <Image source={{ uri: myAvatar }} style={styles.menuAvatar} />
-              ) : (
-                <View style={[styles.menuAvatar, styles.menuAvatarFallback]}>
-                  <Text style={styles.menuAvatarGlyph}>☰</Text>
-                </View>
-              )}
-            </Pressable>
-          }
-        />
+        <AppHeader />
 
         {loadError ? (
           <View style={styles.centerBox}>
@@ -568,13 +546,6 @@ export default function HomeScreen() {
         }
         onClose={() => setMatchWith(null)}
       />
-
-      <AppMenu
-        visible={menuOpen}
-        alias={myAlias}
-        avatarUrl={myAvatar}
-        onClose={() => setMenuOpen(false)}
-      />
     </ThemedView>
   );
 }
@@ -595,26 +566,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingVertical: Spacing.two,
-  },
-  menuButton: {
-    width: 44,
-    alignItems: 'flex-end',
-  },
-  menuAvatar: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    borderWidth: 2,
-    borderColor: 'rgba(123,92,255,0.7)',
-  },
-  menuAvatarFallback: {
-    backgroundColor: 'rgba(139,108,255,0.25)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  menuAvatarGlyph: {
-    color: '#fff',
-    fontSize: 17,
   },
   deckArea: {
     flex: 1,
