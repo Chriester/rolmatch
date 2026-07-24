@@ -1,18 +1,24 @@
-import { Image } from 'expo-image';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
-import { useCallback, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
-
-import { showAlert } from '@/lib/alert';
+import { useCallback, useRef, useState } from 'react';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { showAlert } from '@/lib/alert';
+import { ActionBar } from '@/components/swipe/action-bar';
+import { CardShell, cardText } from '@/components/swipe/card-shell';
+import { SwipeDeck, type SwipeChoice, type SwipeDeckHandle } from '@/components/swipe/deck';
+import { DetailsSheet, sheetText } from '@/components/swipe/details-sheet';
+import { MatchOverlay } from '@/components/swipe/match-overlay';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { Spacing } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
 import { fetchGroupCandidates, type PlayerCandidate } from '@/lib/feed';
+import { fetchGroup, type GroupDetail } from '@/lib/groups';
 import { blockUser } from '@/lib/moderation';
 import { groupSwipeOnUser } from '@/lib/swipes';
+
+const DECK_MAX_WIDTH = 420;
 
 const ROLE_LABELS: Record<string, string> = {
   player: 'Jugador/a',
@@ -23,171 +29,212 @@ const ROLE_LABELS: Record<string, string> = {
 export default function GroupCandidatesScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const session = useSession();
-  const [candidates, setCandidates] = useState<PlayerCandidate[] | undefined>(undefined);
-  const [index, setIndex] = useState(0);
-  const [busy, setBusy] = useState(false);
+  const deckRef = useRef<SwipeDeckHandle | null>(null);
 
+  const [group, setGroup] = useState<GroupDetail | null>(null);
+  const [candidates, setCandidates] = useState<PlayerCandidate[] | undefined>(undefined);
   const [loadError, setLoadError] = useState(false);
+  const [index, setIndex] = useState(0);
+  const [showDetails, setShowDetails] = useState(false);
+  const [matchWith, setMatchWith] = useState<PlayerCandidate | null>(null);
 
   const load = useCallback(() => {
     if (!id || !session) return;
     setLoadError(false);
     setCandidates(undefined);
     setIndex(0);
+    setShowDetails(false);
     fetchGroupCandidates(id, session.user.id)
       .then(setCandidates)
       .catch(() => setLoadError(true));
+    fetchGroup(id)
+      .then(setGroup)
+      .catch(() => {});
   }, [id, session]);
 
   useFocusEffect(load);
 
   const current = candidates?.[index];
 
+  const handleSwiped = (item: PlayerCandidate, choice: SwipeChoice) => {
+    if (!id) return;
+    setShowDetails(false);
+    setIndex((i) => i + 1);
+    groupSwipeOnUser(id, item.player.id, choice === 'like' ? 'like' : 'pass')
+      .then((matched) => {
+        if (matched) setMatchWith(item);
+      })
+      .catch((error) =>
+        showAlert('No se pudo guardar el swipe', error instanceof Error ? error.message : String(error))
+      );
+  };
+
   const handleBlock = async () => {
     if (!session || !current) return;
-    setBusy(true);
     try {
       const blockedId = current.player.id;
       await blockUser(session.user.id, blockedId);
+      setShowDetails(false);
       setCandidates((list) => list?.filter((c) => c.player.id !== blockedId));
-      showAlert('Bloqueado', 'Esta persona ya no aparecerá entre vuestros candidatos, ni vosotros en su feed.');
     } catch (error) {
       showAlert('Error', error instanceof Error ? error.message : String(error));
-    } finally {
-      setBusy(false);
     }
   };
 
-  const handleSwipe = async (direction: 'like' | 'pass') => {
-    if (!id || !current) return;
-    setBusy(true);
-    try {
-      const matched = await groupSwipeOnUser(id, current.player.id, direction);
-      if (matched) {
-        showAlert(
-          '🎲 ¡Match!',
-          `${current.player.alias} también quiere jugar en vuestra mesa. La creación del canal de Discord llega en la fase del bot.`
-        );
+  const renderCard = (c: PlayerCandidate) => (
+    <CardShell
+      imageUrl={c.player.avatar_url}
+      fallbackEmoji="🧙"
+      topRight={
+        <View style={styles.scoreBadge}>
+          <Text style={styles.scoreText}>{c.result.score}%</Text>
+        </View>
       }
-      setIndex((i) => i + 1);
-    } catch (error) {
-      showAlert('Error', error instanceof Error ? error.message : String(error));
-    } finally {
-      setBusy(false);
-    }
-  };
+      banner={
+        c.likedGroup ? (
+          <View style={styles.likedBanner}>
+            <Text style={styles.likedText} numberOfLines={1}>
+              💘 Le gustáis
+              {c.proposal ? ` — propone a ${c.proposal.name}` : ''}
+            </Text>
+          </View>
+        ) : undefined
+      }>
+      <Text style={cardText.title} numberOfLines={1}>
+        {c.player.alias}
+      </Text>
+      <Text style={cardText.line}>
+        {ROLE_LABELS[c.player.role] ?? c.player.role} · {c.player.timezone}
+      </Text>
+      <Text style={cardText.soft}>⏱ Coincide {c.result.overlapHours} h con vuestra sesión</Text>
+      {c.player.characters.filter((ch) => ch.status === 'looking').length > 0 && (
+        <Text style={cardText.soft} numberOfLines={1}>
+          🧝{' '}
+          {c.player.characters
+            .filter((ch) => ch.status === 'looking')
+            .map((ch) => ch.name)
+            .join(' · ')}
+        </Text>
+      )}
+    </CardShell>
+  );
 
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        <Pressable
-          onPress={() =>
-            router.canGoBack()
-              ? router.back()
-              : router.replace({ pathname: '/groups/[id]', params: { id: id! } })
-          }>
-          <ThemedText type="link">← Volver a la mesa</ThemedText>
-        </Pressable>
-        <ThemedText type="title">Candidatos</ThemedText>
+        <View style={styles.header}>
+          <Pressable
+            onPress={() =>
+              router.canGoBack()
+                ? router.back()
+                : router.replace({ pathname: '/groups/[id]', params: { id: id! } })
+            }
+            style={styles.headerButton}>
+            <ThemedText type="link">←</ThemedText>
+          </Pressable>
+          <ThemedText type="subtitle" numberOfLines={1}>
+            Candidatos{group ? ` · ${group.name}` : ''}
+          </ThemedText>
+          <View style={styles.headerButton} />
+        </View>
 
         {loadError ? (
-          <View style={styles.errorBox}>
-            <ThemedText style={styles.empty}>No se pudieron cargar los candidatos.</ThemedText>
+          <View style={styles.centerBox}>
+            <Text style={styles.centerEmoji}>📡</Text>
+            <ThemedText style={styles.centerText}>No se pudieron cargar los candidatos.</ThemedText>
             <Pressable style={styles.retryButton} onPress={load}>
               <ThemedText>Reintentar</ThemedText>
             </Pressable>
           </View>
         ) : candidates === undefined ? (
-          <ActivityIndicator style={styles.loading} />
-        ) : !current ? (
-          <ThemedText style={styles.empty}>
-            No hay más candidatos compatibles por ahora. Los jugadores nuevos que
-            encajen con vuestro horario y sistema irán apareciendo aquí.
-          </ThemedText>
-        ) : (
-          <View style={styles.card}>
-            <View style={styles.cardHeader}>
-              <View style={styles.identity}>
-                {current.player.avatar_url && (
-                  <Image source={{ uri: current.player.avatar_url }} style={styles.avatar} />
-                )}
-                <ThemedText type="subtitle">{current.player.alias}</ThemedText>
-              </View>
-              <View style={styles.scoreBadge}>
-                <ThemedText type="smallBold" style={styles.scoreLabel}>
-                  {current.result.score}%
-                </ThemedText>
-              </View>
-            </View>
-            <ThemedText type="small">
-              {ROLE_LABELS[current.player.role] ?? current.player.role} ·{' '}
-              {current.player.timezone}
-            </ThemedText>
-            {current.likedGroup && (
-              <View style={styles.likedBadge}>
-                <ThemedText type="smallBold" style={styles.likedLabel}>
-                  💘 Ya ha dado like a vuestra mesa
-                  {current.proposal
-                    ? ` — propone a ${current.proposal.name}${
-                        current.proposal.archetype ? ` (${current.proposal.archetype})` : ''
-                      }`
-                    : ''}
-                </ThemedText>
-              </View>
-            )}
-            {current.player.bio && <ThemedText>{current.player.bio}</ThemedText>}
-            {current.player.characters.filter((c) => c.status === 'looking').length > 0 && (
-              <View style={styles.showcase}>
-                <ThemedText type="smallBold">Vitrina de personajes</ThemedText>
-                {current.player.characters
-                  .filter((c) => c.status === 'looking')
-                  .map((c) => (
-                    <ThemedText key={c.name} type="small">
-                      {[c.name, c.archetype, c.systems?.name].filter(Boolean).join(' · ')}
-                    </ThemedText>
-                  ))}
-              </View>
-            )}
-            <ThemedText type="small">
-              Coincide {current.result.overlapHours} h con vuestra sesión
-            </ThemedText>
-
-            <View style={styles.actions}>
-              <Pressable
-                style={[styles.passButton, busy && styles.disabled]}
-                onPress={() => handleSwipe('pass')}
-                disabled={busy}>
-                <ThemedText>Pasar</ThemedText>
-              </Pressable>
-              <Pressable
-                style={[styles.likeButton, busy && styles.disabled]}
-                onPress={() => handleSwipe('like')}
-                disabled={busy}>
-                <ThemedText style={styles.likeLabel}>Nos interesa</ThemedText>
-              </Pressable>
-            </View>
-
-            <View style={styles.moderationRow}>
-              <Pressable
-                onPress={() =>
-                  router.push({
-                    pathname: '/report',
-                    params: { kind: 'user', id: current.player.id, name: current.player.alias },
-                  })
-                }>
-                <ThemedText type="small" style={styles.moderationLink}>
-                  Reportar
-                </ThemedText>
-              </Pressable>
-              <Pressable onPress={handleBlock} disabled={busy}>
-                <ThemedText type="small" style={styles.moderationLink}>
-                  Bloquear
-                </ThemedText>
-              </Pressable>
-            </View>
+          <View style={styles.centerBox}>
+            <ActivityIndicator />
           </View>
+        ) : !current ? (
+          <View style={styles.centerBox}>
+            <Text style={styles.centerEmoji}>🧭</Text>
+            <ThemedText style={styles.centerText}>
+              No hay más candidatos compatibles por ahora. Los jugadores nuevos que
+              encajen con vuestro horario y sistema irán apareciendo aquí.
+            </ThemedText>
+          </View>
+        ) : (
+          <>
+            <View style={styles.deckArea}>
+              <SwipeDeck
+                items={candidates}
+                index={index}
+                keyFor={(c) => c.player.id}
+                renderCard={renderCard}
+                onSwiped={handleSwiped}
+                likeLabel="NOS INTERESA"
+                deckRef={deckRef}
+              />
+              <DetailsSheet
+                visible={showDetails}
+                title={current.player.alias}
+                onClose={() => setShowDetails(false)}>
+                {current.player.bio && (
+                  <>
+                    <Text style={sheetText.label}>Bio</Text>
+                    <Text style={sheetText.body}>{current.player.bio}</Text>
+                  </>
+                )}
+                {current.player.characters.filter((ch) => ch.status === 'looking').length > 0 && (
+                  <>
+                    <Text style={sheetText.label}>Vitrina de personajes</Text>
+                    {current.player.characters
+                      .filter((ch) => ch.status === 'looking')
+                      .map((ch) => (
+                        <Text key={ch.id} style={sheetText.body}>
+                          {[ch.name, ch.archetype, ch.systems?.name].filter(Boolean).join(' · ')}
+                        </Text>
+                      ))}
+                  </>
+                )}
+                <Text style={sheetText.label}>Compatibilidad</Text>
+                <Text style={sheetText.body}>
+                  {current.result.score}% — coincide {current.result.overlapHours} h con vuestra
+                  sesión
+                </Text>
+                <View style={styles.moderationRow}>
+                  <Pressable
+                    onPress={() => {
+                      setShowDetails(false);
+                      router.push({
+                        pathname: '/report',
+                        params: { kind: 'user', id: current.player.id, name: current.player.alias },
+                      });
+                    }}>
+                    <Text style={sheetText.link}>Reportar</Text>
+                  </Pressable>
+                  <Pressable onPress={handleBlock}>
+                    <Text style={sheetText.link}>Bloquear</Text>
+                  </Pressable>
+                </View>
+              </DetailsSheet>
+            </View>
+
+            <ActionBar
+              onPass={() => deckRef.current?.swipe('pass')}
+              onLike={() => deckRef.current?.swipe('like')}
+              onInfo={() => setShowDetails((s) => !s)}
+            />
+          </>
         )}
       </SafeAreaView>
+
+      <MatchOverlay
+        visible={matchWith !== null}
+        left={{ imageUrl: group?.image_url ?? null, fallbackEmoji: '🎲' }}
+        right={{ imageUrl: matchWith?.player.avatar_url ?? null, fallbackEmoji: '🧙' }}
+        subtitle={
+          matchWith
+            ? `${matchWith.player.alias} también quiere jugar en vuestra mesa. El bot os está abriendo un canal en Discord.`
+            : ''
+        }
+        onClose={() => setMatchWith(null)}
+      />
     </ThemedView>
   );
 }
@@ -195,25 +242,40 @@ export default function GroupCandidatesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    flexDirection: 'row',
-    justifyContent: 'center',
   },
   safeArea: {
     flex: 1,
-    maxWidth: MaxContentWidth,
-    padding: Spacing.four,
-    gap: Spacing.three,
+    width: '100%',
+    maxWidth: DECK_MAX_WIDTH,
+    alignSelf: 'center',
+    paddingHorizontal: Spacing.three,
   },
-  loading: {
-    marginTop: Spacing.six,
-  },
-  empty: {
-    marginTop: Spacing.four,
-    textAlign: 'center',
-  },
-  errorBox: {
+  header: {
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: Spacing.two,
+  },
+  headerButton: {
+    width: 44,
+    alignItems: 'flex-start',
+  },
+  deckArea: {
+    flex: 1,
+    position: 'relative',
+  },
+  centerBox: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
     gap: Spacing.three,
+    paddingHorizontal: Spacing.four,
+  },
+  centerEmoji: {
+    fontSize: 56,
+  },
+  centerText: {
+    textAlign: 'center',
   },
   retryButton: {
     borderWidth: 1,
@@ -222,90 +284,33 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.two,
     paddingHorizontal: Spacing.four,
   },
-  card: {
-    borderWidth: 1,
-    borderColor: '#666',
-    borderRadius: Spacing.three,
-    padding: Spacing.four,
-    gap: Spacing.two,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: Spacing.two,
-  },
-  identity: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two,
-    flexShrink: 1,
-  },
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-  },
   scoreBadge: {
-    backgroundColor: '#5865F2',
+    backgroundColor: 'rgba(0,0,0,0.55)',
     borderRadius: 999,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.one,
-  },
-  scoreLabel: {
-    color: '#fff',
-  },
-  actions: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: Spacing.three,
-    gap: Spacing.two,
-  },
-  passButton: {
-    flex: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
     borderWidth: 1,
-    borderColor: '#666',
-    borderRadius: Spacing.two,
-    paddingVertical: Spacing.three,
-    alignItems: 'center',
+    borderColor: 'rgba(255,255,255,0.35)',
   },
-  likeButton: {
-    flex: 1,
-    backgroundColor: '#5865F2',
-    borderRadius: Spacing.two,
-    paddingVertical: Spacing.three,
-    alignItems: 'center',
-  },
-  likeLabel: {
+  scoreText: {
     color: '#fff',
-    fontWeight: '600',
+    fontWeight: '800',
+    fontSize: 15,
   },
-  likedBadge: {
-    backgroundColor: '#5865F233',
-    borderRadius: Spacing.two,
-    paddingVertical: Spacing.one,
-    paddingHorizontal: Spacing.two,
-    alignSelf: 'flex-start',
+  likedBanner: {
+    backgroundColor: 'rgba(88,101,242,0.85)',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
   },
-  likedLabel: {
-    color: '#5865F2',
-  },
-  showcase: {
-    gap: Spacing.one,
-    borderLeftWidth: 2,
-    borderLeftColor: '#5865F2',
-    paddingLeft: Spacing.two,
+  likedText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 14,
+    textAlign: 'center',
   },
   moderationRow: {
     flexDirection: 'row',
-    justifyContent: 'center',
     gap: Spacing.four,
-    marginTop: Spacing.two,
-  },
-  moderationLink: {
-    color: '#d9534f',
-  },
-  disabled: {
-    opacity: 0.5,
+    marginTop: Spacing.four,
   },
 });
