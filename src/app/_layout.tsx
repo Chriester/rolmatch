@@ -28,6 +28,9 @@ export default function RootLayout() {
         <Stack.Protected guard={!!session}>
           <Stack.Screen name="index" />
           <Stack.Screen name="onboarding" />
+          <Stack.Screen name="groups/index" />
+          <Stack.Screen name="groups/new" />
+          <Stack.Screen name="groups/[id]" />
         </Stack.Protected>
         <Stack.Protected guard={!session}>
           <Stack.Screen name="login" />
