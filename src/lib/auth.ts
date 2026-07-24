@@ -14,10 +14,17 @@ const redirectTo = Linking.createURL('auth/callback');
  * y canjea el código devuelto por el deep link.
  */
 export async function signInWithDiscord() {
+  // guilds.join permite al bot unir al usuario al servidor comunitario
+  // automáticamente tras el login (Edge Function discord-join)
+  const DISCORD_SCOPES = 'identify email guilds.join';
+
   if (Platform.OS === 'web') {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'discord',
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+        scopes: DISCORD_SCOPES,
+      },
     });
     if (error) throw error;
     return;
@@ -25,7 +32,7 @@ export async function signInWithDiscord() {
 
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'discord',
-    options: { redirectTo, skipBrowserRedirect: true },
+    options: { redirectTo, skipBrowserRedirect: true, scopes: DISCORD_SCOPES },
   });
   if (error) throw error;
 
@@ -52,4 +59,19 @@ export async function signInWithEmail(email: string) {
 export async function signOut() {
   const { error } = await supabase.auth.signOut();
   if (error) throw error;
+}
+
+/**
+ * Une al usuario al servidor comunitario de Discord vía la Edge Function
+ * discord-join. El provider_token solo existe justo después del login OAuth,
+ * por eso se llama al detectar sesión nueva. Nunca es fatal.
+ */
+export async function ensureCommunityMembership(providerToken: string) {
+  try {
+    await supabase.functions.invoke('discord-join', {
+      body: { provider_token: providerToken },
+    });
+  } catch {
+    // sin red o función no desplegada: la app sigue funcionando
+  }
 }

@@ -55,7 +55,7 @@ El "bot" del MVP no es un proceso persistente: es la Edge Function [supabase/fun
 6. **Webhook**: Supabase → Database → Webhooks → Create: tabla `matches`, evento INSERT, tipo "Supabase Edge Function" → `discord-match`, y añade la cabecera HTTP `x-webhook-secret` con tu `WEBHOOK_SECRET`.
 7. En `.env` de la app, pon `EXPO_PUBLIC_DISCORD_GUILD_ID` con el ID del servidor para que "Mis matches" enlace a los canales.
 
-> Nota: los canales solo pueden dar acceso a usuarios que **ya son miembros del servidor comunitario**. Pon el enlace de invitación del servidor en la bienvenida de la app o en el mensaje del canal.
+> **Unión automática al servidor**: el OAuth pide el scope `guilds.join` y, tras cada login, la Edge Function `discord-join` (desplegar con **Verify JWT activado**, al contrario que discord-match) une al usuario al servidor comunitario con el bot — nadie necesita invitación manual. El bot necesita el permiso **Crear invitación** en el servidor.
 
 ### Notificaciones push (§8.6)
 

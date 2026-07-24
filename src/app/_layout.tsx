@@ -5,6 +5,7 @@ import { useColorScheme } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { useSession } from '@/hooks/use-session';
+import { ensureCommunityMembership } from '@/lib/auth';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -15,6 +16,10 @@ export default function RootLayout() {
   useEffect(() => {
     if (session !== undefined) {
       SplashScreen.hideAsync();
+    }
+    // Tras un login OAuth fresco, el bot une al usuario al servidor comunitario
+    if (session?.provider_token) {
+      ensureCommunityMembership(session.provider_token);
     }
   }, [session]);
 
