@@ -19,7 +19,7 @@ import { AppHeader } from '@/components/app-header';
 import { CardChip, CardChipRow } from '@/components/swipe/card-shell';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { DiscordButton, OutlineButton, PrimaryButton, SectionLabel } from '@/components/ui';
+import { DiscordButton, OutlineButton, PrimaryButton, SectionLabel, StyleBar } from '@/components/ui';
 import { MaxContentWidth, Rolder, RolderFonts, Spacing } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
 import {
@@ -60,20 +60,6 @@ function toInputs(date: Date): { date: string; time: string } {
   };
 }
 
-// Barra de estilo (handoff §8): pista de 6px con punto violeta en el %
-function StyleBar({ left, right, value }: { left: string; right: string; value: number }) {
-  return (
-    <View style={styles.axisBlock}>
-      <View style={styles.axisLabels}>
-        <Text style={styles.axisLabel}>{left}</Text>
-        <Text style={styles.axisLabel}>{right}</Text>
-      </View>
-      <View style={styles.axisTrack}>
-        <View style={[styles.axisDot, { left: `${value}%` }]} />
-      </View>
-    </View>
-  );
-}
 
 export default function GroupDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -245,16 +231,9 @@ export default function GroupDetailScreen() {
                   <Pressable
                     key={member.user_id}
                     style={styles.seat}
-                    disabled={!iAmMember || isMe}
+                    accessibilityLabel={`Ver perfil de ${member.profiles?.alias ?? 'miembro'}`}
                     onPress={() =>
-                      router.push({
-                        pathname: '/rate',
-                        params: {
-                          userId: member.user_id,
-                          alias: member.profiles?.alias ?? '',
-                          groupId: group.id,
-                        },
-                      })
+                      router.push({ pathname: '/players/[id]', params: { id: member.user_id } })
                     }>
                     {member.profiles?.avatar_url ? (
                       <Image
@@ -275,7 +254,21 @@ export default function GroupDetailScreen() {
                       {member.profiles?.alias ?? 'Sin alias'}
                       {isGm ? ' · GM' : ''}
                     </Text>
-                    {iAmMember && !isMe && <Text style={styles.rateHint}>🎲 valorar</Text>}
+                    {iAmMember && !isMe && (
+                      <Pressable
+                        onPress={() =>
+                          router.push({
+                            pathname: '/rate',
+                            params: {
+                              userId: member.user_id,
+                              alias: member.profiles?.alias ?? '',
+                              groupId: group.id,
+                            },
+                          })
+                        }>
+                        <Text style={styles.rateHint}>🎲 valorar</Text>
+                      </Pressable>
+                    )}
                   </Pressable>
                 );
               })}
@@ -313,7 +306,13 @@ export default function GroupDetailScreen() {
               {matches.map((match) => {
                 const url = matchChannelUrl(match);
                 return (
-                  <View key={match.id} style={styles.matchRow}>
+                  <Pressable
+                    key={match.id}
+                    style={styles.matchRow}
+                    accessibilityLabel={`Ver perfil de ${match.alias}`}
+                    onPress={() =>
+                      router.push({ pathname: '/players/[id]', params: { id: match.user_id } })
+                    }>
                     {match.avatar_url ? (
                       <Image source={{ uri: match.avatar_url }} style={styles.matchThumb} />
                     ) : (
@@ -333,7 +332,7 @@ export default function GroupDetailScreen() {
                         <ThemedText type="small">El canal se creará en unos segundos…</ThemedText>
                       )}
                     </View>
-                  </View>
+                  </Pressable>
                 );
               })}
             </View>
@@ -572,32 +571,6 @@ const styles = StyleSheet.create({
   seatHolePlus: {
     color: Rolder.violetSoft,
     fontSize: 20,
-  },
-  axisBlock: {
-    gap: 5,
-  },
-  axisLabels: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  axisLabel: {
-    color: Rolder.textSecondary,
-    fontSize: 11.5,
-    fontFamily: RolderFonts.regular,
-  },
-  axisTrack: {
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-  },
-  axisDot: {
-    position: 'absolute',
-    top: -4,
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    marginLeft: -7,
-    backgroundColor: Rolder.violet,
   },
   memberRow: {
     flexDirection: 'row',

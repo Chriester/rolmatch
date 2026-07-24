@@ -44,8 +44,15 @@ export default function LikesScreen() {
     const name = item.kind === 'group' ? item.name : item.alias;
     const subtitle =
       item.kind === 'group' ? 'Esta mesa quiere ficharte' : `Quiere jugar en «${item.groupName}»`;
+    // solo premium ve la identidad → solo premium puede navegar al perfil
+    const openProfile = premium
+      ? () =>
+          item.kind === 'group'
+            ? router.push({ pathname: '/groups/[id]', params: { id: item.id } })
+            : router.push({ pathname: '/players/[id]', params: { id: item.id } })
+      : undefined;
     return (
-      <ListRow>
+      <ListRow onPress={openProfile}>
         {item.imageUrl ? (
           <Image
             source={{ uri: item.imageUrl }}

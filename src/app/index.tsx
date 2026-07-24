@@ -371,6 +371,10 @@ export default function HomeScreen() {
           <Text style={sheetText.body}>
             {item.result.score}% — coincidís {item.result.overlapHours} h en horario
           </Text>
+          <Pressable
+            onPress={() => router.push({ pathname: '/groups/[id]', params: { id: g.id } })}>
+            <Text style={styles.profileLink}>Ver mesa completa ›</Text>
+          </Pressable>
           <View style={styles.moderationRow}>
             <Pressable
               onPress={() =>
@@ -420,6 +424,12 @@ export default function HomeScreen() {
             {c.player.reliability.count === 1 ? 'valoración' : 'valoraciones'})
           </Text>
         )}
+        <Pressable
+          onPress={() =>
+            router.push({ pathname: '/players/[id]', params: { id: c.player.id } })
+          }>
+          <Text style={styles.profileLink}>Ver perfil completo ›</Text>
+        </Pressable>
         <View style={styles.moderationRow}>
           <Pressable
             onPress={() =>
@@ -674,5 +684,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: Spacing.four,
     marginTop: Spacing.four,
+  },
+  profileLink: {
+    color: Rolder.violetSoft,
+    fontSize: 13,
+    fontFamily: RolderFonts.semibold,
+    marginTop: 8,
   },
 });

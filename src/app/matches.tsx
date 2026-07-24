@@ -55,8 +55,15 @@ export default function MatchesScreen() {
             contentContainerStyle={styles.list}
             renderItem={({ item }) => {
               const url = matchChannelUrl(item);
+              const openProfile = () => {
+                if (item.side === 'player' && item.targetGroupId) {
+                  router.push({ pathname: '/groups/[id]', params: { id: item.targetGroupId } });
+                } else if (item.targetUserId) {
+                  router.push({ pathname: '/players/[id]', params: { id: item.targetUserId } });
+                }
+              };
               return (
-                <ListRow style={styles.card}>
+                <ListRow style={styles.card} onPress={openProfile}>
                   <View style={styles.cardRow}>
                     {item.imageUrl ? (
                       <Image source={{ uri: item.imageUrl }} style={styles.thumb} />
@@ -78,6 +85,9 @@ export default function MatchesScreen() {
                           ? 'Has hecho match con esta mesa'
                           : 'Candidato/a para tu mesa'}{' '}
                         · {new Date(item.matched_at).toLocaleDateString()}
+                      </Text>
+                      <Text style={styles.profileHint}>
+                        {item.side === 'player' ? 'Ver la mesa ›' : 'Ver su perfil ›'}
                       </Text>
                     </View>
                   </View>
@@ -171,5 +181,10 @@ const styles = StyleSheet.create({
     color: Rolder.textTertiary,
     fontSize: 12.5,
     fontFamily: RolderFonts.regular,
+  },
+  profileHint: {
+    color: Rolder.violetSoft,
+    fontSize: 12,
+    fontFamily: RolderFonts.semibold,
   },
 });
