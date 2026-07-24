@@ -13,6 +13,7 @@ export type ProfileUpdate = {
   bio: string | null;
   timezone: string;
   role: UserRole;
+  avatar_url: string | null;
   style_combat_narrative: number;
   style_serious_humor: number;
   style_roleplay_weight: number;
@@ -25,7 +26,6 @@ export type ProfileUpdate = {
 export type UserSystemInput = { system_id: number; experience: ExperienceLevel };
 
 export type ProfileData = ProfileUpdate & {
-  avatar_url: string | null;
   availability: AvailabilityCell[];
   systems: UserSystemInput[];
 };

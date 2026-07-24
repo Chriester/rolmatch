@@ -1,3 +1,4 @@
+import { Image } from 'expo-image';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
@@ -106,7 +107,12 @@ export default function GroupCandidatesScreen() {
         ) : (
           <View style={styles.card}>
             <View style={styles.cardHeader}>
-              <ThemedText type="subtitle">{current.player.alias}</ThemedText>
+              <View style={styles.identity}>
+                {current.player.avatar_url && (
+                  <Image source={{ uri: current.player.avatar_url }} style={styles.avatar} />
+                )}
+                <ThemedText type="subtitle">{current.player.alias}</ThemedText>
+              </View>
               <View style={styles.scoreBadge}>
                 <ThemedText type="smallBold" style={styles.scoreLabel}>
                   {current.result.score}%
@@ -216,6 +222,17 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     gap: Spacing.two,
+  },
+  identity: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+    flexShrink: 1,
+  },
+  avatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
   },
   scoreBadge: {
     backgroundColor: '#5865F2',
