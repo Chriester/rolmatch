@@ -123,6 +123,18 @@ export default function GroupCandidatesScreen() {
               {ROLE_LABELS[current.player.role] ?? current.player.role} ·{' '}
               {current.player.timezone}
             </ThemedText>
+            {current.likedGroup && (
+              <View style={styles.likedBadge}>
+                <ThemedText type="smallBold" style={styles.likedLabel}>
+                  💘 Ya ha dado like a vuestra mesa
+                  {current.proposal
+                    ? ` — propone a ${current.proposal.name}${
+                        current.proposal.archetype ? ` (${current.proposal.archetype})` : ''
+                      }`
+                    : ''}
+                </ThemedText>
+              </View>
+            )}
             {current.player.bio && <ThemedText>{current.player.bio}</ThemedText>}
             {current.player.characters.filter((c) => c.status === 'looking').length > 0 && (
               <View style={styles.showcase}>
@@ -267,6 +279,16 @@ const styles = StyleSheet.create({
   likeLabel: {
     color: '#fff',
     fontWeight: '600',
+  },
+  likedBadge: {
+    backgroundColor: '#5865F233',
+    borderRadius: Spacing.two,
+    paddingVertical: Spacing.one,
+    paddingHorizontal: Spacing.two,
+    alignSelf: 'flex-start',
+  },
+  likedLabel: {
+    color: '#5865F2',
   },
   showcase: {
     gap: Spacing.one,

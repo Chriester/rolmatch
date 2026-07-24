@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Platform, Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Linking, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { showAlert } from '@/lib/alert';
@@ -16,19 +16,66 @@ import {
   type Character,
   type CharacterInput,
 } from '@/lib/characters';
+import {
+  deleteSheet,
+  fetchSheet,
+  pickAndUploadSheet,
+  sheetSignedUrl,
+  type CharacterSheet,
+} from '@/lib/sheets';
 
 export default function EditCharacterScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const session = useSession();
   const [character, setCharacter] = useState<Character | null | undefined>(undefined);
+  const [sheet, setSheet] = useState<CharacterSheet | null | undefined>(undefined);
   const [busy, setBusy] = useState(false);
+  const [sheetBusy, setSheetBusy] = useState(false);
 
   useEffect(() => {
     if (!id) return;
     fetchCharacter(id)
       .then(setCharacter)
       .catch(() => setCharacter(null));
+    fetchSheet(id)
+      .then(setSheet)
+      .catch(() => setSheet(null));
   }, [id]);
+
+  const handleUploadSheet = async () => {
+    if (!id || !session) return;
+    setSheetBusy(true);
+    try {
+      const uploaded = await pickAndUploadSheet(session.user.id, id);
+      if (uploaded) setSheet(uploaded);
+    } catch (error) {
+      showAlert('No se pudo subir la hoja', error instanceof Error ? error.message : String(error));
+    } finally {
+      setSheetBusy(false);
+    }
+  };
+
+  const handleViewSheet = async () => {
+    if (!sheet) return;
+    try {
+      Linking.openURL(await sheetSignedUrl(sheet));
+    } catch (error) {
+      showAlert('No se pudo abrir la hoja', error instanceof Error ? error.message : String(error));
+    }
+  };
+
+  const handleRemoveSheet = async () => {
+    if (!sheet) return;
+    setSheetBusy(true);
+    try {
+      await deleteSheet(sheet);
+      setSheet(null);
+    } catch (error) {
+      showAlert('No se pudo quitar la hoja', error instanceof Error ? error.message : String(error));
+    } finally {
+      setSheetBusy(false);
+    }
+  };
 
   const handleSave = async (input: CharacterInput) => {
     if (!id) return;
@@ -80,6 +127,32 @@ export default function EditCharacterScreen() {
         ) : (
           <>
             <ThemedText type="title">{character.name}</ThemedText>
+
+            <View style={styles.sheetBox}>
+              <ThemedText type="subtitle">Hoja de personaje</ThemedText>
+              {sheetBusy ? (
+                <ActivityIndicator />
+              ) : sheet ? (
+                <View style={styles.sheetActions}>
+                  <Pressable style={styles.sheetButton} onPress={handleViewSheet}>
+                    <ThemedText type="small">📄 Ver hoja</ThemedText>
+                  </Pressable>
+                  <Pressable style={styles.sheetButton} onPress={handleUploadSheet}>
+                    <ThemedText type="small">Reemplazar</ThemedText>
+                  </Pressable>
+                  <Pressable style={styles.sheetButton} onPress={handleRemoveSheet}>
+                    <ThemedText type="small" style={styles.sheetRemove}>
+                      Quitar
+                    </ThemedText>
+                  </Pressable>
+                </View>
+              ) : (
+                <Pressable style={styles.sheetButton} onPress={handleUploadSheet}>
+                  <ThemedText type="small">⬆️ Subir hoja (PDF o imagen, máx. 5 MB)</ThemedText>
+                </Pressable>
+              )}
+            </View>
+
             {session && (
               <CharacterForm
                 userId={session.user.id}
@@ -122,5 +195,23 @@ const styles = StyleSheet.create({
   empty: {
     marginTop: Spacing.four,
     textAlign: 'center',
+  },
+  sheetBox: {
+    gap: Spacing.two,
+    borderWidth: 1,
+    borderColor: '#666',
+    borderRadius: Spacing.two,
+    padding: Spacing.three,
+  },
+  sheetActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.three,
+  },
+  sheetButton: {
+    paddingVertical: Spacing.one,
+  },
+  sheetRemove: {
+    color: '#d9534f',
   },
 });
