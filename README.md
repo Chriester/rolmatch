@@ -38,7 +38,7 @@ npm start              # Expo Dev Server (i = iOS, a = Android, w = web)
 ### Backend (Supabase)
 
 1. Crea un proyecto en [supabase.com](https://supabase.com) (free tier).
-2. Aplica el esquema: `supabase db push` (CLI) o pega [supabase/migrations/00001_initial_schema.sql](supabase/migrations/00001_initial_schema.sql) en el SQL Editor.
+2. Aplica el esquema: `supabase db push` (CLI) o pega **en orden** los archivos de [supabase/migrations/](supabase/migrations/) en el SQL Editor (`00001_initial_schema.sql`, `00002_blocks.sql`, …).
 3. Activa el provider **Discord** en Authentication → Providers con las credenciales de tu [aplicación de Discord](https://discord.com/developers/applications), y añade la redirect URL de Supabase en Discord.
 
 ### Bot de Discord (canal automático al hacer match)

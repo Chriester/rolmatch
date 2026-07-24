@@ -1,4 +1,5 @@
 import { matchPlayerToGroup, type MatchGroup, type MatchPlayer, type MatchResult } from '@/lib/matching';
+import { fetchBlockRelations } from '@/lib/moderation';
 import { supabase } from '@/lib/supabase';
 import type { GroupFormat } from '@/lib/groups';
 import type { VttType } from '@/lib/profile';
@@ -6,6 +7,7 @@ import type { VttType } from '@/lib/profile';
 export type GroupCandidate = {
   group: MatchGroup & {
     id: string;
+    owner_id: string;
     name: string;
     description: string | null;
     format: GroupFormat;
@@ -54,9 +56,10 @@ function toMatchPlayer(row: Awaited<ReturnType<typeof fetchMatchPlayer>>): Match
 export async function fetchPlayerFeed(userId: string): Promise<GroupCandidate[]> {
   const me = toMatchPlayer(await fetchMatchPlayer(userId));
 
-  const [{ data: myMemberships }, { data: mySwipes }] = await Promise.all([
+  const [{ data: myMemberships }, { data: mySwipes }, blocked] = await Promise.all([
     supabase.from('group_members').select('group_id').eq('user_id', userId),
     supabase.from('swipes').select('group_id').eq('user_id', userId).eq('origin', 'user'),
+    fetchBlockRelations(userId),
   ]);
   const excluded = new Set([
     ...(myMemberships ?? []).map((m) => m.group_id),
@@ -66,7 +69,7 @@ export async function fetchPlayerFeed(userId: string): Promise<GroupCandidate[]>
   const { data: groups, error } = await supabase
     .from('groups')
     .select(
-      `id, name, description, format, frequency, timezone, language, system_id,
+      `id, owner_id, name, description, format, frequency, timezone, language, system_id,
        session_weekday, session_slot, experience_wanted, vtt,
        style_combat_narrative, style_serious_humor, style_roleplay_weight,
        systems(name), group_openings!inner(is_open)`
@@ -76,7 +79,7 @@ export async function fetchPlayerFeed(userId: string): Promise<GroupCandidate[]>
   if (error) throw error;
 
   return (groups ?? [])
-    .filter((g) => !excluded.has(g.id))
+    .filter((g) => !excluded.has(g.id) && !blocked.has(g.owner_id))
     .map((g) => ({
       group: g as unknown as GroupCandidate['group'],
       result: matchPlayerToGroup(me, g as unknown as MatchGroup),
@@ -86,7 +89,10 @@ export async function fetchPlayerFeed(userId: string): Promise<GroupCandidate[]>
 }
 
 /** Candidatos con perfil completo que pasan los filtros duros para esta mesa, ordenados por score. */
-export async function fetchGroupCandidates(groupId: string): Promise<PlayerCandidate[]> {
+export async function fetchGroupCandidates(
+  groupId: string,
+  viewerId: string
+): Promise<PlayerCandidate[]> {
   const { data: group, error: groupError } = await supabase
     .from('groups')
     .select(
@@ -97,13 +103,15 @@ export async function fetchGroupCandidates(groupId: string): Promise<PlayerCandi
     .single();
   if (groupError) throw groupError;
 
-  const [{ data: members }, { data: groupSwipes }] = await Promise.all([
+  const [{ data: members }, { data: groupSwipes }, blocked] = await Promise.all([
     supabase.from('group_members').select('user_id').eq('group_id', groupId),
     supabase.from('swipes').select('user_id').eq('group_id', groupId).eq('origin', 'group'),
+    fetchBlockRelations(viewerId),
   ]);
   const excluded = new Set([
     ...(members ?? []).map((m) => m.user_id),
     ...(groupSwipes ?? []).map((s) => s.user_id),
+    ...blocked,
   ]);
 
   const { data: profiles, error } = await supabase

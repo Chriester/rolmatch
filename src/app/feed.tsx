@@ -11,6 +11,7 @@ import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
 import { fetchPlayerFeed, type GroupCandidate } from '@/lib/feed';
 import { FORMAT_LABELS, SLOT_LABELS, VTT_LABELS, WEEKDAY_LABELS } from '@/lib/groups';
+import { blockUser } from '@/lib/moderation';
 import { swipeOnGroup } from '@/lib/swipes';
 
 export default function FeedScreen() {
@@ -27,6 +28,21 @@ export default function FeedScreen() {
   }, [session]);
 
   const current = candidates?.[index];
+
+  const handleBlock = async () => {
+    if (!session || !current) return;
+    setBusy(true);
+    try {
+      const ownerId = current.group.owner_id;
+      await blockUser(session.user.id, ownerId);
+      setCandidates((list) => list?.filter((c) => c.group.owner_id !== ownerId));
+      showAlert('Bloqueado', 'No volverás a ver mesas de esta persona, ni ella a ti.');
+    } catch (error) {
+      showAlert('Error', error instanceof Error ? error.message : String(error));
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const handleSwipe = async (direction: 'like' | 'pass') => {
     if (!session || !current) return;
@@ -107,6 +123,25 @@ export default function FeedScreen() {
                 <ThemedText style={styles.likeLabel}>Me interesa</ThemedText>
               </Pressable>
             </View>
+
+            <View style={styles.moderationRow}>
+              <Pressable
+                onPress={() =>
+                  router.push({
+                    pathname: '/report',
+                    params: { kind: 'group', id: current.group.id, name: current.group.name },
+                  })
+                }>
+                <ThemedText type="small" style={styles.moderationLink}>
+                  Reportar mesa
+                </ThemedText>
+              </Pressable>
+              <Pressable onPress={handleBlock} disabled={busy}>
+                <ThemedText type="small" style={styles.moderationLink}>
+                  Bloquear al GM
+                </ThemedText>
+              </Pressable>
+            </View>
           </View>
         )}
       </SafeAreaView>
@@ -182,6 +217,15 @@ const styles = StyleSheet.create({
   likeLabel: {
     color: '#fff',
     fontWeight: '600',
+  },
+  moderationRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: Spacing.four,
+    marginTop: Spacing.two,
+  },
+  moderationLink: {
+    color: '#d9534f',
   },
   disabled: {
     opacity: 0.5,
