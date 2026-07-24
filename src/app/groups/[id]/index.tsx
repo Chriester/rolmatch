@@ -64,7 +64,8 @@ export default function GroupDetailScreen() {
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
         <ScrollView contentContainerStyle={styles.scroll}>
-          <Pressable onPress={() => router.back()}>
+          <Pressable
+            onPress={() => (router.canGoBack() ? router.back() : router.replace('/groups'))}>
             <ThemedText type="link">← Volver</ThemedText>
           </Pressable>
 

@@ -1,5 +1,7 @@
 import { useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, StyleSheet, TextInput } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, TextInput } from 'react-native';
+
+import { showAlert } from '@/lib/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
@@ -16,7 +18,7 @@ export default function LoginScreen() {
     try {
       await signInWithDiscord();
     } catch (error) {
-      Alert.alert('Error al iniciar sesión', error instanceof Error ? error.message : String(error));
+      showAlert('Error al iniciar sesión', error instanceof Error ? error.message : String(error));
     } finally {
       setBusy(false);
     }
@@ -27,9 +29,9 @@ export default function LoginScreen() {
     setBusy(true);
     try {
       await signInWithEmail(email.trim());
-      Alert.alert('Revisa tu correo', 'Te hemos enviado un enlace para entrar.');
+      showAlert('Revisa tu correo', 'Te hemos enviado un enlace para entrar.');
     } catch (error) {
-      Alert.alert('Error al enviar el enlace', error instanceof Error ? error.message : String(error));
+      showAlert('Error al enviar el enlace', error instanceof Error ? error.message : String(error));
     } finally {
       setBusy(false);
     }

@@ -1,6 +1,8 @@
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+
+import { showAlert } from '@/lib/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Chip } from '@/components/chip';
@@ -93,7 +95,7 @@ export default function NewGroupScreen() {
       );
       router.replace({ pathname: '/groups/[id]', params: { id: groupId } });
     } catch (error) {
-      Alert.alert('No se pudo crear la mesa', error instanceof Error ? error.message : String(error));
+      showAlert('No se pudo crear la mesa', error instanceof Error ? error.message : String(error));
     } finally {
       setBusy(false);
     }

@@ -1,6 +1,8 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
+
+import { showAlert } from '@/lib/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
@@ -36,14 +38,14 @@ export default function GroupCandidatesScreen() {
     try {
       const matched = await groupSwipeOnUser(id, current.player.id, direction);
       if (matched) {
-        Alert.alert(
+        showAlert(
           '🎲 ¡Match!',
           `${current.player.alias} también quiere jugar en vuestra mesa. La creación del canal de Discord llega en la fase del bot.`
         );
       }
       setIndex((i) => i + 1);
     } catch (error) {
-      Alert.alert('Error', error instanceof Error ? error.message : String(error));
+      showAlert('Error', error instanceof Error ? error.message : String(error));
     } finally {
       setBusy(false);
     }
@@ -52,7 +54,12 @@ export default function GroupCandidatesScreen() {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        <Pressable onPress={() => router.back()}>
+        <Pressable
+          onPress={() =>
+            router.canGoBack()
+              ? router.back()
+              : router.replace({ pathname: '/groups/[id]', params: { id: id! } })
+          }>
           <ThemedText type="link">← Volver a la mesa</ThemedText>
         </Pressable>
         <ThemedText type="title">Candidatos</ThemedText>

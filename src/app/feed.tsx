@@ -1,6 +1,8 @@
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+
+import { showAlert } from '@/lib/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
@@ -32,14 +34,14 @@ export default function FeedScreen() {
     try {
       const matched = await swipeOnGroup(session.user.id, current.group.id, direction);
       if (matched) {
-        Alert.alert(
+        showAlert(
           '🎲 ¡Match!',
           `A "${current.group.name}" también le interesas. La creación del canal de Discord llega en la fase del bot.`
         );
       }
       setIndex((i) => i + 1);
     } catch (error) {
-      Alert.alert('Error', error instanceof Error ? error.message : String(error));
+      showAlert('Error', error instanceof Error ? error.message : String(error));
     } finally {
       setBusy(false);
     }
@@ -48,7 +50,7 @@ export default function FeedScreen() {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        <Pressable onPress={() => router.back()}>
+        <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}>
           <ThemedText type="link">← Volver</ThemedText>
         </Pressable>
         <ThemedText type="title">Mesas para ti</ThemedText>
