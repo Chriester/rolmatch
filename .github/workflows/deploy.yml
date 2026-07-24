@@ -9,6 +9,10 @@ name: Deploy
 #   VERCEL_TOKEN       token personal de Vercel (Account Settings → Tokens)
 #   VERCEL_ORG_ID      id de la cuenta/equipo de Vercel
 #   VERCEL_PROJECT_ID  id del proyecto rolmatch
+#   EXPO_PUBLIC_*      las 3 variables de cliente del .env — expo export las
+#                      necesita en el entorno del proceso: NO lee el
+#                      .vercel/.env.production.local que baja `vercel pull`
+#                      (sin ellas la web sale en blanco: cliente Supabase roto)
 
 on:
   push:
@@ -21,6 +25,9 @@ jobs:
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
       EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
+      EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
+      EXPO_PUBLIC_DISCORD_GUILD_ID: ${{ secrets.EXPO_PUBLIC_DISCORD_GUILD_ID }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
