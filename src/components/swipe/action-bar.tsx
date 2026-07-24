@@ -1,7 +1,9 @@
 // Botones circulares de acción (✕ / ♥) — disparan la misma animación que el
-// gesto vía la ref del deck.
+// gesto vía la ref del deck. Con fondo opaco: la tarjeta nunca se ve debajo.
 
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text } from 'react-native';
+
+import { ThemedView } from '@/components/themed-view';
 
 type ActionBarProps = {
   onPass: () => void;
@@ -12,7 +14,7 @@ type ActionBarProps = {
 
 export function ActionBar({ onPass, onLike, onInfo, disabled }: ActionBarProps) {
   return (
-    <View style={styles.row}>
+    <ThemedView style={styles.row}>
       <Pressable
         style={({ pressed }) => [
           styles.button,
@@ -47,7 +49,7 @@ export function ActionBar({ onPass, onLike, onInfo, disabled }: ActionBarProps) 
         accessibilityLabel="Me interesa">
         <Text style={[styles.glyph, styles.likeGlyph]}>♥</Text>
       </Pressable>
-    </View>
+    </ThemedView>
   );
 }
 

@@ -1,7 +1,6 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useSharedValue } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { showAlert } from '@/lib/alert';
@@ -11,12 +10,12 @@ import {
   AvailabilityMiniGrid,
   availabilityCellKey,
 } from '@/components/swipe/availability-mini-grid';
-import { CardFlip } from '@/components/swipe/card-flip';
+import { CardCycle } from '@/components/swipe/card-cycle';
 import { CardShell, cardText } from '@/components/swipe/card-shell';
+import { CharacterLikeButton } from '@/components/swipe/character-like-button';
 import { SwipeDeck, type SwipeChoice, type SwipeDeckHandle } from '@/components/swipe/deck';
-import { DetailsSheet, sheetText } from '@/components/swipe/details-sheet';
+import { DetailsFace, sheetText } from '@/components/swipe/details-face';
 import { MatchOverlay } from '@/components/swipe/match-overlay';
-import { ShowcaseBack } from '@/components/swipe/showcase-back';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
@@ -61,7 +60,6 @@ function itemKey(item: FeedItem) {
 export default function FeedScreen() {
   const session = useSession();
   const deckRef = useRef<SwipeDeckHandle | null>(null);
-  const pullProgress = useSharedValue(0);
 
   const [items, setItems] = useState<FeedItem[] | undefined>(undefined);
   const [myAvailability, setMyAvailability] = useState<Set<string>>(new Set());
@@ -69,7 +67,6 @@ export default function FeedScreen() {
   const [index, setIndex] = useState(0);
   const [myCharacters, setMyCharacters] = useState<Character[]>([]);
   const [proposedId, setProposedId] = useState<string | null>(null);
-  const [showDetails, setShowDetails] = useState(false);
   const [matchWith, setMatchWith] = useState<FeedItem | null>(null);
   const [myAvatar, setMyAvatar] = useState<string | null>(null);
 
@@ -79,7 +76,6 @@ export default function FeedScreen() {
     setItems(undefined);
     setIndex(0);
     setProposedId(null);
-    setShowDetails(false);
     fetchUnifiedFeed(session.user.id)
       .then((feed) => {
         setItems(feed.items);
@@ -103,7 +99,6 @@ export default function FeedScreen() {
   const handleSwiped = (item: FeedItem, choice: SwipeChoice) => {
     if (!session) return;
     const proposal = proposedId;
-    setShowDetails(false);
     setProposedId(null);
     setIndex((i) => i + 1);
 
@@ -128,7 +123,6 @@ export default function FeedScreen() {
       const blockedId =
         current.kind === 'group' ? current.group.owner_id : current.candidate.player.id;
       await blockUser(session.user.id, blockedId);
-      setShowDetails(false);
       setItems((list) =>
         list?.filter((i) =>
           i.kind === 'group' ? i.group.owner_id !== blockedId : i.candidate.player.id !== blockedId
@@ -170,7 +164,7 @@ export default function FeedScreen() {
     const publicLooking = c.player.characters.filter(
       (ch) => ch.status === 'looking' && ch.is_public
     );
-    const front = (
+    const playerFace = (
       <CardShell
         imageUrl={c.player.avatar_url}
         fallbackEmoji="🧙"
@@ -197,11 +191,35 @@ export default function FeedScreen() {
         <Text style={cardText.soft}>🛡️ Candidato para «{item.forGroup.name}»</Text>
         <Text style={cardText.soft}>
           ⏱ Coincide {c.result.overlapHours} h con vuestra sesión
-          {publicLooking.length > 0 ? ' · toca para ver su vitrina' : ''}
+          {publicLooking.length > 0 ? ' · toca para ver sus personajes' : ''}
         </Text>
       </CardShell>
     );
-    return <CardFlip front={front} back={<ShowcaseBack alias={c.player.alias} characters={publicLooking} />} />;
+    const characterFaces = publicLooking.map((ch) => (
+      <CardShell
+        key={ch.id}
+        imageUrl={ch.portrait_url}
+        fallbackEmoji="🧝"
+        topRight={
+          session ? <CharacterLikeButton characterId={ch.id} viewerId={session.user.id} /> : undefined
+        }>
+        <Text style={cardText.soft}>Personaje de {c.player.alias}</Text>
+        <Text style={cardText.title} numberOfLines={1}>
+          {ch.name}
+        </Text>
+        <Text style={cardText.line}>
+          {[ch.archetype, ch.systems?.name, ch.level && `nivel ${ch.level}`]
+            .filter(Boolean)
+            .join(' · ')}
+        </Text>
+        {ch.concept && (
+          <Text style={cardText.soft} numberOfLines={2}>
+            {ch.concept}
+          </Text>
+        )}
+      </CardShell>
+    ));
+    return <CardCycle faces={[playerFace, ...characterFaces]} />;
   };
 
   const detailsFor = (item: FeedItem) => {
@@ -212,7 +230,9 @@ export default function FeedScreen() {
           {g.description && (
             <>
               <Text style={sheetText.label}>Sobre la mesa</Text>
-              <Text style={sheetText.body}>{g.description}</Text>
+              <Text style={sheetText.body} numberOfLines={4}>
+                {g.description}
+              </Text>
             </>
           )}
           <Text style={sheetText.label}>Horario</Text>
@@ -246,13 +266,12 @@ export default function FeedScreen() {
           </Text>
           <View style={styles.moderationRow}>
             <Pressable
-              onPress={() => {
-                setShowDetails(false);
+              onPress={() =>
                 router.push({
                   pathname: '/report',
                   params: { kind: 'group', id: g.id, name: g.name },
-                });
-              }}>
+                })
+              }>
               <Text style={sheetText.link}>Reportar mesa</Text>
             </Pressable>
             <Pressable onPress={handleBlock}>
@@ -269,7 +288,9 @@ export default function FeedScreen() {
         {c.player.bio && (
           <>
             <Text style={sheetText.label}>Bio</Text>
-            <Text style={sheetText.body}>{c.player.bio}</Text>
+            <Text style={sheetText.body} numberOfLines={3}>
+              {c.player.bio}
+            </Text>
           </>
         )}
         <Text style={sheetText.label}>Su semana vs vuestra sesión</Text>
@@ -287,13 +308,12 @@ export default function FeedScreen() {
         </Text>
         <View style={styles.moderationRow}>
           <Pressable
-            onPress={() => {
-              setShowDetails(false);
+            onPress={() =>
               router.push({
                 pathname: '/report',
                 params: { kind: 'user', id: c.player.id, name: c.player.alias },
-              });
-            }}>
+              })
+            }>
             <Text style={sheetText.link}>Reportar</Text>
           </Pressable>
           <Pressable onPress={handleBlock}>
@@ -348,19 +368,16 @@ export default function FeedScreen() {
                 index={index}
                 keyFor={itemKey}
                 renderCard={renderCard}
+                renderDetails={(item) => (
+                  <DetailsFace
+                    title={item.kind === 'group' ? item.group.name : item.candidate.player.alias}>
+                    {detailsFor(item)}
+                  </DetailsFace>
+                )}
                 onSwiped={handleSwiped}
-                onSwipeUp={() => setShowDetails(true)}
-                pullProgress={pullProgress}
                 likeLabel={current.kind === 'group' ? 'ME INTERESA' : 'NOS INTERESA'}
                 deckRef={deckRef}
               />
-              <DetailsSheet
-                open={showDetails}
-                pullProgress={pullProgress}
-                title={current.kind === 'group' ? current.group.name : current.candidate.player.alias}
-                onClose={() => setShowDetails(false)}>
-                {detailsFor(current)}
-              </DetailsSheet>
             </View>
 
             {current.kind === 'group' && myCharacters.length > 0 && (
@@ -386,7 +403,7 @@ export default function FeedScreen() {
             <ActionBar
               onPass={() => deckRef.current?.swipe('pass')}
               onLike={() => deckRef.current?.swipe('like')}
-              onInfo={() => setShowDetails((s) => !s)}
+              onInfo={() => deckRef.current?.toggleDetails()}
             />
           </>
         )}

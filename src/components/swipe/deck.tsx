@@ -2,9 +2,16 @@
    dentro de worklets de gesto son la API oficial de Reanimated; la regla del
    React Compiler no las reconoce. */
 // Física del deck de swipe (ver docs/diseno-swipe.md).
+//
+// Modelo vertical: cada tarjeta es una TIRA de dos alturas (tarjeta arriba,
+// descripción debajo) que desliza dentro de un marco con clipping. Arrastrar
+// hacia arriba saca la tarjeta por el borde superior y deja la descripción en
+// su lugar; hacia abajo la devuelve. El swipe horizontal decide like/pass y
+// se desvanece a medida que la descripción se abre (con detalles abiertos,
+// like/pass solo por botones).
+//
 // La tarjeta superior se monta con `key` por item: cada tarjeta estrena sus
-// shared values y no hay flashes al avanzar. La escala de la tarjeta de
-// detrás se anima con un shared value de progreso a nivel de deck.
+// shared values y no hay flashes al avanzar.
 
 import {
   forwardRef,
@@ -30,97 +37,103 @@ import Animated, {
 } from 'react-native-reanimated';
 
 export type SwipeChoice = 'like' | 'pass';
-export type SwipeDeckHandle = { swipe: (choice: SwipeChoice) => void };
+export type SwipeDeckHandle = {
+  swipe: (choice: SwipeChoice) => void;
+  toggleDetails: () => void;
+};
 
 // Parámetros del feel — ajustar aquí, no en las pantallas
 const MAX_ROTATION_DEG = 12;
 const THRESHOLD_FRACTION = 0.35;
 const FLING_VELOCITY = 900;
-// El swipe es manipulación directa, no animación decorativa: se anima siempre,
-// aunque el sistema tenga "movimiento reducido" activado.
 const EXIT_TIMING = { duration: 260, reduceMotion: ReduceMotion.Never };
 const RETURN_SPRING = { damping: 16, stiffness: 190, reduceMotion: ReduceMotion.Never };
+const SHEET_SPRING = { damping: 19, stiffness: 200, reduceMotion: ReduceMotion.Never };
 const NEXT_CARD_SCALE = 0.95;
-const SWIPE_UP_DISTANCE = 110;
-// Recorrido del gesto vertical que lleva el panel de detalles de 0 a 1
-const PULL_DISTANCE = 260;
 
-type TopCardHandle = { fly: (dir: 1 | -1) => void };
+type TopCardHandle = {
+  fly: (dir: 1 | -1) => void;
+  toggleSheet: () => void;
+};
 
 type TopCardProps = {
   width: number;
+  height: number;
   enabled: boolean;
   progress: SharedValue<number>;
-  pullProgress?: SharedValue<number>;
   likeLabel: string;
   passLabel: string;
   onSwiped: (choice: SwipeChoice) => void;
-  onSwipeUp?: () => void;
-  children: ReactNode;
+  card: ReactNode;
+  details?: ReactNode;
 };
 
 const TopCard = forwardRef<TopCardHandle, TopCardProps>(function TopCard(
-  { width, enabled, progress, pullProgress, likeLabel, passLabel, onSwiped, onSwipeUp, children },
+  { width, height, enabled, progress, likeLabel, passLabel, onSwiped, card, details },
   ref
 ) {
   const tx = useSharedValue(0);
-  const ty = useSharedValue(0);
+  // 0 = tarjeta visible · 1 = descripción visible
+  const sheet = useSharedValue(0);
+  const sheetAtStart = useSharedValue(0);
   const threshold = width * THRESHOLD_FRACTION;
-  // La tarjeta debe salir de la PANTALLA, no solo del mazo (en escritorio la
-  // ventana es más ancha que el deck y desaparecía a medio vuelo).
   const exitDistance = Math.max(width * 1.6, Dimensions.get('window').width * 1.1);
+  const hasDetails = details !== undefined;
 
   const finish = (dir: number) => onSwiped(dir > 0 ? 'like' : 'pass');
 
-  const fly = (dir: 1 | -1, verticalVelocity = 0) => {
+  const fly = (dir: 1 | -1) => {
     tx.value = withTiming(dir * exitDistance, EXIT_TIMING, (done) => {
       if (done) runOnJS(finish)(dir);
     });
-    ty.value = withTiming(ty.value + verticalVelocity * 0.12, EXIT_TIMING);
   };
 
-  useImperativeHandle(ref, () => ({ fly }));
+  const toggleSheet = () => {
+    sheet.value = withSpring(sheet.value > 0.5 ? 0 : 1, SHEET_SPRING);
+  };
+
+  useImperativeHandle(ref, () => ({ fly, toggleSheet }));
 
   const pan = Gesture.Pan()
     .enabled(enabled)
+    .onStart(() => {
+      sheetAtStart.value = sheet.value;
+    })
     .onUpdate((event) => {
-      // Si el gesto es claramente vertical hacia arriba, amortiguamos lo
-      // horizontal: la tarjeta "se alarga" hacia arriba sin irse de lado.
-      const pullingUp =
-        event.translationY < 0 && Math.abs(event.translationY) > Math.abs(event.translationX);
-      tx.value = event.translationX * (pullingUp ? 0.2 : 1);
-      // Hacia abajo la tarjeta se resiste (banda elástica)
-      ty.value = event.translationY < 0 ? event.translationY : event.translationY * 0.25;
-      progress.value = Math.min(Math.abs(tx.value) / threshold, 1);
-      if (pullProgress) {
-        pullProgress.value = pullingUp
-          ? Math.min(-event.translationY / PULL_DISTANCE, 1)
-          : 0;
+      // La tira sigue al dedo en vertical (arriba abre, abajo cierra)
+      if (hasDetails && height > 0) {
+        sheet.value = Math.min(
+          Math.max(sheetAtStart.value - event.translationY / height, 0),
+          1
+        );
       }
+      // El swipe horizontal se desvanece a medida que la descripción se abre
+      tx.value = event.translationX * (1 - sheet.value);
+      progress.value = Math.min(Math.abs(tx.value) / threshold, 1);
     })
     .onEnd((event) => {
       const decided =
-        Math.abs(tx.value) > threshold || Math.abs(event.velocityX) > FLING_VELOCITY;
-      const swipedUp =
-        onSwipeUp !== undefined &&
-        (ty.value < -SWIPE_UP_DISTANCE || event.velocityY < -FLING_VELOCITY) &&
-        Math.abs(tx.value) < threshold * 0.6;
-      if (decided && !swipedUp) {
+        sheet.value < 0.3 &&
+        (Math.abs(tx.value) > threshold || Math.abs(event.velocityX) > FLING_VELOCITY);
+      if (decided) {
         const dir = (tx.value !== 0 ? Math.sign(tx.value) : Math.sign(event.velocityX)) as 1 | -1;
-        runOnJS(fly)(dir, event.velocityY);
-      } else {
-        if (swipedUp && onSwipeUp) runOnJS(onSwipeUp)();
-        tx.value = withSpring(0, RETURN_SPRING);
-        ty.value = withSpring(0, RETURN_SPRING);
-        progress.value = withSpring(0, RETURN_SPRING);
-        if (pullProgress && !swipedUp) pullProgress.value = withSpring(0, RETURN_SPRING);
+        runOnJS(fly)(dir);
+        return;
       }
+      tx.value = withSpring(0, RETURN_SPRING);
+      progress.value = withSpring(0, RETURN_SPRING);
+      // La tira encaja en tarjeta o descripción según posición y velocidad
+      const target =
+        event.velocityY < -FLING_VELOCITY ? 1
+        : event.velocityY > FLING_VELOCITY ? 0
+        : sheet.value > 0.5 ? 1
+        : 0;
+      sheet.value = withSpring(hasDetails ? target : 0, SHEET_SPRING);
     });
 
-  const cardStyle = useAnimatedStyle(() => ({
+  const frameStyle = useAnimatedStyle(() => ({
     transform: [
       { translateX: tx.value },
-      { translateY: ty.value },
       {
         rotate: `${interpolate(
           tx.value,
@@ -131,17 +144,28 @@ const TopCard = forwardRef<TopCardHandle, TopCardProps>(function TopCard(
     ],
   }));
 
+  const stripStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: -sheet.value * height }],
+  }));
+
   const likeStampStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(tx.value, [threshold * 0.15, threshold], [0, 1], Extrapolation.CLAMP),
+    opacity:
+      interpolate(tx.value, [threshold * 0.15, threshold], [0, 1], Extrapolation.CLAMP) *
+      (1 - sheet.value),
   }));
   const passStampStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(tx.value, [-threshold, -threshold * 0.15], [1, 0], Extrapolation.CLAMP),
+    opacity:
+      interpolate(tx.value, [-threshold, -threshold * 0.15], [1, 0], Extrapolation.CLAMP) *
+      (1 - sheet.value),
   }));
 
   return (
     <GestureDetector gesture={pan}>
-      <Animated.View style={[StyleSheet.absoluteFill, cardStyle]}>
-        {children}
+      <Animated.View style={[StyleSheet.absoluteFill, styles.frame, frameStyle]}>
+        <Animated.View style={[styles.strip, stripStyle]}>
+          <View style={styles.page}>{card}</View>
+          {hasDetails && <View style={styles.page}>{details}</View>}
+        </Animated.View>
         <Animated.View style={[styles.stamp, styles.stampLike, likeStampStyle]}>
           <Text style={[styles.stampText, styles.stampTextLike]}>{likeLabel}</Text>
         </Animated.View>
@@ -158,15 +182,13 @@ type SwipeDeckProps<T> = {
   index: number;
   keyFor: (item: T) => string;
   renderCard: (item: T, isTop: boolean) => ReactNode;
+  /** cara de descripción de la tira (desliza desde abajo) */
+  renderDetails?: (item: T) => ReactNode;
   onSwiped: (item: T, choice: SwipeChoice) => void;
-  /** arrastrar hacia arriba (patrón Tinder): abre los detalles */
-  onSwipeUp?: () => void;
-  /** progreso 0..1 del arrastre vertical, para ligar el panel de detalles al gesto */
-  pullProgress?: SharedValue<number>;
   enabled?: boolean;
   likeLabel?: string;
   passLabel?: string;
-  /** ref imperativa para que los botones disparen la misma animación */
+  /** ref imperativa para botones: swipe('like'|'pass') y toggleDetails() */
   deckRef?: MutableRefObject<SwipeDeckHandle | null>;
 };
 
@@ -175,15 +197,14 @@ export function SwipeDeck<T>({
   index,
   keyFor,
   renderCard,
+  renderDetails,
   onSwiped,
-  onSwipeUp,
-  pullProgress,
   enabled = true,
   likeLabel = 'ME INTERESA',
   passLabel = 'PASO',
   deckRef,
 }: SwipeDeckProps<T>) {
-  const [width, setWidth] = useState(0);
+  const [size, setSize] = useState({ width: 0, height: 0 });
   const progress = useSharedValue(0);
   const topRef = useRef<TopCardHandle>(null);
 
@@ -194,6 +215,7 @@ export function SwipeDeck<T>({
     if (!deckRef) return;
     deckRef.current = {
       swipe: (choice) => topRef.current?.fly(choice === 'like' ? 1 : -1),
+      toggleDetails: () => topRef.current?.toggleSheet(),
     };
     return () => {
       deckRef.current = null;
@@ -216,28 +238,30 @@ export function SwipeDeck<T>({
   return (
     <View
       style={styles.container}
-      onLayout={(e) => setWidth(e.nativeEvent.layout.width)}>
+      onLayout={(e) =>
+        setSize({ width: e.nativeEvent.layout.width, height: e.nativeEvent.layout.height })
+      }>
       {next !== undefined && (
         <Animated.View
           key={`next-${keyFor(next)}`}
-          style={[StyleSheet.absoluteFill, nextCardStyle]}>
+          style={[StyleSheet.absoluteFill, styles.frame, nextCardStyle]}>
           {renderCard(next, false)}
         </Animated.View>
       )}
-      {current !== undefined && width > 0 && (
+      {current !== undefined && size.width > 0 && (
         <TopCard
           key={keyFor(current)}
           ref={topRef}
-          width={width}
+          width={size.width}
+          height={size.height}
           enabled={enabled}
           progress={progress}
-          pullProgress={pullProgress}
           likeLabel={likeLabel}
           passLabel={passLabel}
           onSwiped={handleSwiped}
-          onSwipeUp={onSwipeUp}>
-          {renderCard(current, true)}
-        </TopCard>
+          card={renderCard(current, true)}
+          details={renderDetails ? renderDetails(current) : undefined}
+        />
       )}
     </View>
   );
@@ -247,6 +271,20 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     width: '100%',
+  },
+  frame: {
+    borderRadius: 20,
+    overflow: 'hidden',
+  },
+  strip: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    height: '200%',
+  },
+  page: {
+    height: '50%',
   },
   stamp: {
     position: 'absolute',

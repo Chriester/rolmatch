@@ -1,7 +1,6 @@
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
-import { useSharedValue } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { showAlert } from '@/lib/alert';
@@ -10,12 +9,12 @@ import {
   AvailabilityMiniGrid,
   availabilityCellKey,
 } from '@/components/swipe/availability-mini-grid';
-import { CardFlip } from '@/components/swipe/card-flip';
+import { CardCycle } from '@/components/swipe/card-cycle';
 import { CardShell, cardText } from '@/components/swipe/card-shell';
+import { CharacterLikeButton } from '@/components/swipe/character-like-button';
 import { SwipeDeck, type SwipeChoice, type SwipeDeckHandle } from '@/components/swipe/deck';
-import { DetailsSheet, sheetText } from '@/components/swipe/details-sheet';
+import { DetailsFace, sheetText } from '@/components/swipe/details-face';
 import { MatchOverlay } from '@/components/swipe/match-overlay';
-import { ShowcaseBack } from '@/components/swipe/showcase-back';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
@@ -37,13 +36,11 @@ export default function GroupCandidatesScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const session = useSession();
   const deckRef = useRef<SwipeDeckHandle | null>(null);
-  const pullProgress = useSharedValue(0);
 
   const [group, setGroup] = useState<GroupDetail | null>(null);
   const [candidates, setCandidates] = useState<PlayerCandidate[] | undefined>(undefined);
   const [loadError, setLoadError] = useState(false);
   const [index, setIndex] = useState(0);
-  const [showDetails, setShowDetails] = useState(false);
   const [matchWith, setMatchWith] = useState<PlayerCandidate | null>(null);
 
   const load = useCallback(() => {
@@ -51,7 +48,6 @@ export default function GroupCandidatesScreen() {
     setLoadError(false);
     setCandidates(undefined);
     setIndex(0);
-    setShowDetails(false);
     fetchGroupCandidates(id, session.user.id)
       .then(setCandidates)
       .catch(() => setLoadError(true));
@@ -66,7 +62,6 @@ export default function GroupCandidatesScreen() {
 
   const handleSwiped = (item: PlayerCandidate, choice: SwipeChoice) => {
     if (!id) return;
-    setShowDetails(false);
     setIndex((i) => i + 1);
     groupSwipeOnUser(id, item.player.id, choice === 'like' ? 'like' : 'pass')
       .then((matched) => {
@@ -82,7 +77,6 @@ export default function GroupCandidatesScreen() {
     try {
       const blockedId = current.player.id;
       await blockUser(session.user.id, blockedId);
-      setShowDetails(false);
       setCandidates((list) => list?.filter((c) => c.player.id !== blockedId));
     } catch (error) {
       showAlert('Error', error instanceof Error ? error.message : String(error));
@@ -93,7 +87,7 @@ export default function GroupCandidatesScreen() {
     const publicLooking = c.player.characters.filter(
       (ch) => ch.status === 'looking' && ch.is_public
     );
-    const front = (
+    const playerFace = (
       <CardShell
         imageUrl={c.player.avatar_url}
         fallbackEmoji="🧙"
@@ -106,8 +100,7 @@ export default function GroupCandidatesScreen() {
           c.likedGroup ? (
             <View style={styles.likedBanner}>
               <Text style={styles.likedText} numberOfLines={1}>
-                💘 Le gustáis
-                {c.proposal ? ` — propone a ${c.proposal.name}` : ''}
+                💘 Le gustáis{c.proposal ? ` — propone a ${c.proposal.name}` : ''}
               </Text>
             </View>
           ) : undefined
@@ -120,14 +113,76 @@ export default function GroupCandidatesScreen() {
         </Text>
         <Text style={cardText.soft}>
           ⏱ Coincide {c.result.overlapHours} h con vuestra sesión
-          {publicLooking.length > 0 ? ' · toca para ver su vitrina' : ''}
+          {publicLooking.length > 0 ? ' · toca para ver sus personajes' : ''}
         </Text>
       </CardShell>
     );
-    return (
-      <CardFlip front={front} back={<ShowcaseBack alias={c.player.alias} characters={publicLooking} />} />
-    );
+    const characterFaces = publicLooking.map((ch) => (
+      <CardShell
+        key={ch.id}
+        imageUrl={ch.portrait_url}
+        fallbackEmoji="🧝"
+        topRight={
+          session ? <CharacterLikeButton characterId={ch.id} viewerId={session.user.id} /> : undefined
+        }>
+        <Text style={cardText.soft}>Personaje de {c.player.alias}</Text>
+        <Text style={cardText.title} numberOfLines={1}>
+          {ch.name}
+        </Text>
+        <Text style={cardText.line}>
+          {[ch.archetype, ch.systems?.name, ch.level && `nivel ${ch.level}`]
+            .filter(Boolean)
+            .join(' · ')}
+        </Text>
+        {ch.concept && (
+          <Text style={cardText.soft} numberOfLines={2}>
+            {ch.concept}
+          </Text>
+        )}
+      </CardShell>
+    ));
+    return <CardCycle faces={[playerFace, ...characterFaces]} />;
   };
+
+  const detailsFor = (c: PlayerCandidate) => (
+    <>
+      {c.player.bio && (
+        <>
+          <Text style={sheetText.label}>Bio</Text>
+          <Text style={sheetText.body} numberOfLines={3}>
+            {c.player.bio}
+          </Text>
+        </>
+      )}
+      <Text style={sheetText.label}>Su semana vs vuestra sesión</Text>
+      <AvailabilityMiniGrid
+        cells={new Set(c.player.availability.map((a) => availabilityCellKey(a.weekday, a.slot)))}
+        highlight={
+          group && group.session_weekday !== null && group.session_slot !== null
+            ? { weekday: group.session_weekday, slot: group.session_slot }
+            : null
+        }
+      />
+      <Text style={sheetText.label}>Compatibilidad</Text>
+      <Text style={sheetText.body}>
+        {c.result.score}% — coincide {c.result.overlapHours} h con vuestra sesión
+      </Text>
+      <View style={styles.moderationRow}>
+        <Pressable
+          onPress={() =>
+            router.push({
+              pathname: '/report',
+              params: { kind: 'user', id: c.player.id, name: c.player.alias },
+            })
+          }>
+          <Text style={sheetText.link}>Reportar</Text>
+        </Pressable>
+        <Pressable onPress={handleBlock}>
+          <Text style={sheetText.link}>Bloquear</Text>
+        </Pressable>
+      </View>
+    </>
+  );
 
   return (
     <ThemedView style={styles.container}>
@@ -176,76 +231,19 @@ export default function GroupCandidatesScreen() {
                 index={index}
                 keyFor={(c) => c.player.id}
                 renderCard={renderCard}
+                renderDetails={(c) => (
+                  <DetailsFace title={c.player.alias}>{detailsFor(c)}</DetailsFace>
+                )}
                 onSwiped={handleSwiped}
-                onSwipeUp={() => setShowDetails(true)}
-                pullProgress={pullProgress}
                 likeLabel="NOS INTERESA"
                 deckRef={deckRef}
               />
-              <DetailsSheet
-                open={showDetails}
-                pullProgress={pullProgress}
-                title={current.player.alias}
-                onClose={() => setShowDetails(false)}>
-                {current.player.bio && (
-                  <>
-                    <Text style={sheetText.label}>Bio</Text>
-                    <Text style={sheetText.body}>{current.player.bio}</Text>
-                  </>
-                )}
-                {current.player.characters.filter((ch) => ch.status === 'looking' && ch.is_public)
-                  .length > 0 && (
-                  <>
-                    <Text style={sheetText.label}>Vitrina de personajes</Text>
-                    {current.player.characters
-                      .filter((ch) => ch.status === 'looking' && ch.is_public)
-                      .map((ch) => (
-                        <Text key={ch.id} style={sheetText.body}>
-                          {[ch.name, ch.archetype, ch.systems?.name].filter(Boolean).join(' · ')}
-                        </Text>
-                      ))}
-                  </>
-                )}
-                <Text style={sheetText.label}>Su semana vs vuestra sesión</Text>
-                <AvailabilityMiniGrid
-                  cells={
-                    new Set(
-                      current.player.availability.map((a) => availabilityCellKey(a.weekday, a.slot))
-                    )
-                  }
-                  highlight={
-                    group && group.session_weekday !== null && group.session_slot !== null
-                      ? { weekday: group.session_weekday, slot: group.session_slot }
-                      : null
-                  }
-                />
-                <Text style={sheetText.label}>Compatibilidad</Text>
-                <Text style={sheetText.body}>
-                  {current.result.score}% — coincide {current.result.overlapHours} h con vuestra
-                  sesión
-                </Text>
-                <View style={styles.moderationRow}>
-                  <Pressable
-                    onPress={() => {
-                      setShowDetails(false);
-                      router.push({
-                        pathname: '/report',
-                        params: { kind: 'user', id: current.player.id, name: current.player.alias },
-                      });
-                    }}>
-                    <Text style={sheetText.link}>Reportar</Text>
-                  </Pressable>
-                  <Pressable onPress={handleBlock}>
-                    <Text style={sheetText.link}>Bloquear</Text>
-                  </Pressable>
-                </View>
-              </DetailsSheet>
             </View>
 
             <ActionBar
               onPass={() => deckRef.current?.swipe('pass')}
               onLike={() => deckRef.current?.swipe('like')}
-              onInfo={() => setShowDetails((s) => !s)}
+              onInfo={() => deckRef.current?.toggleDetails()}
             />
           </>
         )}
@@ -257,7 +255,7 @@ export default function GroupCandidatesScreen() {
         right={{ imageUrl: matchWith?.player.avatar_url ?? null, fallbackEmoji: '🧙' }}
         subtitle={
           matchWith
-            ? `${matchWith.player.alias} también quiere jugar en vuestra mesa. El bot os está abriendo un canal en Discord.`
+            ? `${matchWith.player.alias} también quiere jugar en vuestra mesa. Mirad el canal de Discord de la mesa.`
             : ''
         }
         onClose={() => setMatchWith(null)}
