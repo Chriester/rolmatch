@@ -152,7 +152,7 @@ export async function fetchGroupCandidates(
       `id, alias, role, timezone, languages, open_to_any_system, bio, avatar_url,
        style_combat_narrative, style_serious_humor, style_roleplay_weight, preferred_vtt,
        availability_slots(weekday, slot), user_systems(system_id, experience),
-       characters(id, name, archetype, level, concept, portrait_url, status, is_public, systems(name))`
+       characters!characters_user_id_fkey(id, name, archetype, level, concept, portrait_url, status, is_public, systems(name))`
     );
   if (error) throw error;
 
