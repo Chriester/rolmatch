@@ -62,12 +62,19 @@ export function OutlineButton({
   label: string;
   onPress: () => void;
   disabled?: boolean;
-  tone?: 'violet' | 'white' | 'red';
+  tone?: 'violet' | 'white' | 'red' | 'gold';
   style?: StyleProp<ViewStyle>;
 }) {
   const border =
-    tone === 'violet' ? 'rgba(139,108,255,0.8)' : tone === 'red' ? Rolder.pass : 'rgba(255,255,255,0.3)';
-  const color = tone === 'violet' ? Rolder.violetSofter : tone === 'red' ? Rolder.pass : 'rgba(255,255,255,0.85)';
+    tone === 'violet' ? 'rgba(139,108,255,0.8)'
+    : tone === 'red' ? Rolder.pass
+    : tone === 'gold' ? Rolder.gold
+    : 'rgba(255,255,255,0.3)';
+  const color =
+    tone === 'violet' ? Rolder.violetSofter
+    : tone === 'red' ? Rolder.pass
+    : tone === 'gold' ? Rolder.goldLight
+    : 'rgba(255,255,255,0.85)';
   return (
     <Pressable
       onPress={onPress}
