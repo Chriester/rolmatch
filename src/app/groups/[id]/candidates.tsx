@@ -8,7 +8,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { useSession } from '@/hooks/use-session';
 import { fetchGroupCandidates, type PlayerCandidate } from '@/lib/feed';
+import { blockUser } from '@/lib/moderation';
 import { groupSwipeOnUser } from '@/lib/swipes';
 
 const ROLE_LABELS: Record<string, string> = {
@@ -19,18 +21,34 @@ const ROLE_LABELS: Record<string, string> = {
 
 export default function GroupCandidatesScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const session = useSession();
   const [candidates, setCandidates] = useState<PlayerCandidate[] | undefined>(undefined);
   const [index, setIndex] = useState(0);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (!id) return;
-    fetchGroupCandidates(id)
+    if (!id || !session) return;
+    fetchGroupCandidates(id, session.user.id)
       .then(setCandidates)
       .catch(() => setCandidates([]));
-  }, [id]);
+  }, [id, session]);
 
   const current = candidates?.[index];
+
+  const handleBlock = async () => {
+    if (!session || !current) return;
+    setBusy(true);
+    try {
+      const blockedId = current.player.id;
+      await blockUser(session.user.id, blockedId);
+      setCandidates((list) => list?.filter((c) => c.player.id !== blockedId));
+      showAlert('Bloqueado', 'Esta persona ya no aparecerá entre vuestros candidatos, ni vosotros en su feed.');
+    } catch (error) {
+      showAlert('Error', error instanceof Error ? error.message : String(error));
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const handleSwipe = async (direction: 'like' | 'pass') => {
     if (!id || !current) return;
@@ -102,6 +120,25 @@ export default function GroupCandidatesScreen() {
                 onPress={() => handleSwipe('like')}
                 disabled={busy}>
                 <ThemedText style={styles.likeLabel}>Nos interesa</ThemedText>
+              </Pressable>
+            </View>
+
+            <View style={styles.moderationRow}>
+              <Pressable
+                onPress={() =>
+                  router.push({
+                    pathname: '/report',
+                    params: { kind: 'user', id: current.player.id, name: current.player.alias },
+                  })
+                }>
+                <ThemedText type="small" style={styles.moderationLink}>
+                  Reportar
+                </ThemedText>
+              </Pressable>
+              <Pressable onPress={handleBlock} disabled={busy}>
+                <ThemedText type="small" style={styles.moderationLink}>
+                  Bloquear
+                </ThemedText>
               </Pressable>
             </View>
           </View>
@@ -176,6 +213,15 @@ const styles = StyleSheet.create({
   likeLabel: {
     color: '#fff',
     fontWeight: '600',
+  },
+  moderationRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: Spacing.four,
+    marginTop: Spacing.two,
+  },
+  moderationLink: {
+    color: '#d9534f',
   },
   disabled: {
     opacity: 0.5,
