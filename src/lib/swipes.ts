@@ -36,6 +36,28 @@ export async function groupSwipeOnUser(
   return direction === 'like' ? hasMatch(userId, groupId) : false;
 }
 
+/** Rewind (premium): deshace el swipe del jugador sobre una mesa. */
+export async function undoSwipeOnGroup(userId: string, groupId: string) {
+  const { error } = await supabase
+    .from('swipes')
+    .delete()
+    .eq('user_id', userId)
+    .eq('group_id', groupId)
+    .eq('origin', 'user');
+  if (error) throw error;
+}
+
+/** Rewind (premium): deshace el swipe de la mesa sobre un candidato. */
+export async function undoGroupSwipeOnUser(groupId: string, userId: string) {
+  const { error } = await supabase
+    .from('swipes')
+    .delete()
+    .eq('user_id', userId)
+    .eq('group_id', groupId)
+    .eq('origin', 'group');
+  if (error) throw error;
+}
+
 /** El trigger de la DB crea el match al segundo like recíproco; aquí solo lo consultamos. */
 async function hasMatch(userId: string, groupId: string): Promise<boolean> {
   const { data, error } = await supabase
