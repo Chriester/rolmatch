@@ -1,5 +1,6 @@
+import { Redirect } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
@@ -7,21 +8,30 @@ import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
 import { signOut } from '@/lib/auth';
-import { supabase } from '@/lib/supabase';
+import { fetchProfileAlias, hasCompletedOnboarding } from '@/lib/profile';
 
 export default function HomeScreen() {
   const session = useSession();
   const [alias, setAlias] = useState<string | null>(null);
+  const [onboarded, setOnboarded] = useState<boolean | undefined>(undefined);
 
   useEffect(() => {
     if (!session) return;
-    supabase
-      .from('profiles')
-      .select('alias')
-      .eq('id', session.user.id)
-      .single()
-      .then(({ data }) => setAlias(data?.alias ?? null));
+    hasCompletedOnboarding(session.user.id).then(setOnboarded).catch(() => setOnboarded(true));
+    fetchProfileAlias(session.user.id).then(setAlias).catch(() => {});
   }, [session]);
+
+  if (onboarded === undefined) {
+    return (
+      <ThemedView style={[styles.container, styles.loading]}>
+        <ActivityIndicator />
+      </ThemedView>
+    );
+  }
+
+  if (!onboarded) {
+    return <Redirect href="/onboarding" />;
+  }
 
   return (
     <ThemedView style={styles.container}>
@@ -30,7 +40,7 @@ export default function HomeScreen() {
           {alias ? `¡Hola, ${alias}!` : '¡Hola!'}
         </ThemedText>
         <ThemedText style={styles.centered}>
-          Tu cuenta está conectada. Aquí irá el feed de swipe: mesas buscando
+          Tu perfil está listo. Aquí irá el feed de swipe: mesas buscando
           jugadores y jugadores buscando mesa.
         </ThemedText>
         <Pressable style={styles.signOutButton} onPress={signOut}>
@@ -46,6 +56,9 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     justifyContent: 'center',
+  },
+  loading: {
+    alignItems: 'center',
   },
   safeArea: {
     flex: 1,
