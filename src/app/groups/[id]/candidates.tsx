@@ -1,6 +1,7 @@
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useSharedValue } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { showAlert } from '@/lib/alert';
@@ -36,6 +37,7 @@ export default function GroupCandidatesScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const session = useSession();
   const deckRef = useRef<SwipeDeckHandle | null>(null);
+  const pullProgress = useSharedValue(0);
 
   const [group, setGroup] = useState<GroupDetail | null>(null);
   const [candidates, setCandidates] = useState<PlayerCandidate[] | undefined>(undefined);
@@ -176,11 +178,13 @@ export default function GroupCandidatesScreen() {
                 renderCard={renderCard}
                 onSwiped={handleSwiped}
                 onSwipeUp={() => setShowDetails(true)}
+                pullProgress={pullProgress}
                 likeLabel="NOS INTERESA"
                 deckRef={deckRef}
               />
               <DetailsSheet
-                visible={showDetails}
+                open={showDetails}
+                pullProgress={pullProgress}
                 title={current.player.alias}
                 onClose={() => setShowDetails(false)}>
                 {current.player.bio && (

@@ -1,6 +1,7 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSharedValue } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { showAlert } from '@/lib/alert';
@@ -60,6 +61,7 @@ function itemKey(item: FeedItem) {
 export default function FeedScreen() {
   const session = useSession();
   const deckRef = useRef<SwipeDeckHandle | null>(null);
+  const pullProgress = useSharedValue(0);
 
   const [items, setItems] = useState<FeedItem[] | undefined>(undefined);
   const [myAvailability, setMyAvailability] = useState<Set<string>>(new Set());
@@ -348,11 +350,13 @@ export default function FeedScreen() {
                 renderCard={renderCard}
                 onSwiped={handleSwiped}
                 onSwipeUp={() => setShowDetails(true)}
+                pullProgress={pullProgress}
                 likeLabel={current.kind === 'group' ? 'ME INTERESA' : 'NOS INTERESA'}
                 deckRef={deckRef}
               />
               <DetailsSheet
-                visible={showDetails}
+                open={showDetails}
+                pullProgress={pullProgress}
                 title={current.kind === 'group' ? current.group.name : current.candidate.player.alias}
                 onClose={() => setShowDetails(false)}>
                 {detailsFor(current)}

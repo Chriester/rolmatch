@@ -1,25 +1,59 @@
-// Panel de detalles: se desliza sobre la zona del deck con la información
-// secundaria (descripción, estilo, vitrina, moderación). La tarjeta en sí
-// nunca scrollea.
+/* eslint-disable react-hooks/immutability -- mutaciones de shared values,
+   API oficial de Reanimated */
+// Panel de detalles ligado al gesto: mientras arrastras la tarjeta hacia
+// arriba, el panel asoma desde abajo en sincronía (la tarjeta se "alarga");
+// al soltar pasado el umbral se abre del todo con muelle.
 
 import type { ReactNode } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import Animated, { FadeInDown, FadeOutDown, ReduceMotion } from 'react-native-reanimated';
+import Animated, {
+  Extrapolation,
+  interpolate,
+  ReduceMotion,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  type SharedValue,
+} from 'react-native-reanimated';
+
+const OPEN_SPRING = { damping: 19, stiffness: 200, reduceMotion: ReduceMotion.Never };
 
 type DetailsSheetProps = {
-  visible: boolean;
+  open: boolean;
+  /** progreso 0..1 del arrastre vertical del deck (previsualización) */
+  pullProgress?: SharedValue<number>;
   title: string;
   onClose: () => void;
   children: ReactNode;
 };
 
-export function DetailsSheet({ visible, title, onClose, children }: DetailsSheetProps) {
-  if (!visible) return null;
+export function DetailsSheet({ open, pullProgress, title, onClose, children }: DetailsSheetProps) {
+  const [height, setHeight] = useState(0);
+  const openSv = useSharedValue(0);
+
+  useEffect(() => {
+    openSv.value = withSpring(open ? 1 : 0, OPEN_SPRING);
+    if (!open && pullProgress) pullProgress.value = withSpring(0, OPEN_SPRING);
+  }, [open, openSv, pullProgress]);
+
+  const sheetStyle = useAnimatedStyle(() => {
+    const progress = Math.max(openSv.value, pullProgress?.value ?? 0);
+    return {
+      transform: [
+        {
+          translateY: interpolate(progress, [0, 1], [height, 0], Extrapolation.CLAMP),
+        },
+      ],
+      opacity: height === 0 ? 0 : 1,
+      pointerEvents: open ? ('auto' as const) : ('none' as const),
+    };
+  }, [open, height]);
+
   return (
     <Animated.View
-      entering={FadeInDown.duration(220).reduceMotion(ReduceMotion.Never)}
-      exiting={FadeOutDown.duration(180).reduceMotion(ReduceMotion.Never)}
-      style={styles.sheet}>
+      style={[styles.sheet, sheetStyle]}
+      onLayout={(e) => setHeight(e.nativeEvent.layout.height)}>
       <View style={styles.header}>
         <Text style={styles.title} numberOfLines={1}>
           {title}
@@ -61,12 +95,13 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    top: '30%',
+    top: '28%',
     backgroundColor: 'rgba(18,19,24,0.97)',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255,255,255,0.15)',
+    overflow: 'hidden',
   },
   header: {
     flexDirection: 'row',

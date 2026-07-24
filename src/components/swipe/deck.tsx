@@ -42,6 +42,8 @@ const EXIT_TIMING = { duration: 260, reduceMotion: ReduceMotion.Never };
 const RETURN_SPRING = { damping: 16, stiffness: 190, reduceMotion: ReduceMotion.Never };
 const NEXT_CARD_SCALE = 0.95;
 const SWIPE_UP_DISTANCE = 110;
+// Recorrido del gesto vertical que lleva el panel de detalles de 0 a 1
+const PULL_DISTANCE = 260;
 
 type TopCardHandle = { fly: (dir: 1 | -1) => void };
 
@@ -49,6 +51,7 @@ type TopCardProps = {
   width: number;
   enabled: boolean;
   progress: SharedValue<number>;
+  pullProgress?: SharedValue<number>;
   likeLabel: string;
   passLabel: string;
   onSwiped: (choice: SwipeChoice) => void;
@@ -57,7 +60,7 @@ type TopCardProps = {
 };
 
 const TopCard = forwardRef<TopCardHandle, TopCardProps>(function TopCard(
-  { width, enabled, progress, likeLabel, passLabel, onSwiped, onSwipeUp, children },
+  { width, enabled, progress, pullProgress, likeLabel, passLabel, onSwiped, onSwipeUp, children },
   ref
 ) {
   const tx = useSharedValue(0);
@@ -81,9 +84,19 @@ const TopCard = forwardRef<TopCardHandle, TopCardProps>(function TopCard(
   const pan = Gesture.Pan()
     .enabled(enabled)
     .onUpdate((event) => {
-      tx.value = event.translationX;
-      ty.value = event.translationY;
-      progress.value = Math.min(Math.abs(event.translationX) / threshold, 1);
+      // Si el gesto es claramente vertical hacia arriba, amortiguamos lo
+      // horizontal: la tarjeta "se alarga" hacia arriba sin irse de lado.
+      const pullingUp =
+        event.translationY < 0 && Math.abs(event.translationY) > Math.abs(event.translationX);
+      tx.value = event.translationX * (pullingUp ? 0.2 : 1);
+      // Hacia abajo la tarjeta se resiste (banda elástica)
+      ty.value = event.translationY < 0 ? event.translationY : event.translationY * 0.25;
+      progress.value = Math.min(Math.abs(tx.value) / threshold, 1);
+      if (pullProgress) {
+        pullProgress.value = pullingUp
+          ? Math.min(-event.translationY / PULL_DISTANCE, 1)
+          : 0;
+      }
     })
     .onEnd((event) => {
       const decided =
@@ -92,7 +105,7 @@ const TopCard = forwardRef<TopCardHandle, TopCardProps>(function TopCard(
         onSwipeUp !== undefined &&
         (ty.value < -SWIPE_UP_DISTANCE || event.velocityY < -FLING_VELOCITY) &&
         Math.abs(tx.value) < threshold * 0.6;
-      if (decided) {
+      if (decided && !swipedUp) {
         const dir = (tx.value !== 0 ? Math.sign(tx.value) : Math.sign(event.velocityX)) as 1 | -1;
         runOnJS(fly)(dir, event.velocityY);
       } else {
@@ -100,6 +113,7 @@ const TopCard = forwardRef<TopCardHandle, TopCardProps>(function TopCard(
         tx.value = withSpring(0, RETURN_SPRING);
         ty.value = withSpring(0, RETURN_SPRING);
         progress.value = withSpring(0, RETURN_SPRING);
+        if (pullProgress && !swipedUp) pullProgress.value = withSpring(0, RETURN_SPRING);
       }
     });
 
@@ -147,6 +161,8 @@ type SwipeDeckProps<T> = {
   onSwiped: (item: T, choice: SwipeChoice) => void;
   /** arrastrar hacia arriba (patrón Tinder): abre los detalles */
   onSwipeUp?: () => void;
+  /** progreso 0..1 del arrastre vertical, para ligar el panel de detalles al gesto */
+  pullProgress?: SharedValue<number>;
   enabled?: boolean;
   likeLabel?: string;
   passLabel?: string;
@@ -161,6 +177,7 @@ export function SwipeDeck<T>({
   renderCard,
   onSwiped,
   onSwipeUp,
+  pullProgress,
   enabled = true,
   likeLabel = 'ME INTERESA',
   passLabel = 'PASO',
@@ -214,6 +231,7 @@ export function SwipeDeck<T>({
           width={width}
           enabled={enabled}
           progress={progress}
+          pullProgress={pullProgress}
           likeLabel={likeLabel}
           passLabel={passLabel}
           onSwiped={handleSwiped}

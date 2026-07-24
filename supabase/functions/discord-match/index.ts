@@ -1,24 +1,32 @@
 // Edge Function: discord-match
 // Disparada por un Database Webhook en INSERT sobre `matches` (§6 del PRD).
-// Crea un canal privado en el servidor comunitario de Discord para el
-// jugador y el GM, publica el mensaje de presentación y guarda el
-// channel_id en el match.
 //
-// Secrets necesarios (supabase secrets set / dashboard):
-//   DISCORD_BOT_TOKEN   token del bot de la aplicación de Discord
-//   DISCORD_GUILD_ID    id del servidor comunitario donde crear canales
+// Modelo de canales: UN canal de texto + UNO de voz POR MESA (no por match).
+// El primer match de una mesa crea sus canales privados en el servidor
+// comunitario; los siguientes matches AÑADEN al jugador a los canales que ya
+// existen. Así el servidor no se llena de canales huérfanos y cada mesa tiene
+// su espacio (texto para coordinarse, voz para jugar).
+//
+// Secrets necesarios (Edge Functions → Secrets):
+//   DISCORD_BOT_TOKEN   token del bot (misma app cuyo bot está en el servidor)
+//   DISCORD_GUILD_ID    id del servidor comunitario
 //   WEBHOOK_SECRET      valor compartido con el webhook (cabecera x-webhook-secret)
-//   SB_SECRET_KEY       clave sb_secret_... (Project Settings → API Keys). Se usa en
-//                       lugar del SERVICE_ROLE_KEY legado, que es un JWT y puede dar
-//                       PGRST303 "JWT issued at future" por desfase de reloj.
+//   SB_SECRET_KEY       clave sb_secret_... (el SERVICE_ROLE_KEY legado es un JWT
+//                       y puede dar PGRST303 por desfase de reloj)
 // SUPABASE_URL la inyecta Supabase automáticamente.
-//
-// Desplegar con: npx supabase functions deploy discord-match --no-verify-jwt
-// (el webhook de la DB no envía JWT; la autenticación es el WEBHOOK_SECRET)
 
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
 const DISCORD_API = 'https://discord.com/api/v10';
+
+// Permisos
+const VIEW = 0x400;
+const SEND = 0x800;
+const HISTORY = 0x10000;
+const CONNECT = 0x100000;
+const SPEAK = 0x200000;
+const TEXT_ALLOW = String(VIEW | SEND | HISTORY);
+const VOICE_ALLOW = String(VIEW | CONNECT | SPEAK);
 
 type WebhookPayload = {
   type: 'INSERT';
@@ -38,7 +46,19 @@ async function discord(path: string, method: string, body?: unknown) {
   if (!response.ok) {
     throw new Error(`Discord ${method} ${path} → ${response.status}: ${await response.text()}`);
   }
+  // 204 No Content en algunos endpoints (p. ej. PUT permissions)
+  if (response.status === 204) return null;
   return response.json();
+}
+
+function channelName(prefix: string, groupName: string) {
+  return `${prefix}-${groupName}`
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9-]+/g, '-')
+    .replace(/-+/g, '-')
+    .slice(0, 90);
 }
 
 Deno.serve(async (req) => {
@@ -49,7 +69,6 @@ Deno.serve(async (req) => {
   const payload = (await req.json()) as WebhookPayload;
   console.log('payload recibido:', JSON.stringify(payload));
   if (payload.type !== 'INSERT' || payload.table !== 'matches') {
-    console.log(`ignorado: type=${payload.type} table=${payload.table}`);
     return new Response('Ignored', { status: 200 });
   }
 
@@ -64,7 +83,10 @@ Deno.serve(async (req) => {
     supabase.from('profiles').select('alias, discord_id').eq('id', user_id).single(),
     supabase
       .from('groups')
-      .select('name, discord_invite_url, owner_id, profiles!groups_owner_id_fkey(alias, discord_id)')
+      .select(
+        `name, discord_invite_url, owner_id, discord_channel_id, discord_voice_channel_id,
+         profiles!groups_owner_id_fkey(alias, discord_id)`
+      )
       .eq('id', group_id)
       .single(),
   ]);
@@ -77,92 +99,105 @@ Deno.serve(async (req) => {
     );
     return new Response('Match sin datos', { status: 200 });
   }
-  console.log(`datos ok: player=${player.alias} (${player.discord_id}) group=${group.name}`);
+  console.log(`datos ok: player=${player.alias} group=${group.name}`);
 
   const owner = group.profiles as unknown as { alias: string; discord_id: string | null } | null;
   const guildId = Deno.env.get('DISCORD_GUILD_ID')!;
 
-  // Canal privado: oculto para @everyone, visible para jugador y GM (si
-  // tienen Discord vinculado) y para el propio bot.
-  const VIEW_CHANNEL_AND_HISTORY = String(0x400 | 0x10000 | 0x800); // ver + historial + escribir
-  const overwrites = [
-    { id: guildId, type: 0, deny: String(0x400) }, // @everyone: no ver
-    ...[player.discord_id, owner?.discord_id]
-      .filter((d): d is string => Boolean(d))
-      .map((discordId) => ({ id: discordId, type: 1, allow: VIEW_CHANNEL_AND_HISTORY })),
-  ];
+  let textChannelId = group.discord_channel_id as string | null;
+  let voiceChannelId = group.discord_voice_channel_id as string | null;
 
-  // Nombre de canal estilo Discord: minúsculas, sin acentos (NFD + quitar
-  // marcas diacríticas U+0300-U+036F), solo [a-z0-9-]
-  const channelName = `match-${group.name}`
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .replace(/[^a-z0-9-]+/g, '-')
-    .replace(/-+/g, '-')
-    .slice(0, 90);
+  if (!textChannelId) {
+    // Primer match de la mesa: crear sus canales privados (texto + voz)
+    // con acceso para el GM y todos los miembros actuales con Discord.
+    const { data: members } = await supabase
+      .from('group_members')
+      .select('profiles(discord_id)')
+      .eq('group_id', group_id);
+    const memberDiscordIds = (members ?? [])
+      .map(
+        (m: { profiles: unknown }) =>
+          (m.profiles as { discord_id: string | null } | null)?.discord_id
+      )
+      .filter((d: string | null | undefined): d is string => Boolean(d));
+    const allowedIds = [
+      ...new Set([owner?.discord_id, player.discord_id, ...memberDiscordIds].filter(Boolean)),
+    ] as string[];
 
-  // El canal de Discord y el push son independientes: si Discord falla,
-  // el push sale igualmente (y viceversa).
-  let channelId: string | null = null;
-  try {
-    console.log(`creando canal "${channelName}" en guild ${guildId}…`);
-    const channel = await discord(`/guilds/${guildId}/channels`, 'POST', {
-      name: channelName,
+    const textOverwrites = [
+      { id: guildId, type: 0, deny: String(VIEW) },
+      ...allowedIds.map((id) => ({ id, type: 1, allow: TEXT_ALLOW })),
+    ];
+    const voiceOverwrites = [
+      { id: guildId, type: 0, deny: String(VIEW) },
+      ...allowedIds.map((id) => ({ id, type: 1, allow: VOICE_ALLOW })),
+    ];
+
+    console.log(`creando canales de la mesa "${group.name}"…`);
+    const textChannel = await discord(`/guilds/${guildId}/channels`, 'POST', {
+      name: channelName('mesa', group.name),
       type: 0,
-      topic: `Match de RolMatch: ${player.alias} × ${group.name}`,
-      permission_overwrites: overwrites,
+      topic: `Canal de la mesa «${group.name}» en RolMatch`,
+      permission_overwrites: textOverwrites,
     });
-    channelId = channel.id as string;
-    console.log(`canal creado: ${channelId}`);
+    textChannelId = textChannel.id as string;
 
-    const mentions = [player.discord_id, owner?.discord_id]
-      .filter(Boolean)
-      .map((d) => `<@${d}>`)
-      .join(' y ');
+    try {
+      const voiceChannel = await discord(`/guilds/${guildId}/channels`, 'POST', {
+        name: channelName('voz', group.name),
+        type: 2,
+        permission_overwrites: voiceOverwrites,
+      });
+      voiceChannelId = voiceChannel.id as string;
+    } catch (error) {
+      console.error(`no se pudo crear el canal de voz (seguimos): ${error}`);
+    }
+
+    await supabase
+      .from('groups')
+      .update({ discord_channel_id: textChannelId, discord_voice_channel_id: voiceChannelId })
+      .eq('id', group_id);
+    console.log(`canales creados: texto=${textChannelId} voz=${voiceChannelId}`);
+  } else if (player.discord_id) {
+    // La mesa ya tiene canal: añadimos al nuevo jugador a texto y voz
+    console.log(`añadiendo a ${player.alias} al canal existente ${textChannelId}`);
+    await discord(`/channels/${textChannelId}/permissions/${player.discord_id}`, 'PUT', {
+      type: 1,
+      allow: TEXT_ALLOW,
+      deny: '0',
+    });
+    if (voiceChannelId) {
+      try {
+        await discord(`/channels/${voiceChannelId}/permissions/${player.discord_id}`, 'PUT', {
+          type: 1,
+          allow: VOICE_ALLOW,
+          deny: '0',
+        });
+      } catch (error) {
+        console.error(`no se pudo añadir al canal de voz (seguimos): ${error}`);
+      }
+    }
+  }
+
+  // Mensaje de bienvenida en el canal de la mesa
+  try {
+    const mention = player.discord_id ? `<@${player.discord_id}>` : `**${player.alias}**`;
+    const ownerMention = owner?.discord_id ? `<@${owner.discord_id}>` : (owner?.alias ?? 'GM');
     const inviteLine = group.discord_invite_url
       ? `\nLa mesa también tiene su propio servidor: ${group.discord_invite_url}`
       : '';
-
-    await discord(`/channels/${channelId}/messages`, 'POST', {
+    await discord(`/channels/${textChannelId}/messages`, 'POST', {
       content:
-        `🎲 **¡Match!** ${mentions}\n` +
-        `**${player.alias}** y la mesa **${group.name}** habéis coincidido en RolMatch. ` +
-        `Este canal es vuestro para presentaros y cuadrar la primera sesión.${inviteLine}`,
+        `🎲 **¡Match!** ${mention} se une a **${group.name}** (GM: ${ownerMention}). ` +
+        `Presentaos y cuadrad la próxima sesión.${inviteLine}`,
     });
-
-    await supabase.from('matches').update({ discord_channel_id: channelId }).eq('id', matchId);
   } catch (error) {
-    console.error(`fallo en Discord (el push continúa): ${error}`);
+    console.error(`no se pudo publicar la bienvenida: ${error}`);
   }
 
-  // Expo Push a los dispositivos nativos de ambas partes (§8.6). En web no
-  // hay push: el aviso es la mención del canal de Discord.
-  try {
-    const { data: tokens } = await supabase
-      .from('push_tokens')
-      .select('token')
-      .in('user_id', [user_id, group.owner_id]);
-    if (tokens && tokens.length > 0) {
-      const messages = tokens.map((t: { token: string }) => ({
-        to: t.token,
-        title: '🎲 ¡Match!',
-        body: `${player.alias} × ${group.name}. Abrid Discord para presentaros.`,
-      }));
-      const pushResponse = await fetch('https://exp.host/--/api/v2/push/send', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(messages),
-      });
-      console.log(`push enviado a ${tokens.length} dispositivo(s): ${pushResponse.status}`);
-    } else {
-      console.log('sin tokens de push registrados para este match');
-    }
-  } catch (error) {
-    console.error(`fallo enviando push: ${error}`);
-  }
+  await supabase.from('matches').update({ discord_channel_id: textChannelId }).eq('id', matchId);
 
-  return new Response(JSON.stringify({ channel_id: channelId }), {
+  return new Response(JSON.stringify({ channel_id: textChannelId, voice_channel_id: voiceChannelId }), {
     headers: { 'Content-Type': 'application/json' },
   });
 });

@@ -43,7 +43,7 @@ npm start              # Expo Dev Server (i = iOS, a = Android, w = web)
 
 ### Bot de Discord (canal automático al hacer match)
 
-El "bot" del MVP no es un proceso persistente: es la Edge Function [supabase/functions/discord-match](supabase/functions/discord-match/index.ts), disparada por un Database Webhook cuando se inserta un `match`. Crea un canal privado en el servidor comunitario para el jugador y el GM. Setup (una vez):
+El "bot" del MVP no es un proceso persistente: es la Edge Function [supabase/functions/discord-match](supabase/functions/discord-match/index.ts), disparada por un Database Webhook cuando se inserta un `match`. **Modelo de canales: uno de texto + uno de voz POR MESA** — el primer match de una mesa crea sus canales privados (`#mesa-…` y `voz-…`) y los siguientes matches añaden al jugador a los canales existentes (requiere la migración `00006`). Setup (una vez):
 
 1. **Bot**: en tu [aplicación de Discord](https://discord.com/developers/applications) → **Bot** → "Add Bot" (si no existe) → copia el **Token** (Reset Token).
 2. **Servidor comunitario**: crea un servidor de Discord para la app (o usa uno existente) y copia su **ID** (clic derecho sobre el servidor → "Copiar ID del servidor", con el modo desarrollador activado en Ajustes → Avanzado).
