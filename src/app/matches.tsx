@@ -1,0 +1,114 @@
+import { router } from 'expo-router';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, FlatList, Linking, Pressable, StyleSheet, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
+import { ThemedText } from '@/components/themed-text';
+import { ThemedView } from '@/components/themed-view';
+import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { useSession } from '@/hooks/use-session';
+import { fetchMyMatches, matchChannelUrl, type MyMatch } from '@/lib/matches';
+
+export default function MatchesScreen() {
+  const session = useSession();
+  const [matches, setMatches] = useState<MyMatch[] | undefined>(undefined);
+
+  useEffect(() => {
+    if (!session) return;
+    fetchMyMatches(session.user.id)
+      .then(setMatches)
+      .catch(() => setMatches([]));
+  }, [session]);
+
+  return (
+    <ThemedView style={styles.container}>
+      <SafeAreaView style={styles.safeArea}>
+        <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}>
+          <ThemedText type="link">← Volver</ThemedText>
+        </Pressable>
+        <ThemedText type="title">Mis matches</ThemedText>
+
+        {matches === undefined ? (
+          <ActivityIndicator style={styles.loading} />
+        ) : matches.length === 0 ? (
+          <ThemedText style={styles.empty}>
+            Todavía no tienes matches. Dale a «Buscar mesa» y cuando una mesa y tú
+            os intereséis mutuamente, aparecerá aquí.
+          </ThemedText>
+        ) : (
+          <FlatList
+            data={matches}
+            keyExtractor={(m) => `${m.side}-${m.id}`}
+            contentContainerStyle={styles.list}
+            renderItem={({ item }) => {
+              const url = matchChannelUrl(item);
+              return (
+                <View style={styles.card}>
+                  <ThemedText type="subtitle">
+                    {item.side === 'player' ? item.counterpart : `${item.counterpart} → ${item.groupName}`}
+                  </ThemedText>
+                  <ThemedText type="small">
+                    {item.side === 'player' ? 'Has hecho match con esta mesa' : 'Candidato/a para tu mesa'}{' '}
+                    · {new Date(item.matched_at).toLocaleDateString()}
+                  </ThemedText>
+                  {url ? (
+                    <Pressable style={styles.channelButton} onPress={() => Linking.openURL(url)}>
+                      <ThemedText style={styles.channelLabel}>Abrir canal en Discord</ThemedText>
+                    </Pressable>
+                  ) : (
+                    <ThemedText type="small">
+                      El canal de Discord se creará en unos segundos…
+                    </ThemedText>
+                  )}
+                </View>
+              );
+            }}
+          />
+        )}
+      </SafeAreaView>
+    </ThemedView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'center',
+  },
+  safeArea: {
+    flex: 1,
+    maxWidth: MaxContentWidth,
+    padding: Spacing.four,
+    gap: Spacing.three,
+  },
+  loading: {
+    marginTop: Spacing.six,
+  },
+  empty: {
+    marginTop: Spacing.four,
+    textAlign: 'center',
+  },
+  list: {
+    gap: Spacing.two,
+  },
+  card: {
+    borderWidth: 1,
+    borderColor: '#666',
+    borderRadius: Spacing.two,
+    padding: Spacing.three,
+    gap: Spacing.one,
+  },
+  channelButton: {
+    backgroundColor: '#5865F2',
+    borderRadius: Spacing.two,
+    paddingVertical: Spacing.two,
+    paddingHorizontal: Spacing.three,
+    alignSelf: 'flex-start',
+    marginTop: Spacing.one,
+  },
+  channelLabel: {
+    color: '#fff',
+    fontWeight: '600',
+  },
+});

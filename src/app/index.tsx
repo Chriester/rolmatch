@@ -53,6 +53,11 @@ export default function HomeScreen() {
             <ThemedText>Mis mesas</ThemedText>
           </Pressable>
         </Link>
+        <Link href="/matches" asChild>
+          <Pressable style={styles.secondaryButton}>
+            <ThemedText>Mis matches</ThemedText>
+          </Pressable>
+        </Link>
         <Pressable style={styles.signOutButton} onPress={signOut}>
           <ThemedText>Cerrar sesión</ThemedText>
         </Pressable>

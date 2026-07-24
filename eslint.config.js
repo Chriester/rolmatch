@@ -5,6 +5,7 @@ const expoConfig = require("eslint-config-expo/flat");
 module.exports = defineConfig([
   expoConfig,
   {
-    ignores: ["dist/*"],
+    // supabase/functions es código Deno (globals propios), fuera del lint de la app
+    ignores: ["dist/*", "supabase/functions/*"],
   }
 ]);
