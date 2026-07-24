@@ -16,7 +16,14 @@ param(
   [string]$Guild = "1530123122349703168"
 )
 
-$headers = @{ Authorization = "Bot $Token" }
+# Discord exige TLS 1.2+ y un User-Agent con formato de bot; sin ellos
+# responde "internal network error" (code 40333)
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+
+$headers = @{
+  Authorization = "Bot $Token"
+  "User-Agent"  = "DiscordBot (https://github.com/Chriester/rolmatch, 1.0)"
+}
 $patrones = @('match-*', 'mesa-*', 'voz-*')
 
 $canales = Invoke-RestMethod -Uri "https://discord.com/api/v10/guilds/$Guild/channels" -Headers $headers
