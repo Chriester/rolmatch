@@ -268,6 +268,9 @@ export default function GroupDetailScreen() {
                   </View>
                 );
               })}
+            </View>
+          )}
+
           {group.group_members.some((m) => m.user_id === session?.user.id) && (
             <View style={styles.block}>
               <ThemedText type="subtitle">📅 Próximas sesiones</ThemedText>
@@ -494,6 +497,7 @@ const styles = StyleSheet.create({
   matchLink: {
     color: '#5865F2',
     fontWeight: '600',
+  },
   boostButton: {
     borderWidth: 1,
     borderColor: '#F5A623',
