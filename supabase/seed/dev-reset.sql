@@ -18,6 +18,14 @@ delete from groups
 where owner_id in (select id from auth.users where email like '%@test.rolmatch.local');
 delete from auth.users where email like '%@test.rolmatch.local';
 
+-- 0b. Desvincular canales de Discord de TODAS las mesas (los canales se
+-- borran con scripts/reset-discord-dev.ps1; si la DB conservara los ids,
+-- el bot intentaría publicar en canales inexistentes). También borra los
+-- matches del usuario real con mesas de prueba ya eliminadas (cascada) —
+-- esto limpia los matches reales que apuntaban a canales borrados.
+update groups set discord_channel_id = null, discord_voice_channel_id = null;
+update matches set discord_channel_id = null;
+
 -- 1. GMs falsos (6)
 insert into auth.users (
   instance_id, id, aud, role, email, encrypted_password, email_confirmed_at,
