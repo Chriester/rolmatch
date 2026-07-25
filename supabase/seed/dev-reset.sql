@@ -160,6 +160,15 @@ update profiles p set
 from generate_series(1, 8) as j(n)
 where p.id = ('22222222-0000-4000-8000-' || lpad(j.n::text, 12, '0'))::uuid;
 
+-- Los bots deben contar como cuentas "maduras" para el XP (migr. 00017:
+-- perfil completo + ≥2 días de antigüedad); si no, los matches de prueba
+-- no darían experiencia al usuario real.
+update profiles set
+  created_at = now() - interval '30 days',
+  avatar_url = coalesce(avatar_url,
+    'https://api.dicebear.com/9.x/adventurer/png?seed=' || id::text)
+where id in (select id from auth.users where email like '%@test.rolmatch.local');
+
 -- Disponibilidad: jugadores 1-4 toda la semana; 5-6 tardes/noches;
 -- 7 solo noches y madrugadas; 8 solo fin de semana
 insert into availability_slots (user_id, weekday, slot)

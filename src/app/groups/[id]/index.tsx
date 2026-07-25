@@ -35,12 +35,18 @@ import {
 import { fetchGroupMatches, matchChannelUrl, type GroupMatch } from '@/lib/matches';
 import { boostGroup, isBoostActive } from '@/lib/premium';
 import {
+  SESSION_CONFIRM_QUORUM,
+  SESSION_XP,
+  confirmSession,
   createSession,
   deleteSession,
+  fetchRecentSessions,
+  fetchSessionConfirmations,
   fetchUpcomingSessions,
   nextRegularSession,
   parseSessionDateTime,
   type GameSession,
+  type SessionConfirmState,
 } from '@/lib/sessions';
 
 function formatSessionDate(iso: string) {
@@ -68,6 +74,8 @@ export default function GroupDetailScreen() {
   const [group, setGroup] = useState<GroupDetail | null | undefined>(undefined);
   const [matches, setMatches] = useState<GroupMatch[]>([]);
   const [sessions, setSessions] = useState<GameSession[]>([]);
+  const [recentSessions, setRecentSessions] = useState<GameSession[]>([]);
+  const [confirmations, setConfirmations] = useState<Map<string, SessionConfirmState>>(new Map());
   const [dateText, setDateText] = useState('');
   const [timeText, setTimeText] = useState('');
   const [sessionBusy, setSessionBusy] = useState(false);
@@ -110,11 +118,45 @@ export default function GroupDetailScreen() {
   }, [id]);
 
   useEffect(() => {
+    if (!id || !session) return;
+    const viewerId = session.user.id;
+    fetchRecentSessions(id)
+      .then(async (recent) => {
+        setRecentSessions(recent);
+        setConfirmations(
+          await fetchSessionConfirmations(
+            recent.map((s) => s.id),
+            viewerId
+          )
+        );
+      })
+      .catch(() => {});
+  }, [id, session]);
+
+  useEffect(() => {
     if (!id || !session || group?.owner_id !== session.user.id) return;
     fetchGroupMatches(id)
       .then(setMatches)
       .catch(() => setMatches([]));
   }, [id, session, group?.owner_id]);
+  const handleConfirmSession = async (s: GameSession) => {
+    if (!session) return;
+    try {
+      await confirmSession(s.id, session.user.id);
+      setConfirmations((map) => {
+        const next = new Map(map);
+        const prev = next.get(s.id) ?? { count: 0, mine: false };
+        next.set(s.id, { count: prev.count + 1, mine: true });
+        return next;
+      });
+    } catch (error) {
+      showAlert(
+        'No se pudo confirmar',
+        error instanceof Error ? error.message : String(error)
+      );
+    }
+  };
+
   const handleCreateSession = async () => {
     if (!id || !session || !group) return;
     const startsAt = parseSessionDateTime(dateText, timeText);
@@ -397,6 +439,38 @@ export default function GroupDetailScreen() {
                 ))
               )}
 
+              {recentSessions.length > 0 && (
+                <View style={styles.confirmBlock}>
+                  <ThemedText type="small" style={styles.confirmTitle}>
+                    🎲 Últimas sesiones — ¿se jugó?
+                  </ThemedText>
+                  {recentSessions.map((s) => {
+                    const state = confirmations.get(s.id) ?? { count: 0, mine: false };
+                    const played = state.count >= SESSION_CONFIRM_QUORUM;
+                    return (
+                      <View key={s.id} style={styles.memberRow}>
+                        <ThemedText style={styles.memberName}>
+                          {formatSessionDate(s.starts_at)}
+                        </ThemedText>
+                        {state.mine ? (
+                          <ThemedText type="small" style={played ? styles.confirmDone : styles.confirmPending}>
+                            {played
+                              ? `✅ Jugada · +${SESSION_XP} XP`
+                              : `Confirmada ${state.count}/${SESSION_CONFIRM_QUORUM} — faltan ${SESSION_CONFIRM_QUORUM - state.count}`}
+                          </ThemedText>
+                        ) : (
+                          <Pressable onPress={() => handleConfirmSession(s)}>
+                            <ThemedText type="small" style={styles.rateLink}>
+                              ✅ Confirmar ({state.count}/{SESSION_CONFIRM_QUORUM})
+                            </ThemedText>
+                          </Pressable>
+                        )}
+                      </View>
+                    );
+                  })}
+                </View>
+              )}
+
               {session?.user.id === group.owner_id && (
                 <View style={styles.sessionForm}>
                   <TextInput
@@ -667,6 +741,19 @@ const styles = StyleSheet.create({
   },
   rateLink: {
     color: '#5865F2',
+  },
+  confirmBlock: {
+    gap: Spacing.one,
+    marginTop: Spacing.one,
+  },
+  confirmTitle: {
+    color: Rolder.textSecondary,
+  },
+  confirmDone: {
+    color: Rolder.likeChipText,
+  },
+  confirmPending: {
+    color: Rolder.textSecondary,
   },
   deleteLink: {
     color: '#d9534f',

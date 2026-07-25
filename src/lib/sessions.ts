@@ -44,6 +44,62 @@ export async function deleteSession(id: string) {
   if (error) throw error;
 }
 
+// ============================================================
+// Confirmación de sesiones jugadas (XP por quórum, migr. 00017):
+// cuando 3 miembros distintos confirman, todos los confirmantes cobran.
+// ============================================================
+
+export const SESSION_CONFIRM_QUORUM = 3;
+export const SESSION_CONFIRM_WINDOW_DAYS = 7;
+export const SESSION_XP = 150;
+
+export type SessionConfirmState = { count: number; mine: boolean };
+
+/** Sesiones ya empezadas dentro de la ventana de confirmación. */
+export async function fetchRecentSessions(groupId: string): Promise<GameSession[]> {
+  const now = new Date();
+  const windowStart = new Date(
+    now.getTime() - SESSION_CONFIRM_WINDOW_DAYS * 24 * 60 * 60 * 1000
+  );
+  const { data, error } = await supabase
+    .from('sessions')
+    .select('id, group_id, starts_at, title')
+    .eq('group_id', groupId)
+    .lt('starts_at', now.toISOString())
+    .gte('starts_at', windowStart.toISOString())
+    .order('starts_at', { ascending: false })
+    .limit(5);
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function fetchSessionConfirmations(
+  sessionIds: string[],
+  viewerId: string
+): Promise<Map<string, SessionConfirmState>> {
+  if (sessionIds.length === 0) return new Map();
+  const { data, error } = await supabase
+    .from('session_confirmations')
+    .select('session_id, user_id')
+    .in('session_id', sessionIds);
+  if (error) throw error;
+  const map = new Map<string, SessionConfirmState>();
+  for (const row of data ?? []) {
+    const state = map.get(row.session_id) ?? { count: 0, mine: false };
+    state.count += 1;
+    if (row.user_id === viewerId) state.mine = true;
+    map.set(row.session_id, state);
+  }
+  return map;
+}
+
+export async function confirmSession(sessionId: string, userId: string) {
+  const { error } = await supabase
+    .from('session_confirmations')
+    .insert({ session_id: sessionId, user_id: userId });
+  if (error) throw error;
+}
+
 /**
  * Parsea "AAAA-MM-DD" + "HH:MM" en hora local del dispositivo.
  * Devuelve null si el formato no es válido o la fecha ya pasó.
