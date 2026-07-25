@@ -419,12 +419,20 @@ export default function GroupDetailScreen() {
           )}
 
           {session?.user.id === group.owner_id && (
-            <PrimaryButton
-              label="⚔ Ver candidatos"
-              onPress={() =>
-                router.push({ pathname: '/groups/[id]/candidates', params: { id: group.id } })
-              }
-            />
+            <>
+              <PrimaryButton
+                label="⚔ Ver candidatos"
+                onPress={() =>
+                  router.push({ pathname: '/groups/[id]/candidates', params: { id: group.id } })
+                }
+              />
+              <OutlineButton
+                label="✏️ Editar mesa"
+                onPress={() =>
+                  router.push({ pathname: '/groups/[id]/edit', params: { id: group.id } })
+                }
+              />
+            </>
           )}
 
           {group.group_members.some((m) => m.user_id === session?.user.id) && (
