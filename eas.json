@@ -3,12 +3,22 @@
     "version": ">= 13.0.0"
   },
   "build": {
+    "base": {
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://pyysoeztdtxwbtpxwdnl.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_sl-R7ZgN5qKzGEGR2CT8vg_cRavYtWQ",
+        "EXPO_PUBLIC_DISCORD_GUILD_ID": "1530123122349703168",
+        "EXPO_PUBLIC_KLIPY_API_KEY": "9OElQilnQX5q7FChQOsgWMfnPnlVjuHBrerSwPL2iVo3v2vJnih008Bj3f5l0bK3"
+      }
+    },
     "development": {
+      "extends": "base",
       "developmentClient": true,
       "distribution": "internal",
       "channel": "development"
     },
     "preview": {
+      "extends": "base",
       "distribution": "internal",
       "channel": "production",
       "android": {
@@ -16,6 +26,7 @@
       }
     },
     "production": {
+      "extends": "base",
       "autoIncrement": true,
       "channel": "production",
       "android": {
