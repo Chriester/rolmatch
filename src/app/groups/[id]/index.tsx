@@ -427,6 +427,16 @@ export default function GroupDetailScreen() {
             />
           )}
 
+          {group.group_members.some((m) => m.user_id === session?.user.id) && (
+            <Pressable
+              style={styles.primaryButton}
+              onPress={() =>
+                router.push({ pathname: '/groups/[id]/chat', params: { id: group.id } })
+              }>
+              <ThemedText style={styles.primaryLabel}>💬 Chat de la mesa</ThemedText>
+            </Pressable>
+          )}
+
           {session?.user.id === group.owner_id &&
             (isBoostActive(boostedUntil) ? (
               <Text style={styles.boostActive}>
