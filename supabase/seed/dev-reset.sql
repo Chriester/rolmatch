@@ -1,8 +1,8 @@
 -- ============================================================
--- RolMatch · RESET COMPLETO del mundo de prueba (cleanup + seed extendido)
+-- rolder · RESET de los BOTS de prueba (cleanup + seed extendido)
 -- ============================================================
--- Un solo script: borra todo lo de @test.rolmatch.local (incluido lo del
--- dev-seed.sql antiguo) y crea un mundo grande para pruebas extensas:
+-- Un solo script: borra SOLO lo de @test.rolmatch.local (los bots) y lo
+-- recrea. Seguro con usuarios reales en la app. Crea:
 --   · 6 GMs falsos con 8 mesas variadas (sistemas, horarios, estilos,
 --     zonas horarias; 5 sin horario definido para que siempre aparezcan)
 --   · 8 jugadores falsos (disponibilidades y zonas horarias variadas,
@@ -13,18 +13,30 @@
 -- un RESET siempre borra y recrea.
 -- ============================================================
 
--- 0. Limpieza (cascada: perfiles, disponibilidad, personajes, swipes, matches)
+-- ⚠️ QUIRÚRGICO: este reset SOLO toca los bots (cuentas
+-- @test.rolmatch.local y sus mesas aaaaaaaa-*). Los usuarios reales, sus
+-- mesas, sus matches entre ellos y sus canales de Discord NO se tocan.
+-- Único efecto colateral inevitable: los matches/swipes de usuarios
+-- reales CON mesas de prueba caen en cascada al recrearlas (sus canales
+-- de Discord con bots quedan huérfanos — ver paso previo).
+--
+-- PASO PREVIO (ejecutar APARTE, antes de este script, y apuntar los ids):
+--   select name, discord_channel_id, discord_voice_channel_id
+--   from groups
+--   where owner_id in (select id from auth.users
+--                      where email like '%@test.rolmatch.local')
+--     and (discord_channel_id is not null
+--          or discord_voice_channel_id is not null);
+-- Esos canales se borran en Discord con:
+--   .\scripts\reset-discord-dev.ps1 -Token ... -ChannelIds id1,id2,...
+-- (⚠️ sin -ChannelIds el script purga TODOS los canales del bot,
+--  incluidos los de usuarios reales — ya no debe usarse así)
+
+-- 0. Limpieza del mundo de prueba (cascada: perfiles, disponibilidad,
+-- personajes, mesas, swipes, matches, mensajes y sesiones de los bots)
 delete from groups
 where owner_id in (select id from auth.users where email like '%@test.rolmatch.local');
 delete from auth.users where email like '%@test.rolmatch.local';
-
--- 0b. Desvincular canales de Discord de TODAS las mesas (los canales se
--- borran con scripts/reset-discord-dev.ps1; si la DB conservara los ids,
--- el bot intentaría publicar en canales inexistentes). También borra los
--- matches del usuario real con mesas de prueba ya eliminadas (cascada) —
--- esto limpia los matches reales que apuntaban a canales borrados.
-update groups set discord_channel_id = null, discord_voice_channel_id = null;
-update matches set discord_channel_id = null;
 
 -- 1. GMs falsos (6)
 insert into auth.users (
@@ -186,14 +198,18 @@ from generate_series(1, 4) n,
 join systems s on s.slug = case when k = 1 then 'dnd5e' else 'cthulhu' end
 on conflict (id) do nothing;
 
--- 5. Likes pre-armados
+-- 5. Likes pre-armados — SOLO para el usuario de desarrollo.
+-- ⚙️ Con usuarios reales en la app ya no vale «cualquiera con Discord»:
+-- cambia este correo si quien prueba es otra cuenta.
+-- (aparece dos veces, en 5a y 5b)
+
 -- 5a. Las mesas 1 y 3 ya te han dado like → match instantáneo al swipear
 insert into swipes (user_id, group_id, origin, direction)
-select p.id, m.gid::uuid, 'group', 'like'
-from profiles p,
+select u.id, m.gid::uuid, 'group', 'like'
+from auth.users u,
      (values ('aaaaaaaa-0000-4000-8000-000000000001'),
              ('aaaaaaaa-0000-4000-8000-000000000003')) as m(gid)
-where p.discord_id is not null
+where u.email = 'chrishernandezponce@gmail.com'
 on conflict (user_id, group_id, origin) do nothing;
 
 -- 5b. Los jugadores 1-5 dan like a TODAS tus mesas (1-4 proponen personaje)
@@ -204,5 +220,6 @@ select ('22222222-0000-4000-8000-' || lpad(n::text, 12, '0'))::uuid,
        case when n <= 4 then md5('char-' || n || '-1')::uuid end
 from generate_series(1, 5) n,
      groups g
-where g.owner_id in (select id from profiles where discord_id is not null)
+where g.owner_id in (select id from auth.users
+                     where email = 'chrishernandezponce@gmail.com')
 on conflict (user_id, group_id, origin) do nothing;
