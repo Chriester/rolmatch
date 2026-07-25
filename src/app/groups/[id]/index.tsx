@@ -29,6 +29,7 @@ import {
   VTT_LABELS,
   WEEKDAY_LABELS,
   fetchGroup,
+  removeGroupMember,
   type GroupDetail,
 } from '@/lib/groups';
 import { fetchGroupMatches, matchChannelUrl, type GroupMatch } from '@/lib/matches';
@@ -269,6 +270,31 @@ export default function GroupDetailScreen() {
                         <Text style={styles.rateHint}>🎲 valorar</Text>
                       </Pressable>
                     )}
+                    {session?.user.id === group.owner_id && !isGm && (
+                      <Pressable
+                        onPress={async () => {
+                          try {
+                            await removeGroupMember(group.id, member.user_id);
+                            setGroup((g) =>
+                              g
+                                ? {
+                                    ...g,
+                                    group_members: g.group_members.filter(
+                                      (m) => m.user_id !== member.user_id
+                                    ),
+                                  }
+                                : g
+                            );
+                          } catch (error) {
+                            showAlert(
+                              'No se pudo echar',
+                              error instanceof Error ? error.message : String(error)
+                            );
+                          }
+                        }}>
+                        <Text style={styles.kickHint}>✕ echar</Text>
+                      </Pressable>
+                    )}
                   </Pressable>
                 );
               })}
@@ -469,6 +495,26 @@ export default function GroupDetailScreen() {
               />
             ))}
 
+          {session &&
+            session.user.id !== group.owner_id &&
+            group.group_members.some((m) => m.user_id === session.user.id) && (
+              <OutlineButton
+                label="🚪 Salir de la mesa"
+                tone="red"
+                onPress={async () => {
+                  try {
+                    await removeGroupMember(group.id, session.user.id);
+                    router.replace('/');
+                  } catch (error) {
+                    showAlert(
+                      'No se pudo salir',
+                      error instanceof Error ? error.message : String(error)
+                    );
+                  }
+                }}
+              />
+            )}
+
           {group.discord_invite_url && (
             <DiscordButton
               label="🔗 Servidor de Discord"
@@ -581,6 +627,11 @@ const styles = StyleSheet.create({
   },
   rateHint: {
     color: Rolder.violetSoft,
+    fontSize: 10,
+    fontFamily: RolderFonts.regular,
+  },
+  kickHint: {
+    color: Rolder.pass,
     fontSize: 10,
     fontFamily: RolderFonts.regular,
   },
