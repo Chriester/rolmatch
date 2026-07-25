@@ -169,6 +169,16 @@ export default function GroupChatScreen() {
                 placeholder="Escribe un mensaje…"
                 placeholderTextColor="rgba(255,255,255,0.35)"
                 multiline
+                onKeyPress={(e) => {
+                  // En web, Enter envia y Shift+Enter mete salto de linea;
+                  // en nativo el intro de un input multiline no dispara esto.
+                  if (Platform.OS !== 'web') return;
+                  const native = e.nativeEvent as unknown as { key: string; shiftKey?: boolean };
+                  if (native.key === 'Enter' && !native.shiftKey) {
+                    e.preventDefault();
+                    handleSend();
+                  }
+                }}
               />
               <Pressable
                 style={({ pressed }) => [
