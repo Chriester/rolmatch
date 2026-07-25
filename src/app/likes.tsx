@@ -1,17 +1,17 @@
-// «Te han dado like» (premium, estilo Tinder Gold): lista de mesas y
-// jugadores que ya te dieron like. Los usuarios free ven el contador y las
-// tarjetas difuminadas como teaser.
+// «Te han dado like» (handoff §10): contador, banner premium dorado para
+// free con filas difuminadas; con premium, nombres visibles y badge match.
 
 import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppHeader } from '@/components/app-header';
-import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Spacing } from '@/constants/theme';
+import { ListRow, OutlineButton, ScreenTitle, StatusPill } from '@/components/ui';
+import { Rolder, RolderFonts, Spacing } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
 import { fetchPremiumStatus, fetchReceivedLikes, type ReceivedLike } from '@/lib/premium';
 
@@ -44,8 +44,15 @@ export default function LikesScreen() {
     const name = item.kind === 'group' ? item.name : item.alias;
     const subtitle =
       item.kind === 'group' ? 'Esta mesa quiere ficharte' : `Quiere jugar en «${item.groupName}»`;
+    // solo premium ve la identidad → solo premium puede navegar al perfil
+    const openProfile = premium
+      ? () =>
+          item.kind === 'group'
+            ? router.push({ pathname: '/groups/[id]', params: { id: item.id } })
+            : router.push({ pathname: '/players/[id]', params: { id: item.id } })
+      : undefined;
     return (
-      <View style={styles.card}>
+      <ListRow onPress={openProfile}>
         {item.imageUrl ? (
           <Image
             source={{ uri: item.imageUrl }}
@@ -53,22 +60,18 @@ export default function LikesScreen() {
             blurRadius={premium ? 0 : 18}
           />
         ) : (
-          <View style={[styles.thumb, styles.thumbFallback]}>
+          <View style={[styles.thumb, styles.thumbFallback, !premium && styles.thumbBlurred]}>
             <Text style={styles.thumbEmoji}>{item.kind === 'group' ? '🎲' : '🧙'}</Text>
           </View>
         )}
         <View style={styles.cardBody}>
-          <ThemedText type="subtitle" numberOfLines={1}>
+          <Text style={styles.name} numberOfLines={1}>
             {premium ? name : '● ● ● ● ●'}
-          </ThemedText>
-          <ThemedText type="small">{premium ? subtitle : 'Hazte premium para verlo'}</ThemedText>
+          </Text>
+          <Text style={styles.meta}>{premium ? subtitle : 'Hazte premium para verlo'}</Text>
         </View>
-        {item.matched && (
-          <ThemedText type="small" style={styles.matchedBadge}>
-            💘 match
-          </ThemedText>
-        )}
-      </View>
+        {item.matched && <StatusPill label="💘 MATCH" tone="violet" />}
+      </ListRow>
     );
   };
 
@@ -76,14 +79,12 @@ export default function LikesScreen() {
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
         <AppHeader onBack={() => (router.canGoBack() ? router.back() : router.replace('/'))} />
-        <ThemedText type="title">💘 Te han dado like</ThemedText>
+        <ScreenTitle>💘 Te han dado like</ScreenTitle>
 
         {loadError ? (
           <View style={styles.centerBox}>
-            <ThemedText style={styles.centerText}>No se pudo cargar.</ThemedText>
-            <Pressable style={styles.retryButton} onPress={load}>
-              <ThemedText>Reintentar</ThemedText>
-            </Pressable>
+            <Text style={styles.centerText}>No se pudo cargar.</Text>
+            <OutlineButton label="Reintentar" onPress={load} />
           </View>
         ) : likes === undefined ? (
           <View style={styles.centerBox}>
@@ -92,29 +93,35 @@ export default function LikesScreen() {
         ) : likes.length === 0 ? (
           <View style={styles.centerBox}>
             <Text style={styles.centerEmoji}>🕰️</Text>
-            <ThemedText style={styles.centerText}>
+            <Text style={styles.centerText}>
               Todavía nadie te ha dado like. Completa tu perfil y tu vitrina — todo llega.
-            </ThemedText>
+            </Text>
           </View>
         ) : (
           <>
-            <ThemedText type="small">
-              {likes.length} {likes.length === 1 ? 'like recibido' : 'likes recibidos'}
-              {premium ? '' : ' — con premium ves quiénes son antes de swipear'}
-            </ThemedText>
+            <Text style={styles.counter}>
+              {likes.length} {likes.length === 1 ? 'like te espera' : 'likes te esperan'}
+            </Text>
+
+            {!premium && (
+              <LinearGradient
+                colors={Rolder.goldGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.upsell}>
+                <Text style={styles.upsellText}>
+                  ✨ Hazte premium para ver quiénes son antes de swipear. Los testers de la alpha
+                  lo tienen incluido — canjea tu código.
+                </Text>
+              </LinearGradient>
+            )}
+
             <FlatList
               data={likes}
               keyExtractor={(l) => `${l.kind}-${l.id}`}
               contentContainerStyle={styles.list}
               renderItem={renderItem}
             />
-            {!premium && (
-              <View style={styles.upsell}>
-                <ThemedText type="small" style={styles.upsellText}>
-                  ✨ Premium llega pronto. Los testers de la alpha lo tienen incluido.
-                </ThemedText>
-              </View>
-            )}
           </>
         )}
       </SafeAreaView>
@@ -132,8 +139,9 @@ const styles = StyleSheet.create({
     flex: 1,
     maxWidth: MAX_WIDTH,
     width: '100%',
-    padding: Spacing.four,
-    gap: Spacing.three,
+    paddingHorizontal: 20,
+    paddingTop: Spacing.two,
+    gap: 12,
   },
   centerBox: {
     flex: 1,
@@ -145,55 +153,61 @@ const styles = StyleSheet.create({
     fontSize: 56,
   },
   centerText: {
+    color: Rolder.textSecondary,
+    fontSize: 13.5,
+    fontFamily: RolderFonts.regular,
     textAlign: 'center',
   },
-  retryButton: {
-    borderWidth: 1,
-    borderColor: '#666',
-    borderRadius: Spacing.two,
-    paddingVertical: Spacing.two,
-    paddingHorizontal: Spacing.four,
+  counter: {
+    color: Rolder.textSecondary,
+    fontSize: 13,
+    fontFamily: RolderFonts.semibold,
+  },
+  upsell: {
+    borderRadius: 14,
+    padding: 14,
+  },
+  upsellText: {
+    color: Rolder.onGold,
+    fontSize: 13,
+    fontFamily: RolderFonts.bold,
+    fontWeight: '700',
+    textAlign: 'center',
+    lineHeight: 18,
   },
   list: {
-    gap: Spacing.two,
-  },
-  card: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.three,
-    borderWidth: 1,
-    borderColor: '#666',
-    borderRadius: Spacing.two,
-    padding: Spacing.three,
+    gap: 12,
+    paddingBottom: Spacing.four,
   },
   cardBody: {
     flex: 1,
-    gap: 2,
+    gap: 3,
   },
   thumb: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+    width: 54,
+    height: 54,
+    borderRadius: 12,
   },
   thumbFallback: {
-    backgroundColor: 'rgba(88,101,242,0.25)',
+    backgroundColor: 'rgba(139,108,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  thumbBlurred: {
+    opacity: 0.5,
   },
   thumbEmoji: {
     fontSize: 24,
   },
-  matchedBadge: {
-    color: '#3BD16F',
+  name: {
+    color: '#fff',
+    fontSize: 15,
+    fontFamily: RolderFonts.bold,
+    fontWeight: '700',
   },
-  upsell: {
-    backgroundColor: 'rgba(245,166,35,0.15)',
-    borderRadius: Spacing.two,
-    padding: Spacing.three,
-    borderWidth: 1,
-    borderColor: 'rgba(245,166,35,0.5)',
-  },
-  upsellText: {
-    textAlign: 'center',
+  meta: {
+    color: Rolder.textSecondary,
+    fontSize: 12.5,
+    fontFamily: RolderFonts.regular,
   },
 });

@@ -3,7 +3,7 @@
 
 import { Image } from 'expo-image';
 import { router, type Href } from 'expo-router';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeIn, FadeInDown, ReduceMotion } from 'react-native-reanimated';
 
 import { signOut } from '@/lib/auth';
@@ -27,7 +27,10 @@ const ITEMS: { icon: string; label: string; href: Href }[] = [
 export function AppMenu({ visible, alias, avatarUrl, onClose }: AppMenuProps) {
   if (!visible) return null;
   return (
-    <View style={styles.overlay}>
+    // Modal: el menú se superpone a CUALQUIER pantalla (la cabecera lo abre
+    // desde todas), sin depender del layout del padre.
+    <Modal transparent visible animationType="none" onRequestClose={onClose}>
+      <View style={styles.overlay}>
       <Animated.View
         entering={FadeIn.duration(150).reduceMotion(ReduceMotion.Never)}
         style={StyleSheet.absoluteFill}>
@@ -78,7 +81,8 @@ export function AppMenu({ visible, alias, avatarUrl, onClose }: AppMenuProps) {
           <Text style={[styles.itemLabel, styles.signOut]}>Cerrar sesión</Text>
         </Pressable>
       </Animated.View>
-    </View>
+      </View>
+    </Modal>
   );
 }
 
@@ -97,10 +101,10 @@ const styles = StyleSheet.create({
   },
   panel: {
     position: 'absolute',
-    top: 64,
+    top: 60,
     right: 12,
     width: 280,
-    backgroundColor: '#16171f',
+    backgroundColor: '#16171F',
     borderRadius: 18,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255,255,255,0.18)',
@@ -131,6 +135,7 @@ const styles = StyleSheet.create({
   alias: {
     color: '#fff',
     fontSize: 17,
+    fontFamily: 'Sora_700Bold',
     fontWeight: '700',
     flexShrink: 1,
   },
@@ -156,7 +161,8 @@ const styles = StyleSheet.create({
   },
   itemLabel: {
     color: 'rgba(255,255,255,0.92)',
-    fontSize: 16,
+    fontSize: 15,
+    fontFamily: 'Sora_600SemiBold',
     fontWeight: '600',
     flex: 1,
   },

@@ -1,19 +1,24 @@
+// Mis personajes (handoff §12): la vitrina pública — retratos, meta y
+// pill de estado; tarjeta punteada para crear.
+
 import { Image } from 'expo-image';
-import { Link, router, useFocusEffect } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppHeader } from '@/components/app-header';
-import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { ListRow, OutlineButton, ScreenBlurb, ScreenTitle, StatusPill } from '@/components/ui';
+import { MaxContentWidth, Rolder, RolderFonts, Spacing } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
-import {
-  CHARACTER_STATUS_LABELS,
-  fetchMyCharacters,
-  type Character,
-} from '@/lib/characters';
+import { fetchMyCharacters, type Character, type CharacterStatus } from '@/lib/characters';
+
+const STATUS_PILL: Record<CharacterStatus, { label: string; tone: 'violet' | 'green' | 'gray' }> = {
+  playing: { label: 'EN JUEGO', tone: 'violet' },
+  looking: { label: 'BUSCANDO MESA', tone: 'green' },
+  retired: { label: 'RETIRADA', tone: 'gray' },
+};
 
 export default function MyCharactersScreen() {
   const session = useSession();
@@ -34,58 +39,66 @@ export default function MyCharactersScreen() {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        <AppHeader />
-        <View style={styles.header}>
-          <ThemedText type="title">Mis personajes</ThemedText>
-          <Link href="/characters/new" asChild>
-            <Pressable style={styles.primaryButton}>
-              <ThemedText style={styles.primaryLabel}>Crear personaje</ThemedText>
-            </Pressable>
-          </Link>
-        </View>
+        <AppHeader onBack={router.canGoBack() ? () => router.back() : undefined} />
+        <ScreenTitle>🧙 Mis personajes</ScreenTitle>
+        <ScreenBlurb>Tu vitrina pública. Los GMs la ven al girar tu tarjeta.</ScreenBlurb>
 
         {loadError ? (
           <View style={styles.errorBox}>
-            <ThemedText style={styles.empty}>No se pudieron cargar tus personajes.</ThemedText>
-            <Pressable style={styles.retryButton} onPress={load}>
-              <ThemedText>Reintentar</ThemedText>
-            </Pressable>
+            <Text style={styles.empty}>No se pudieron cargar tus personajes.</Text>
+            <OutlineButton label="Reintentar" onPress={load} />
           </View>
         ) : characters === undefined ? (
           <ActivityIndicator style={styles.loading} />
-        ) : characters.length === 0 ? (
-          <ThemedText style={styles.empty}>
-            Tu vitrina está vacía. Crea tu primer personaje: los GMs verán los que
-            estén «buscando mesa» cuando aparezcas como candidato.
-          </ThemedText>
         ) : (
           <FlatList
             data={characters}
             keyExtractor={(c) => c.id}
             contentContainerStyle={styles.list}
-            renderItem={({ item }) => (
-              <Pressable
-                style={styles.card}
-                onPress={() =>
-                  router.push({ pathname: '/characters/[id]', params: { id: item.id } })
-                }>
-                <View style={styles.cardHeader}>
-                  <View style={styles.identity}>
-                    {item.portrait_url && (
-                      <Image source={{ uri: item.portrait_url }} style={styles.portrait} />
+            ListFooterComponent={
+              <ListRow dashed onPress={() => router.push('/characters/new')}>
+                <Text style={styles.dashedLabel}>+ Nuevo personaje</Text>
+              </ListRow>
+            }
+            ListEmptyComponent={
+              <Text style={styles.empty}>
+                Tu vitrina está vacía. Crea tu primer personaje: los GMs verán los que estén
+                «buscando mesa» cuando aparezcas como candidato.
+              </Text>
+            }
+            renderItem={({ item }) => {
+              const pill = STATUS_PILL[item.status];
+              return (
+                <ListRow
+                  onPress={() =>
+                    router.push({ pathname: '/characters/[id]', params: { id: item.id } })
+                  }>
+                  {item.portrait_url ? (
+                    <Image source={{ uri: item.portrait_url }} style={styles.portrait} />
+                  ) : (
+                    <View style={[styles.portrait, styles.portraitFallback]}>
+                      <Text style={styles.portraitEmoji}>🧝</Text>
+                    </View>
+                  )}
+                  <View style={styles.body}>
+                    <Text style={styles.name} numberOfLines={1}>
+                      {item.name}
+                    </Text>
+                    <Text style={styles.meta} numberOfLines={1}>
+                      {[item.archetype, item.systems?.name, item.level && `Nivel ${item.level}`]
+                        .filter(Boolean)
+                        .join(' · ') || 'Sin detalles todavía'}
+                    </Text>
+                    {item.concept && (
+                      <Text style={styles.concept} numberOfLines={1}>
+                        {item.concept}
+                      </Text>
                     )}
-                    <ThemedText type="subtitle">{item.name}</ThemedText>
                   </View>
-                  <ThemedText type="small">{CHARACTER_STATUS_LABELS[item.status]}</ThemedText>
-                </View>
-                <ThemedText type="small">
-                  {[item.systems?.name, item.archetype, item.level && `nivel ${item.level}`]
-                    .filter(Boolean)
-                    .join(' · ') || 'Sin detalles todavía'}
-                </ThemedText>
-                {item.concept && <ThemedText type="small">{item.concept}</ThemedText>}
-              </Pressable>
-            )}
+                  <StatusPill label={pill.label} tone={pill.tone} />
+                </ListRow>
+              );
+            }}
           />
         )}
       </SafeAreaView>
@@ -102,67 +115,71 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     maxWidth: MaxContentWidth,
-    padding: Spacing.four,
-    gap: Spacing.three,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: Spacing.two,
+    gap: 10,
+    width: '100%',
   },
   loading: {
     marginTop: Spacing.six,
   },
-  empty: {
-    marginTop: Spacing.four,
-    textAlign: 'center',
-  },
   errorBox: {
     alignItems: 'center',
     gap: Spacing.three,
+    marginTop: Spacing.four,
   },
-  retryButton: {
-    borderWidth: 1,
-    borderColor: '#666',
-    borderRadius: Spacing.two,
-    paddingVertical: Spacing.two,
-    paddingHorizontal: Spacing.four,
+  empty: {
+    color: Rolder.textSecondary,
+    fontSize: 13,
+    fontFamily: RolderFonts.regular,
+    textAlign: 'center',
+    marginVertical: Spacing.four,
   },
   list: {
-    gap: Spacing.two,
-  },
-  card: {
-    borderWidth: 1,
-    borderColor: '#666',
-    borderRadius: Spacing.two,
-    padding: Spacing.three,
-    gap: Spacing.one,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: Spacing.two,
-  },
-  identity: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two,
-    flexShrink: 1,
+    gap: 12,
+    paddingTop: 6,
+    paddingBottom: Spacing.four,
   },
   portrait: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 64,
+    height: 64,
+    borderRadius: 14,
   },
-  primaryButton: {
-    backgroundColor: '#5865F2',
-    borderRadius: Spacing.two,
-    paddingVertical: Spacing.two,
-    paddingHorizontal: Spacing.three,
+  portraitFallback: {
+    backgroundColor: 'rgba(255,90,95,0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  primaryLabel: {
+  portraitEmoji: {
+    fontSize: 28,
+  },
+  body: {
+    flex: 1,
+    gap: 3,
+  },
+  name: {
     color: '#fff',
+    fontSize: 15,
+    fontFamily: RolderFonts.bold,
+    fontWeight: '700',
+  },
+  meta: {
+    color: Rolder.textSecondary,
+    fontSize: 12.5,
+    fontFamily: RolderFonts.regular,
+  },
+  concept: {
+    color: Rolder.textTertiary,
+    fontSize: 12,
+    fontFamily: RolderFonts.regular,
+    fontStyle: 'italic',
+  },
+  dashedLabel: {
+    color: Rolder.violetSofter,
+    fontSize: 14,
+    fontFamily: RolderFonts.semibold,
     fontWeight: '600',
+    textAlign: 'center',
+    flex: 1,
   },
 });

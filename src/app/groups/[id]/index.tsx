@@ -1,4 +1,5 @@
 import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
@@ -7,6 +8,7 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  Text,
   TextInput,
   View,
 } from 'react-native';
@@ -14,9 +16,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { showAlert } from '@/lib/alert';
 import { AppHeader } from '@/components/app-header';
+import { CardChip, CardChipRow } from '@/components/swipe/card-shell';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { DiscordButton, OutlineButton, PrimaryButton, SectionLabel, StyleBar } from '@/components/ui';
+import { MaxContentWidth, Rolder, RolderFonts, Spacing } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
 import {
   EXPERIENCE_LABELS,
@@ -56,11 +60,6 @@ function toInputs(date: Date): { date: string; time: string } {
   };
 }
 
-function styleLabel(value: number, left: string, right: string) {
-  if (value <= 25) return left;
-  if (value >= 75) return right;
-  return 'Equilibrado';
-}
 
 export default function GroupDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -170,82 +169,150 @@ export default function GroupDetailScreen() {
             onBack={() => (router.canGoBack() ? router.back() : router.replace('/groups'))}
           />
 
-          {group.image_url && (
-            <Image source={{ uri: group.image_url }} style={styles.headerImage} />
+          <View style={styles.hero}>
+            {group.image_url ? (
+              <Image source={{ uri: group.image_url }} style={StyleSheet.absoluteFill} contentFit="cover" />
+            ) : (
+              <LinearGradient
+                colors={['#4A55E2', '#8B6CFF']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={[StyleSheet.absoluteFill, styles.heroFallback]}>
+                <Text style={styles.heroEmoji}>🎲</Text>
+              </LinearGradient>
+            )}
+            <LinearGradient
+              colors={['transparent', 'rgba(10,10,18,0.55)', 'rgba(10,10,18,0.94)']}
+              style={styles.heroGradient}
+            />
+            <View style={styles.heroInfo}>
+              <Text style={styles.heroName} numberOfLines={2}>
+                {group.name}
+              </Text>
+              <CardChipRow>
+                <CardChip label={group.systems?.name ?? 'Sistema sin definir'} />
+                <CardChip label={FORMAT_LABELS[group.format]} />
+                {group.frequency && <CardChip label={group.frequency} />}
+                {openSeats > 0 && (
+                  <CardChip
+                    variant="green"
+                    label={`${openSeats} ${openSeats === 1 ? 'plaza libre' : 'plazas libres'}`}
+                  />
+                )}
+              </CardChipRow>
+            </View>
+          </View>
+
+          {group.description && (
+            <View style={styles.block}>
+              <SectionLabel>Sobre la mesa</SectionLabel>
+              <Text style={styles.body}>{group.description}</Text>
+            </View>
           )}
-          <ThemedText type="title">{group.name}</ThemedText>
-          <ThemedText>
-            {group.systems?.name ?? 'Sistema sin definir'} · {FORMAT_LABELS[group.format]}
-            {group.frequency ? ` · ${group.frequency.toLowerCase()}` : ''}
-          </ThemedText>
-          <ThemedText type="small">
-            {schedule} ({group.timezone})
-          </ThemedText>
-
-          {group.description && <ThemedText>{group.description}</ThemedText>}
 
           <View style={styles.block}>
-            <ThemedText type="subtitle">Plazas</ThemedText>
-            <ThemedText>
-              {openSeats > 0
-                ? `${openSeats} ${openSeats === 1 ? 'plaza libre' : 'plazas libres'}`
-                : 'Mesa completa'}
-              {group.experience_wanted
-                ? ` · busca nivel: ${EXPERIENCE_LABELS[group.experience_wanted].toLowerCase()}`
-                : ''}
-            </ThemedText>
+            <SectionLabel>Horario</SectionLabel>
+            <Text style={styles.body}>
+              {schedule} ({group.timezone})
+              {group.frequency ? ` · ${group.frequency.toLowerCase()}` : ''}
+            </Text>
           </View>
 
           <View style={styles.block}>
-            <ThemedText type="subtitle">Estilo de la mesa</ThemedText>
-            <ThemedText type="small">
-              {styleLabel(group.style_combat_narrative, 'Combate', 'Narrativo')} ·{' '}
-              {styleLabel(group.style_serious_humor, 'Serio', 'Humor')} ·{' '}
-              {styleLabel(group.style_roleplay_weight, 'Roleo ligero', 'Roleo pesado')} ·{' '}
-              {VTT_LABELS[group.vtt]}
-            </ThemedText>
-          </View>
-
-          <View style={styles.block}>
-            <ThemedText type="subtitle">Miembros</ThemedText>
-            {group.group_members.map((member) => {
-              const isMe = member.user_id === session?.user.id;
-              const iAmMember = group.group_members.some((m) => m.user_id === session?.user.id);
-              return (
-                <View key={member.user_id} style={styles.memberRow}>
-                  <ThemedText style={styles.memberName}>
-                    {member.profiles?.alias ?? 'Sin alias'}
-                    {member.member_role === 'gm' ? ' · GM' : ''}
-                  </ThemedText>
-                  {iAmMember && !isMe && (
-                    <Pressable
-                      onPress={() =>
-                        router.push({
-                          pathname: '/rate',
-                          params: {
-                            userId: member.user_id,
-                            alias: member.profiles?.alias ?? '',
-                            groupId: group.id,
-                          },
-                        })
-                      }>
-                      <ThemedText type="small" style={styles.rateLink}>
-                        🎲 Valorar
-                      </ThemedText>
-                    </Pressable>
-                  )}
+            <SectionLabel>Plazas</SectionLabel>
+            <View style={styles.seatsRow}>
+              {group.group_members.map((member) => {
+                const isMe = member.user_id === session?.user.id;
+                const iAmMember = group.group_members.some(
+                  (m) => m.user_id === session?.user.id
+                );
+                const isGm = member.member_role === 'gm';
+                return (
+                  <Pressable
+                    key={member.user_id}
+                    style={styles.seat}
+                    accessibilityLabel={`Ver perfil de ${member.profiles?.alias ?? 'miembro'}`}
+                    onPress={() =>
+                      router.push({ pathname: '/players/[id]', params: { id: member.user_id } })
+                    }>
+                    {member.profiles?.avatar_url ? (
+                      <Image
+                        source={{ uri: member.profiles.avatar_url }}
+                        style={[styles.seatAvatar, isGm && styles.seatAvatarGm]}
+                      />
+                    ) : (
+                      <View
+                        style={[
+                          styles.seatAvatar,
+                          styles.seatAvatarFallback,
+                          isGm && styles.seatAvatarGm,
+                        ]}>
+                        <Text style={styles.seatEmoji}>{isGm ? '🧙‍♂️' : '🧝'}</Text>
+                      </View>
+                    )}
+                    <Text style={styles.seatName} numberOfLines={1}>
+                      {member.profiles?.alias ?? 'Sin alias'}
+                      {isGm ? ' · GM' : ''}
+                    </Text>
+                    {iAmMember && !isMe && (
+                      <Pressable
+                        onPress={() =>
+                          router.push({
+                            pathname: '/rate',
+                            params: {
+                              userId: member.user_id,
+                              alias: member.profiles?.alias ?? '',
+                              groupId: group.id,
+                            },
+                          })
+                        }>
+                        <Text style={styles.rateHint}>🎲 valorar</Text>
+                      </Pressable>
+                    )}
+                  </Pressable>
+                );
+              })}
+              {Array.from({ length: openSeats }).map((_, i) => (
+                <View key={`hole-${i}`} style={styles.seat}>
+                  <View style={[styles.seatAvatar, styles.seatHole]}>
+                    <Text style={styles.seatHolePlus}>+</Text>
+                  </View>
+                  <Text style={styles.seatName}>Libre</Text>
                 </View>
-              );
-            })}
+              ))}
+            </View>
+            {group.experience_wanted && (
+              <Text style={styles.bodySoft}>
+                Busca nivel {EXPERIENCE_LABELS[group.experience_wanted].toLowerCase()}
+              </Text>
+            )}
+          </View>
+
+          <View style={styles.block}>
+            <SectionLabel>Estilo de la mesa</SectionLabel>
+            <StyleBar left="Combate" right="Narrativo" value={group.style_combat_narrative} />
+            <StyleBar left="Serio" right="Humor" value={group.style_serious_humor} />
+            <StyleBar
+              left="Roleo ligero"
+              right="Roleo pesado"
+              value={group.style_roleplay_weight}
+            />
+            <Text style={styles.bodySoft}>{VTT_LABELS[group.vtt]}</Text>
           </View>
 
           {session?.user.id === group.owner_id && matches.length > 0 && (
             <View style={styles.block}>
-              <ThemedText type="subtitle">Jugadores con match</ThemedText>
+              <SectionLabel>Jugadores con match</SectionLabel>
               {matches.map((match) => {
                 const url = matchChannelUrl(match);
                 return (
-                  <View key={match.id} style={styles.matchRow}>
+                  <Pressable
+                    key={match.id}
+                    style={styles.matchRow}
+                    accessibilityLabel={`Ver perfil de ${match.alias}`}
+                    onPress={() =>
+                      router.push({ pathname: '/players/[id]', params: { id: match.user_id } })
+                    }>
                     {match.avatar_url ? (
                       <Image source={{ uri: match.avatar_url }} style={styles.matchThumb} />
                     ) : (
@@ -265,7 +332,7 @@ export default function GroupDetailScreen() {
                         <ThemedText type="small">El canal se creará en unos segundos…</ThemedText>
                       )}
                     </View>
-                  </View>
+                  </Pressable>
                 );
               })}
             </View>
@@ -273,7 +340,7 @@ export default function GroupDetailScreen() {
 
           {group.group_members.some((m) => m.user_id === session?.user.id) && (
             <View style={styles.block}>
-              <ThemedText type="subtitle">📅 Próximas sesiones</ThemedText>
+              <SectionLabel>📅 Próximas sesiones</SectionLabel>
               {sessions.length === 0 ? (
                 <ThemedText type="small">Ninguna programada todavía.</ThemedText>
               ) : (
@@ -352,13 +419,12 @@ export default function GroupDetailScreen() {
           )}
 
           {session?.user.id === group.owner_id && (
-            <Pressable
-              style={styles.primaryButton}
+            <PrimaryButton
+              label="⚔ Ver candidatos"
               onPress={() =>
                 router.push({ pathname: '/groups/[id]/candidates', params: { id: group.id } })
-              }>
-              <ThemedText style={styles.primaryLabel}>Ver candidatos</ThemedText>
-            </Pressable>
+              }
+            />
           )}
 
           {group.group_members.some((m) => m.user_id === session?.user.id) && (
@@ -373,30 +439,27 @@ export default function GroupDetailScreen() {
 
           {session?.user.id === group.owner_id &&
             (isBoostActive(boostedUntil) ? (
-              <ThemedText type="small" style={styles.boostActive}>
+              <Text style={styles.boostActive}>
                 🚀 Mesa destacada hasta el{' '}
                 {new Date(boostedUntil!).toLocaleDateString('es-ES', {
                   day: 'numeric',
                   month: 'short',
                 })}
-              </ThemedText>
+              </Text>
             ) : (
-              <Pressable
-                style={[styles.boostButton, boostBusy && styles.boostDisabled]}
+              <OutlineButton
+                label="🚀 Destacar mesa 7 días (premium)"
+                tone="gold"
+                onPress={handleBoost}
                 disabled={boostBusy}
-                onPress={handleBoost}>
-                <ThemedText style={styles.boostLabel}>
-                  🚀 Destacar mesa 7 días (premium)
-                </ThemedText>
-              </Pressable>
+              />
             ))}
 
           {group.discord_invite_url && (
-            <Pressable
-              style={styles.primaryButton}
-              onPress={() => Linking.openURL(group.discord_invite_url!)}>
-              <ThemedText style={styles.primaryLabel}>Discord de la mesa</ThemedText>
-            </Pressable>
+            <DiscordButton
+              label="🔗 Servidor de Discord"
+              onPress={() => Linking.openURL(group.discord_invite_url!)}
+            />
           )}
         </ScrollView>
       </SafeAreaView>
@@ -419,16 +482,105 @@ const styles = StyleSheet.create({
     maxWidth: MaxContentWidth,
   },
   scroll: {
-    padding: Spacing.four,
+    padding: 20,
     gap: Spacing.three,
   },
   block: {
-    gap: Spacing.one,
+    gap: 8,
   },
-  headerImage: {
-    width: '100%',
-    aspectRatio: 16 / 9,
-    borderRadius: Spacing.two,
+  hero: {
+    height: 210,
+    borderRadius: 16,
+    overflow: 'hidden',
+    backgroundColor: Rolder.surface,
+  },
+  heroFallback: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heroEmoji: {
+    fontSize: 64,
+  },
+  heroGradient: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: '60%',
+  },
+  heroInfo: {
+    position: 'absolute',
+    left: 14,
+    right: 14,
+    bottom: 12,
+    gap: 8,
+  },
+  heroName: {
+    color: '#fff',
+    fontSize: 24,
+    fontFamily: RolderFonts.extrabold,
+    fontWeight: '800',
+  },
+  body: {
+    color: 'rgba(255,255,255,0.9)',
+    fontSize: 13.5,
+    fontFamily: RolderFonts.regular,
+    lineHeight: 19,
+  },
+  bodySoft: {
+    color: Rolder.textSecondary,
+    fontSize: 12.5,
+    fontFamily: RolderFonts.regular,
+  },
+  seatsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 14,
+  },
+  seat: {
+    alignItems: 'center',
+    gap: 4,
+    width: 68,
+  },
+  seatAvatar: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+  },
+  seatAvatarGm: {
+    borderWidth: 2,
+    borderColor: Rolder.gold,
+  },
+  seatAvatarFallback: {
+    backgroundColor: 'rgba(139,108,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  seatEmoji: {
+    fontSize: 22,
+  },
+  seatName: {
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 11,
+    fontFamily: RolderFonts.semibold,
+    textAlign: 'center',
+  },
+  rateHint: {
+    color: Rolder.violetSoft,
+    fontSize: 10,
+    fontFamily: RolderFonts.regular,
+  },
+  seatHole: {
+    borderWidth: 2,
+    borderStyle: 'dashed',
+    borderColor: 'rgba(139,108,255,0.6)',
+    backgroundColor: 'transparent',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  seatHolePlus: {
+    color: Rolder.violetSoft,
+    fontSize: 20,
   },
   memberRow: {
     flexDirection: 'row',

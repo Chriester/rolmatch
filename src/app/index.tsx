@@ -1,15 +1,21 @@
 // Página principal: el feed de descubrimiento (estilo Tinder). Los menús
 // viven en el panel superior derecho (avatar).
 
-import { Image } from 'expo-image';
 import { Redirect, router, useFocusEffect } from 'expo-router';
-import { useCallback, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  ActivityIndicator,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { showAlert } from '@/lib/alert';
 import { AppHeader } from '@/components/app-header';
-import { AppMenu } from '@/components/app-menu';
 import { Chip } from '@/components/chip';
 import { ActionBar } from '@/components/swipe/action-bar';
 import {
@@ -17,14 +23,14 @@ import {
   availabilityCellKey,
 } from '@/components/swipe/availability-mini-grid';
 import { CardCycle } from '@/components/swipe/card-cycle';
-import { CardShell, cardText } from '@/components/swipe/card-shell';
+import { CardChip, CardChipRow, CardShell, cardText } from '@/components/swipe/card-shell';
 import { CharacterLikeButton } from '@/components/swipe/character-like-button';
 import { SwipeDeck, type SwipeChoice, type SwipeDeckHandle } from '@/components/swipe/deck';
 import { DetailsFace, sheetText } from '@/components/swipe/details-face';
 import { MatchOverlay } from '@/components/swipe/match-overlay';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Spacing } from '@/constants/theme';
+import { Rolder, RolderFonts, Spacing } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
 import { fetchMyCharacters, type Character } from '@/lib/characters';
 import { fetchUnifiedFeed, type FeedItem } from '@/lib/feed';
@@ -48,6 +54,8 @@ import {
 } from '@/lib/swipes';
 
 const DECK_MAX_WIDTH = 420;
+// Tweak del handoff rolder: el % de compatibilidad va oculto por defecto
+const SHOW_SCORE = false;
 
 const ROLE_LABELS: Record<string, string> = {
   player: 'Jugador/a',
@@ -75,8 +83,6 @@ export default function HomeScreen() {
   const deckRef = useRef<SwipeDeckHandle | null>(null);
 
   const [onboarded, setOnboarded] = useState<boolean | undefined>(undefined);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [myAlias, setMyAlias] = useState<string | null>(null);
   const [items, setItems] = useState<FeedItem[] | undefined>(undefined);
   const [myAvailability, setMyAvailability] = useState<Set<string>>(new Set());
   const [loadError, setLoadError] = useState(false);
@@ -114,14 +120,22 @@ export default function HomeScreen() {
       .then((all) => setMyCharacters(all.filter((c) => c.status === 'looking')))
       .catch(() => {});
     fetchProfileData(session.user.id)
-      .then((p) => {
-        setMyAvatar(p.avatar_url);
-        setMyAlias(p.alias);
-      })
+      .then((p) => setMyAvatar(p.avatar_url))
       .catch(() => {});
   }, [session]);
 
   useFocusEffect(load);
+
+  // Teclado en web: ← pass · → like (handoff rolder §2)
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'ArrowLeft') deckRef.current?.swipe('pass');
+      else if (event.key === 'ArrowRight') deckRef.current?.swipe('like');
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   const current = items?.[index];
 
@@ -197,14 +211,16 @@ export default function HomeScreen() {
           imageUrl={g.image_url}
           fallbackEmoji="🎲"
           topRight={
-            <View style={styles.scoreBadge}>
-              <Text style={styles.scoreText}>{item.result.score}%</Text>
-            </View>
+            SHOW_SCORE ? (
+              <View style={styles.scoreBadge}>
+                <Text style={styles.scoreText}>{item.result.score}%</Text>
+              </View>
+            ) : undefined
           }
           banner={
             isBoostActive(g.boosted_until) ? (
               <View style={styles.boostBanner}>
-                <Text style={styles.oneshotText} numberOfLines={1}>
+                <Text style={styles.boostText} numberOfLines={1}>
                   🚀 Mesa destacada
                 </Text>
               </View>
@@ -219,14 +235,24 @@ export default function HomeScreen() {
           <Text style={cardText.title} numberOfLines={2}>
             {g.name}
           </Text>
-          <Text style={cardText.line}>
-            {g.systems?.name ?? 'Sistema sin definir'} · {FORMAT_LABELS[g.format]}
-            {g.frequency ? ` · ${g.frequency.toLowerCase()}` : ''}
-          </Text>
-          <Text style={cardText.soft}>
-            📅 {scheduleLine(g.session_weekday, g.session_slot, g.timezone)}
-          </Text>
-          <Text style={cardText.soft}>⏱ Coincidís {item.result.overlapHours} h en horario</Text>
+          <CardChipRow>
+            <CardChip label={g.systems?.name ?? 'Sistema sin definir'} />
+            <CardChip label={FORMAT_LABELS[g.format]} />
+            {g.frequency && <CardChip label={g.frequency} />}
+            <CardChip label={VTT_LABELS[g.vtt]} />
+          </CardChipRow>
+          <CardChipRow>
+            <CardChip
+              variant="green"
+              label={
+                g.session_weekday !== null && g.session_slot !== null
+                  ? `📅 ${WEEKDAY_LABELS[g.session_weekday]} ${SLOT_LABELS[
+                      g.session_slot
+                    ].toLowerCase()} · coincidís ${item.result.overlapHours} h`
+                  : `📅 Horario por definir · coincidís ${item.result.overlapHours} h`
+              }
+            />
+          </CardChipRow>
         </CardShell>
       );
     }
@@ -239,10 +265,13 @@ export default function HomeScreen() {
       <CardShell
         imageUrl={c.player.avatar_url}
         fallbackEmoji="🧙"
+        fallbackColors={['#5865F2', '#8B6CFF']}
         topRight={
-          <View style={styles.scoreBadge}>
-            <Text style={styles.scoreText}>{c.result.score}%</Text>
-          </View>
+          SHOW_SCORE ? (
+            <View style={styles.scoreBadge}>
+              <Text style={styles.scoreText}>{c.result.score}%</Text>
+            </View>
+          ) : undefined
         }
         banner={
           c.likedGroup ? (
@@ -256,12 +285,18 @@ export default function HomeScreen() {
         <Text style={cardText.title} numberOfLines={1}>
           {c.player.alias}
         </Text>
-        <Text style={cardText.line}>
-          {ROLE_LABELS[c.player.role] ?? c.player.role} · {c.player.timezone}
-        </Text>
-        <Text style={cardText.soft}>🛡️ Candidato para «{item.forGroup.name}»</Text>
+        <CardChipRow>
+          <CardChip label={ROLE_LABELS[c.player.role] ?? c.player.role} />
+          <CardChip label={c.player.timezone} />
+        </CardChipRow>
+        <CardChipRow>
+          <CardChip
+            variant="green"
+            label={`⏱ Coincide ${c.result.overlapHours} h con vuestra sesión`}
+          />
+        </CardChipRow>
         <Text style={cardText.soft}>
-          ⏱ Coincide {c.result.overlapHours} h con vuestra sesión
+          🛡️ Candidato para «{item.forGroup.name}»
           {publicLooking.length > 0 ? ' · toca para ver sus personajes' : ''}
         </Text>
       </CardShell>
@@ -271,20 +306,21 @@ export default function HomeScreen() {
         key={ch.id}
         imageUrl={ch.portrait_url}
         fallbackEmoji="🧝"
+        fallbackColors={['#FF5A5F', '#8B6CFF']}
         topRight={
           session ? <CharacterLikeButton characterId={ch.id} viewerId={session.user.id} /> : undefined
         }>
-        <Text style={cardText.soft}>Personaje de {c.player.alias}</Text>
+        <Text style={styles.characterOf}>Personaje de {c.player.alias}</Text>
         <Text style={cardText.title} numberOfLines={1}>
           {ch.name}
         </Text>
-        <Text style={cardText.line}>
-          {[ch.archetype, ch.systems?.name, ch.level && `nivel ${ch.level}`]
-            .filter(Boolean)
-            .join(' · ')}
-        </Text>
+        <CardChipRow>
+          {ch.archetype && <CardChip label={ch.archetype} />}
+          {ch.systems?.name && <CardChip label={ch.systems.name} />}
+          {ch.level != null && <CardChip label={`Nivel ${ch.level}`} />}
+        </CardChipRow>
         {ch.concept && (
-          <Text style={cardText.soft} numberOfLines={2}>
+          <Text style={styles.characterConcept} numberOfLines={2}>
             {ch.concept}
           </Text>
         )}
@@ -335,6 +371,10 @@ export default function HomeScreen() {
           <Text style={sheetText.body}>
             {item.result.score}% — coincidís {item.result.overlapHours} h en horario
           </Text>
+          <Pressable
+            onPress={() => router.push({ pathname: '/groups/[id]', params: { id: g.id } })}>
+            <Text style={styles.profileLink}>Ver mesa completa ›</Text>
+          </Pressable>
           <View style={styles.moderationRow}>
             <Pressable
               onPress={() =>
@@ -384,6 +424,12 @@ export default function HomeScreen() {
             {c.player.reliability.count === 1 ? 'valoración' : 'valoraciones'})
           </Text>
         )}
+        <Pressable
+          onPress={() =>
+            router.push({ pathname: '/players/[id]', params: { id: c.player.id } })
+          }>
+          <Text style={styles.profileLink}>Ver perfil completo ›</Text>
+        </Pressable>
         <View style={styles.moderationRow}>
           <Pressable
             onPress={() =>
@@ -409,22 +455,7 @@ export default function HomeScreen() {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        <AppHeader
-          right={
-            <Pressable
-              onPress={() => setMenuOpen(true)}
-              accessibilityLabel="Abrir menú"
-              style={styles.menuButton}>
-              {myAvatar ? (
-                <Image source={{ uri: myAvatar }} style={styles.menuAvatar} />
-              ) : (
-                <View style={[styles.menuAvatar, styles.menuAvatarFallback]}>
-                  <Text style={styles.menuAvatarGlyph}>☰</Text>
-                </View>
-              )}
-            </Pressable>
-          }
-        />
+        <AppHeader />
 
         {loadError ? (
           <View style={styles.centerBox}>
@@ -445,8 +476,13 @@ export default function HomeScreen() {
               No hay más mesas ni candidatos compatibles por ahora. Amplía tu
               disponibilidad y sistemas, o vuelve más tarde.
             </ThemedText>
-            <Pressable style={styles.retryButton} onPress={() => router.push('/onboarding')}>
-              <ThemedText>Ajustar mi perfil</ThemedText>
+            <Pressable style={styles.retryButton} onPress={load}>
+              <Text style={styles.retryLabel}>Volver a empezar</Text>
+            </Pressable>
+            <Pressable onPress={() => router.push('/onboarding')}>
+              <ThemedText type="small" themeColor="textSecondary">
+                Ajustar mi perfil
+              </ThemedText>
             </Pressable>
           </View>
         ) : (
@@ -464,7 +500,6 @@ export default function HomeScreen() {
                   </DetailsFace>
                 )}
                 onSwiped={handleSwiped}
-                likeLabel={current.kind === 'group' ? 'ME INTERESA' : 'NOS INTERESA'}
                 deckRef={deckRef}
               />
             </View>
@@ -521,13 +556,6 @@ export default function HomeScreen() {
         }
         onClose={() => setMatchWith(null)}
       />
-
-      <AppMenu
-        visible={menuOpen}
-        alias={myAlias}
-        avatarUrl={myAvatar}
-        onClose={() => setMenuOpen(false)}
-      />
     </ThemedView>
   );
 }
@@ -549,26 +577,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: Spacing.two,
   },
-  menuButton: {
-    width: 44,
-    alignItems: 'flex-end',
-  },
-  menuAvatar: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    borderWidth: 2,
-    borderColor: 'rgba(88,101,242,0.8)',
-  },
-  menuAvatarFallback: {
-    backgroundColor: 'rgba(88,101,242,0.25)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  menuAvatarGlyph: {
-    color: '#fff',
-    fontSize: 17,
-  },
   deckArea: {
     flex: 1,
     position: 'relative',
@@ -588,10 +596,16 @@ const styles = StyleSheet.create({
   },
   retryButton: {
     borderWidth: 1,
-    borderColor: '#666',
-    borderRadius: Spacing.two,
-    paddingVertical: Spacing.two,
+    borderColor: 'rgba(139,108,255,0.8)',
+    borderRadius: 14,
+    paddingVertical: 12,
     paddingHorizontal: Spacing.four,
+  },
+  retryLabel: {
+    color: Rolder.violetSofter,
+    fontSize: 15,
+    fontFamily: RolderFonts.semibold,
+    fontWeight: '600',
   },
   scoreBadge: {
     backgroundColor: 'rgba(0,0,0,0.55)',
@@ -607,31 +621,52 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
   likedBanner: {
-    backgroundColor: 'rgba(88,101,242,0.85)',
+    backgroundColor: 'rgba(88,101,242,0.92)',
     paddingVertical: 8,
     paddingHorizontal: 16,
   },
   oneshotBanner: {
-    backgroundColor: 'rgba(59,209,111,0.8)',
+    backgroundColor: 'rgba(59,209,111,0.88)',
     paddingVertical: 8,
     paddingHorizontal: 16,
   },
   boostBanner: {
-    backgroundColor: 'rgba(245,166,35,0.85)',
+    backgroundColor: 'rgba(245,166,35,0.92)',
     paddingVertical: 8,
     paddingHorizontal: 16,
   },
   oneshotText: {
-    color: '#0b2416',
+    color: Rolder.onLike,
+    fontFamily: RolderFonts.extrabold,
     fontWeight: '800',
-    fontSize: 14,
+    fontSize: 13.5,
+    textAlign: 'center',
+  },
+  boostText: {
+    color: Rolder.onGold,
+    fontFamily: RolderFonts.extrabold,
+    fontWeight: '800',
+    fontSize: 13.5,
     textAlign: 'center',
   },
   likedText: {
     color: '#fff',
-    fontWeight: '700',
-    fontSize: 14,
+    fontFamily: RolderFonts.extrabold,
+    fontWeight: '800',
+    fontSize: 13.5,
     textAlign: 'center',
+  },
+  characterOf: {
+    color: 'rgba(255,255,255,0.65)',
+    fontSize: 12,
+    fontFamily: RolderFonts.semibold,
+    fontWeight: '600',
+  },
+  characterConcept: {
+    color: 'rgba(255,255,255,0.8)',
+    fontSize: 13,
+    fontFamily: RolderFonts.regular,
+    fontStyle: 'italic',
   },
   proposalStrip: {
     flexGrow: 0,
@@ -649,5 +684,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: Spacing.four,
     marginTop: Spacing.four,
+  },
+  profileLink: {
+    color: Rolder.violetSoft,
+    fontSize: 13,
+    fontFamily: RolderFonts.semibold,
+    marginTop: 8,
   },
 });

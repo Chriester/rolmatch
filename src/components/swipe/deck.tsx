@@ -45,7 +45,8 @@ export type SwipeDeckHandle = {
 
 // Parámetros del feel — ajustar aquí, no en las pantallas
 const MAX_ROTATION_DEG = 12;
-const THRESHOLD_FRACTION = 0.35;
+// 25% del ancho decide (tweak del handoff rolder; era 35%)
+const THRESHOLD_FRACTION = 0.25;
 const FLING_VELOCITY = 900;
 const EXIT_TIMING = { duration: 260, reduceMotion: ReduceMotion.Never };
 // Horizontal: muelle rígido con un pelín de baile (permitido por diseño)
@@ -230,8 +231,8 @@ export function SwipeDeck<T>({
   renderDetails,
   onSwiped,
   enabled = true,
-  likeLabel = 'ME INTERESA',
-  passLabel = 'PASO',
+  likeLabel = '🎲 ¡CRÍTICO!',
+  passLabel = '💀 PIFIA',
   deckRef,
 }: SwipeDeckProps<T>) {
   const [size, setSize] = useState({ width: 0, height: 0 });
@@ -316,34 +317,40 @@ const styles = StyleSheet.create({
   page: {
     height: '50%',
   },
+  // Sellos estilo sticker (handoff rolder §1). ⚠️ Posiciones invertidas
+  // respecto a Tinder — decisión de diseño: CRÍTICO arriba-DERECHA.
   stamp: {
     position: 'absolute',
-    top: 28,
-    borderWidth: 4,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    backgroundColor: 'rgba(0,0,0,0.15)',
+    top: 64,
+    borderWidth: 3,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
   },
   stampLike: {
-    left: 20,
-    borderColor: '#3BD16F',
-    transform: [{ rotate: '-14deg' }],
+    right: 18,
+    backgroundColor: '#3BD16F',
+    borderColor: '#0B2416',
+    boxShadow: '4px 4px 0 rgba(0,0,0,0.35)',
+    transform: [{ rotate: '8deg' }],
   },
   stampPass: {
-    right: 20,
-    borderColor: '#F3485B',
-    transform: [{ rotate: '14deg' }],
+    left: 18,
+    backgroundColor: '#FF5A5F',
+    borderColor: '#3D0A0C',
+    boxShadow: '4px 4px 0 rgba(0,0,0,0.35)',
+    transform: [{ rotate: '-7deg' }],
   },
   stampText: {
-    fontSize: 26,
-    fontWeight: '800',
-    letterSpacing: 2,
+    fontSize: 19,
+    fontFamily: 'Nunito_900Black',
+    fontWeight: '900',
+    letterSpacing: 0.5,
   },
   stampTextLike: {
-    color: '#3BD16F',
+    color: '#0B2416',
   },
   stampTextPass: {
-    color: '#F3485B',
+    color: '#3D0A0C',
   },
 });

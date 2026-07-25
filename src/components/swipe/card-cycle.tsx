@@ -66,9 +66,10 @@ const styles = StyleSheet.create({
   fill: {
     flex: 1,
   },
+  // Indicador de caras: barras estilo stories (handoff rolder §1)
   dots: {
     position: 'absolute',
-    top: 10,
+    top: 8,
     left: 0,
     right: 0,
     flexDirection: 'row',
@@ -76,9 +77,9 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   dot: {
-    width: 7,
-    height: 7,
-    borderRadius: 4,
+    width: 26,
+    height: 4,
+    borderRadius: 2,
     backgroundColor: 'rgba(255,255,255,0.35)',
   },
   dotActive: {

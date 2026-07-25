@@ -1,13 +1,16 @@
+// Mis matches (handoff §11): tarjetas con thumb, título y botón al canal
+// de Discord (o estado de «creándose»).
+
 import { Image } from 'expo-image';
-import { useFocusEffect } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, FlatList, Linking, Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, FlatList, Linking, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppHeader } from '@/components/app-header';
-import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { DiscordButton, ListRow, OutlineButton, ScreenTitle } from '@/components/ui';
+import { MaxContentWidth, Rolder, RolderFonts, Spacing } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
 import { fetchMyMatches, matchChannelUrl, type MyMatch } from '@/lib/matches';
 
@@ -30,23 +33,21 @@ export default function MatchesScreen() {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        <AppHeader />
-        <ThemedText type="title">Mis matches</ThemedText>
+        <AppHeader onBack={router.canGoBack() ? () => router.back() : undefined} />
+        <ScreenTitle>💬 Mis matches</ScreenTitle>
 
         {loadError ? (
           <View style={styles.errorBox}>
-            <ThemedText style={styles.empty}>No se pudieron cargar tus matches.</ThemedText>
-            <Pressable style={styles.retryButton} onPress={load}>
-              <ThemedText>Reintentar</ThemedText>
-            </Pressable>
+            <Text style={styles.empty}>No se pudieron cargar tus matches.</Text>
+            <OutlineButton label="Reintentar" onPress={load} />
           </View>
         ) : matches === undefined ? (
           <ActivityIndicator style={styles.loading} />
         ) : matches.length === 0 ? (
-          <ThemedText style={styles.empty}>
-            Todavía no tienes matches. Dale a «Buscar mesa» y cuando una mesa y tú
-            os intereséis mutuamente, aparecerá aquí.
-          </ThemedText>
+          <Text style={styles.empty}>
+            Todavía no tienes matches. Dale a swipear y cuando una mesa y tú os intereséis
+            mutuamente, aparecerá aquí.
+          </Text>
         ) : (
           <FlatList
             data={matches}
@@ -54,40 +55,48 @@ export default function MatchesScreen() {
             contentContainerStyle={styles.list}
             renderItem={({ item }) => {
               const url = matchChannelUrl(item);
+              const openProfile = () => {
+                if (item.side === 'player' && item.targetGroupId) {
+                  router.push({ pathname: '/groups/[id]', params: { id: item.targetGroupId } });
+                } else if (item.targetUserId) {
+                  router.push({ pathname: '/players/[id]', params: { id: item.targetUserId } });
+                }
+              };
               return (
-                <View style={styles.card}>
+                <ListRow style={styles.card} onPress={openProfile}>
                   <View style={styles.cardRow}>
                     {item.imageUrl ? (
                       <Image source={{ uri: item.imageUrl }} style={styles.thumb} />
                     ) : (
                       <View style={[styles.thumb, styles.thumbFallback]}>
-                        <ThemedText>{item.side === 'player' ? '🎲' : '🧙'}</ThemedText>
+                        <Text style={styles.thumbEmoji}>
+                          {item.side === 'player' ? '🎲' : '🧙'}
+                        </Text>
                       </View>
                     )}
                     <View style={styles.cardBody}>
-                      <ThemedText type="subtitle" numberOfLines={1}>
+                      <Text style={styles.name} numberOfLines={1}>
                         {item.side === 'player'
                           ? item.counterpart
                           : `${item.counterpart} → ${item.groupName}`}
-                      </ThemedText>
-                      <ThemedText type="small">
+                      </Text>
+                      <Text style={styles.meta}>
                         {item.side === 'player'
                           ? 'Has hecho match con esta mesa'
                           : 'Candidato/a para tu mesa'}{' '}
                         · {new Date(item.matched_at).toLocaleDateString()}
-                      </ThemedText>
+                      </Text>
+                      <Text style={styles.profileHint}>
+                        {item.side === 'player' ? 'Ver la mesa ›' : 'Ver su perfil ›'}
+                      </Text>
                     </View>
                   </View>
                   {url ? (
-                    <Pressable style={styles.channelButton} onPress={() => Linking.openURL(url)}>
-                      <ThemedText style={styles.channelLabel}>Abrir canal en Discord</ThemedText>
-                    </Pressable>
+                    <DiscordButton label="Abrir canal en Discord" onPress={() => Linking.openURL(url)} />
                   ) : (
-                    <ThemedText type="small">
-                      El canal de Discord se creará en unos segundos…
-                    </ThemedText>
+                    <Text style={styles.pending}>⏳ El canal de Discord se creará en unos segundos…</Text>
                   )}
-                </View>
+                </ListRow>
               );
             }}
           />
@@ -106,66 +115,76 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     maxWidth: MaxContentWidth,
-    padding: Spacing.four,
+    paddingHorizontal: 20,
+    paddingTop: Spacing.two,
     gap: Spacing.three,
+    width: '100%',
   },
   loading: {
     marginTop: Spacing.six,
   },
-  empty: {
-    marginTop: Spacing.four,
-    textAlign: 'center',
-  },
   errorBox: {
     alignItems: 'center',
     gap: Spacing.three,
+    marginTop: Spacing.four,
   },
-  retryButton: {
-    borderWidth: 1,
-    borderColor: '#666',
-    borderRadius: Spacing.two,
-    paddingVertical: Spacing.two,
-    paddingHorizontal: Spacing.four,
+  empty: {
+    color: Rolder.textSecondary,
+    fontSize: 13,
+    fontFamily: RolderFonts.regular,
+    textAlign: 'center',
+    marginVertical: Spacing.four,
   },
   list: {
-    gap: Spacing.two,
+    gap: 12,
+    paddingBottom: Spacing.four,
   },
   card: {
-    borderWidth: 1,
-    borderColor: '#666',
-    borderRadius: Spacing.two,
-    padding: Spacing.three,
-    gap: Spacing.two,
+    flexDirection: 'column',
+    alignItems: 'stretch',
+    gap: 12,
   },
   cardRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.three,
+    gap: 12,
   },
   cardBody: {
     flex: 1,
-    gap: 2,
+    gap: 3,
   },
   thumb: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 54,
+    height: 54,
+    borderRadius: 12,
   },
   thumbFallback: {
-    backgroundColor: 'rgba(88,101,242,0.25)',
+    backgroundColor: 'rgba(139,108,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  channelButton: {
-    backgroundColor: '#5865F2',
-    borderRadius: Spacing.two,
-    paddingVertical: Spacing.two,
-    paddingHorizontal: Spacing.three,
-    alignSelf: 'flex-start',
-    marginTop: Spacing.one,
+  thumbEmoji: {
+    fontSize: 24,
   },
-  channelLabel: {
+  name: {
     color: '#fff',
-    fontWeight: '600',
+    fontSize: 15,
+    fontFamily: RolderFonts.bold,
+    fontWeight: '700',
+  },
+  meta: {
+    color: Rolder.textSecondary,
+    fontSize: 12.5,
+    fontFamily: RolderFonts.regular,
+  },
+  pending: {
+    color: Rolder.textTertiary,
+    fontSize: 12.5,
+    fontFamily: RolderFonts.regular,
+  },
+  profileHint: {
+    color: Rolder.violetSoft,
+    fontSize: 12,
+    fontFamily: RolderFonts.semibold,
   },
 });
