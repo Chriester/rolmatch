@@ -429,11 +429,17 @@ export default function GroupDetailScreen() {
 
           {group.group_members.some((m) => m.user_id === session?.user.id) && (
             <Pressable
-              style={styles.primaryButton}
+              style={({ pressed }) => pressed && styles.chatPressed}
               onPress={() =>
                 router.push({ pathname: '/groups/[id]/chat', params: { id: group.id } })
               }>
-              <ThemedText style={styles.primaryLabel}>💬 Chat de la mesa</ThemedText>
+              <LinearGradient
+                colors={[Rolder.violet, Rolder.discord]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.chatButton}>
+                <Text style={styles.chatLabel}>💬 Chat de la mesa</Text>
+              </LinearGradient>
             </Pressable>
           )}
 
@@ -637,6 +643,20 @@ const styles = StyleSheet.create({
   primaryLabel: {
     color: '#fff',
     fontWeight: '600',
+  },
+  chatButton: {
+    borderRadius: 14,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  chatLabel: {
+    color: '#fff',
+    fontSize: 15,
+    fontFamily: RolderFonts.bold,
+    fontWeight: '700',
+  },
+  chatPressed: {
+    opacity: 0.85,
   },
   matchRow: {
     flexDirection: 'row',

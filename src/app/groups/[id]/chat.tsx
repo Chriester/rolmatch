@@ -11,16 +11,19 @@ import {
   Platform,
   Pressable,
   StyleSheet,
+  Text,
   TextInput,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { LinearGradient } from 'expo-linear-gradient';
+
 import { showAlert } from '@/lib/alert';
 import { AppHeader } from '@/components/app-header';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { MaxContentWidth, Rolder, RolderFonts, Spacing } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
 import { fetchGroup, type GroupDetail } from '@/lib/groups';
 import {
@@ -109,15 +112,13 @@ export default function GroupChatScreen() {
       <View style={[styles.messageRow, isMine && styles.messageRowMine]}>
         {isMine ? (
           <View style={[styles.bubble, styles.bubbleMine]}>
-            <ThemedText style={styles.bubbleTextMine}>{item.body}</ThemedText>
+            <Text style={styles.bubbleTextMine}>{item.body}</Text>
           </View>
         ) : (
-          <ThemedView type="backgroundElement" style={[styles.bubble, styles.bubbleTheirs]}>
-            <ThemedText type="small" style={styles.senderName}>
-              {item.profiles?.alias ?? 'Jugador/a'}
-            </ThemedText>
-            <ThemedText>{item.body}</ThemedText>
-          </ThemedView>
+          <View style={[styles.bubble, styles.bubbleTheirs]}>
+            <Text style={styles.senderName}>{item.profiles?.alias ?? 'Jugador/a'}</Text>
+            <Text style={styles.bubbleText}>{item.body}</Text>
+          </View>
         )}
       </View>
     );
@@ -133,9 +134,9 @@ export default function GroupChatScreen() {
               : router.replace({ pathname: '/groups/[id]', params: { id: id! } })
           }
         />
-        <ThemedText type="small" numberOfLines={1} style={styles.subheader}>
-          💬 Chat · {group.name}
-        </ThemedText>
+        <Text numberOfLines={1} style={styles.subheader}>
+          💬 {group.name}
+        </Text>
 
         {!iAmMember ? (
           <View style={styles.centerBox}>
@@ -166,14 +167,23 @@ export default function GroupChatScreen() {
                 value={draft}
                 onChangeText={setDraft}
                 placeholder="Escribe un mensaje…"
-                placeholderTextColor="#888"
+                placeholderTextColor="rgba(255,255,255,0.35)"
                 multiline
               />
               <Pressable
-                style={[styles.sendButton, (sending || !draft.trim()) && styles.disabled]}
+                style={({ pressed }) => [
+                  (sending || !draft.trim()) && styles.disabled,
+                  pressed && styles.pressed,
+                ]}
                 onPress={handleSend}
                 disabled={sending || !draft.trim()}>
-                <ThemedText style={styles.sendLabel}>Enviar</ThemedText>
+                <LinearGradient
+                  colors={[Rolder.violet, Rolder.discord]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.sendButton}>
+                  <Text style={styles.sendLabel}>➤</Text>
+                </LinearGradient>
               </Pressable>
             </View>
           </KeyboardAvoidingView>
@@ -200,6 +210,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.three,
   },
   subheader: {
+    color: '#fff',
+    fontSize: 16,
+    fontFamily: RolderFonts.extrabold,
+    fontWeight: '800',
     marginBottom: Spacing.two,
   },
   chatArea: {
@@ -231,21 +245,38 @@ const styles = StyleSheet.create({
   },
   bubble: {
     maxWidth: '80%',
-    borderRadius: Spacing.two,
-    paddingVertical: Spacing.two,
-    paddingHorizontal: Spacing.three,
+    borderRadius: 16,
+    paddingVertical: 8,
+    paddingHorizontal: 13,
     gap: 2,
   },
   bubbleMine: {
-    backgroundColor: '#5865F2',
+    backgroundColor: Rolder.violet,
+    borderBottomRightRadius: 4,
   },
-  bubbleTheirs: {},
+  bubbleTheirs: {
+    backgroundColor: Rolder.surface,
+    borderWidth: 1,
+    borderColor: Rolder.surfaceBorder,
+    borderBottomLeftRadius: 4,
+  },
+  bubbleText: {
+    color: 'rgba(255,255,255,0.9)',
+    fontSize: 14,
+    fontFamily: RolderFonts.regular,
+    lineHeight: 20,
+  },
   bubbleTextMine: {
     color: '#fff',
+    fontSize: 14,
+    fontFamily: RolderFonts.regular,
+    lineHeight: 20,
   },
   senderName: {
+    color: Rolder.violetSoft,
+    fontSize: 11,
+    fontFamily: RolderFonts.semibold,
     fontWeight: '600',
-    color: '#5865F2',
   },
   composerRow: {
     flexDirection: 'row',
@@ -254,26 +285,34 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.two,
   },
   input: {
+    backgroundColor: Rolder.input,
     borderWidth: 1,
-    borderColor: '#666',
-    borderRadius: Spacing.two,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
-    color: '#888',
+    borderColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 18,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    color: '#fff',
+    fontSize: 14,
+    fontFamily: RolderFonts.regular,
   },
   composerInput: {
     flex: 1,
     maxHeight: 100,
   },
   sendButton: {
-    backgroundColor: '#5865F2',
-    borderRadius: Spacing.two,
-    paddingVertical: Spacing.two,
-    paddingHorizontal: Spacing.three,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   sendLabel: {
     color: '#fff',
-    fontWeight: '600',
+    fontSize: 17,
+    lineHeight: 20,
+  },
+  pressed: {
+    opacity: 0.85,
   },
   disabled: {
     opacity: 0.5,
