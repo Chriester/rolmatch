@@ -37,6 +37,7 @@ export type GroupDetail = {
   name: string;
   image_url: string | null;
   boosted_until: string | null;
+  system_id: number | null;
   format: GroupFormat;
   description: string | null;
   timezone: string;
@@ -84,6 +85,32 @@ export async function createGroup(ownerId: string, group: GroupInput, seats: num
   return groupId;
 }
 
+/** Actualiza los datos de la mesa y sus plazas libres (solo el dueño, por RLS). */
+export async function updateGroup(groupId: string, group: GroupInput, seats: number) {
+  const { error } = await supabase.from('groups').update(group).eq('id', groupId);
+  if (error) throw error;
+
+  const { data: openings, error: openingsError } = await supabase
+    .from('group_openings')
+    .select('id')
+    .eq('group_id', groupId)
+    .limit(1);
+  if (openingsError) throw openingsError;
+
+  if (openings && openings.length > 0) {
+    const { error: updError } = await supabase
+      .from('group_openings')
+      .update({ seats: Math.max(seats, 1), is_open: seats > 0 })
+      .eq('id', openings[0].id);
+    if (updError) throw updError;
+  } else if (seats > 0) {
+    const { error: insError } = await supabase
+      .from('group_openings')
+      .insert({ group_id: groupId, seats });
+    if (insError) throw insError;
+  }
+}
+
 export async function fetchMyGroups(userId: string): Promise<GroupSummary[]> {
   const { data, error } = await supabase
     .from('groups')
@@ -98,7 +125,7 @@ export async function fetchGroup(groupId: string): Promise<GroupDetail> {
   const { data, error } = await supabase
     .from('groups')
     .select(
-      `id, owner_id, name, image_url, boosted_until, format, description, timezone, session_weekday, session_slot,
+      `id, owner_id, name, image_url, boosted_until, format, description, timezone, system_id, session_weekday, session_slot,
        frequency, experience_wanted, style_combat_narrative, style_serious_humor,
        style_roleplay_weight, vtt, discord_invite_url, is_active,
        systems(name),
