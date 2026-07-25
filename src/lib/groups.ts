@@ -111,6 +111,16 @@ export async function updateGroup(groupId: string, group: GroupInput, seats: num
   }
 }
 
+/** Saca a un miembro de la mesa (uno mismo, o el dueño a cualquiera — RLS). */
+export async function removeGroupMember(groupId: string, userId: string) {
+  const { error } = await supabase
+    .from('group_members')
+    .delete()
+    .eq('group_id', groupId)
+    .eq('user_id', userId);
+  if (error) throw error;
+}
+
 export async function fetchMyGroups(userId: string): Promise<GroupSummary[]> {
   const { data, error } = await supabase
     .from('groups')
