@@ -1,7 +1,9 @@
 // Pickers del composer del chat: emojis (insertar en el texto), stickers
 // roleros (emoji grande, envío directo; media_url queda listo para packs
-// de arte propios) y buscador de GIFs de Tenor (API gratuita de Google;
-// sin clave, la pestaña GIF no aparece).
+// de arte propios) y buscador de GIFs de KLIPY (el relevo de Tenor, que
+// Google cerró el 30-06-2026; API del equipo original de Tenor, tier
+// gratuito, clave en partner.klipy.com). Sin clave, la pestaña GIF no
+// aparece.
 
 import { Image } from 'expo-image';
 import { useEffect, useState } from 'react';
@@ -19,9 +21,9 @@ import { Rolder, RolderFonts } from '@/constants/theme';
 
 export type PickerTab = 'emoji' | 'sticker' | 'gif';
 
-const TENOR_KEY = process.env.EXPO_PUBLIC_TENOR_API_KEY;
+const KLIPY_KEY = process.env.EXPO_PUBLIC_KLIPY_API_KEY;
 
-export const gifSearchAvailable = Boolean(TENOR_KEY);
+export const gifSearchAvailable = Boolean(KLIPY_KEY);
 
 // Emojis frecuentes de chat + sabor rolero
 const EMOJIS = [
@@ -35,28 +37,39 @@ const EMOJIS = [
 // propio, cada sticker pasará a llevar media_url en vez de body.
 const STICKERS = ['🎲', '🐉', '🧙‍♂️', '⚔️', '🛡️', '💀', '🍺', '🏰', '🧝‍♀️', '📜', '🔥', '👑'];
 
-type TenorGif = { id: string; url: string; preview: string };
+type GifResult = { id: string; url: string; preview: string };
 
-async function searchTenor(query: string): Promise<TenorGif[]> {
+// Respuesta de KLIPY: data.data[].file.{hd|md|sm|xs}.{gif|webp|jpg}.url
+type KlipyFileVariant = { url: string } | undefined;
+type KlipyItem = {
+  id: number | string;
+  file: Record<string, Record<string, KlipyFileVariant> | undefined> & {
+    gif?: KlipyFileVariant;
+  };
+};
+
+async function searchGifs(query: string): Promise<GifResult[]> {
   const params = new URLSearchParams({
     q: query,
-    key: TENOR_KEY ?? '',
-    limit: '16',
-    media_filter: 'gif,tinygif',
-    contentfilter: 'medium',
+    per_page: '16',
+    rating: 'pg',
     locale: 'es_ES',
   });
-  const res = await fetch(`https://tenor.googleapis.com/v2/search?${params}`);
-  if (!res.ok) throw new Error(`Tenor ${res.status}`);
-  const json = (await res.json()) as {
-    results: { id: string; media_formats: Record<string, { url: string }> }[];
-  };
-  return (json.results ?? [])
-    .map((r) => ({
-      id: r.id,
-      url: r.media_formats.gif?.url ?? r.media_formats.tinygif?.url ?? '',
-      preview: r.media_formats.tinygif?.url ?? r.media_formats.gif?.url ?? '',
-    }))
+  const res = await fetch(
+    `https://api.klipy.com/api/v1/${KLIPY_KEY}/gifs/search?${params}`
+  );
+  if (!res.ok) throw new Error(`KLIPY ${res.status}`);
+  const json = (await res.json()) as { data?: { data?: KlipyItem[] } };
+  return (json.data?.data ?? [])
+    .map((item) => {
+      const size = (s: string, f: string) => {
+        const bySize = item.file?.[s];
+        return bySize && typeof bySize === 'object' ? (bySize as Record<string, KlipyFileVariant>)[f]?.url : undefined;
+      };
+      const url = size('hd', 'gif') ?? size('md', 'gif') ?? item.file?.gif?.url ?? '';
+      const preview = size('sm', 'gif') ?? size('xs', 'gif') ?? url;
+      return { id: String(item.id), url, preview };
+    })
     .filter((g) => g.url !== '');
 }
 
@@ -69,7 +82,7 @@ type ChatMediaPickersProps = {
 
 export function ChatMediaPickers({ tab, onEmoji, onSticker, onGif }: ChatMediaPickersProps) {
   const [query, setQuery] = useState('');
-  const [gifs, setGifs] = useState<TenorGif[] | undefined>(undefined);
+  const [gifs, setGifs] = useState<GifResult[] | undefined>(undefined);
   const [gifError, setGifError] = useState(false);
 
   // Búsqueda con debounce; sin texto, trae tendencias de rol
@@ -78,7 +91,7 @@ export function ChatMediaPickers({ tab, onEmoji, onSticker, onGif }: ChatMediaPi
     const t = setTimeout(() => {
       setGifError(false);
       setGifs(undefined);
-      searchTenor(query.trim() || 'dice roll critical')
+      searchGifs(query.trim() || 'dice roll critical')
         .then(setGifs)
         .catch(() => {
           setGifs([]);
@@ -124,7 +137,7 @@ export function ChatMediaPickers({ tab, onEmoji, onSticker, onGif }: ChatMediaPi
         style={styles.search}
         value={query}
         onChangeText={setQuery}
-        placeholder="Buscar en Tenor…"
+        placeholder="Buscar GIFs…"
         placeholderTextColor="rgba(255,255,255,0.35)"
       />
       {gifs === undefined ? (
