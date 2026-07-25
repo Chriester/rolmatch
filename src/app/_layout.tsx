@@ -63,6 +63,7 @@ export default function RootLayout() {
           <Stack.Screen name="index" />
           <Stack.Screen name="onboarding" />
           <Stack.Screen name="matches" />
+          <Stack.Screen name="chats" />
           <Stack.Screen name="likes" />
           <Stack.Screen name="promo" />
           <Stack.Screen name="report" />

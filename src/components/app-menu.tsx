@@ -16,9 +16,10 @@ type AppMenuProps = {
 };
 
 const ITEMS: { icon: string; label: string; href: Href }[] = [
+  { icon: '💬', label: 'Mis chats', href: '/chats' },
   { icon: '💘', label: 'Te han dado like', href: '/likes' },
   { icon: '🛡️', label: 'Mis mesas', href: '/groups' },
-  { icon: '💬', label: 'Mis matches', href: '/matches' },
+  { icon: '🤝', label: 'Mis matches', href: '/matches' },
   { icon: '🧙', label: 'Mis personajes', href: '/characters' },
   { icon: '👤', label: 'Editar perfil', href: '/onboarding' },
   { icon: '✨', label: 'Canjear código', href: '/promo' },

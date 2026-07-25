@@ -21,6 +21,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 import { showAlert } from '@/lib/alert';
 import { AppHeader } from '@/components/app-header';
+import { ChatInfoPanel } from '@/components/chat-info-panel';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Rolder, RolderFonts, Spacing } from '@/constants/theme';
@@ -41,6 +42,7 @@ export default function GroupChatScreen() {
   const [messages, setMessages] = useState<ChatMessage[] | undefined>(undefined);
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
+  const [infoOpen, setInfoOpen] = useState(false);
   const groupRef = useRef<GroupDetail | null | undefined>(undefined);
 
   useEffect(() => {
@@ -134,9 +136,17 @@ export default function GroupChatScreen() {
               : router.replace({ pathname: '/groups/[id]', params: { id: id! } })
           }
         />
-        <Text numberOfLines={1} style={styles.subheader}>
-          💬 {group.name}
-        </Text>
+        <View style={styles.subheaderRow}>
+          <Text numberOfLines={1} style={styles.subheader}>
+            💬 {group.name}
+          </Text>
+          <Pressable
+            style={({ pressed }) => [styles.infoButton, pressed && styles.pressed]}
+            onPress={() => setInfoOpen(true)}
+            accessibilityLabel="Información de la mesa">
+            <Text style={styles.infoGlyph}>i</Text>
+          </Pressable>
+        </View>
 
         {!iAmMember ? (
           <View style={styles.centerBox}>
@@ -199,6 +209,8 @@ export default function GroupChatScreen() {
           </KeyboardAvoidingView>
         )}
       </SafeAreaView>
+
+      <ChatInfoPanel visible={infoOpen} group={group} onClose={() => setInfoOpen(false)} />
     </ThemedView>
   );
 }
@@ -219,12 +231,33 @@ const styles = StyleSheet.create({
     maxWidth: MaxContentWidth,
     paddingHorizontal: Spacing.three,
   },
+  subheaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+    marginBottom: Spacing.two,
+  },
   subheader: {
     color: '#fff',
     fontSize: 16,
     fontFamily: RolderFonts.extrabold,
     fontWeight: '800',
-    marginBottom: Spacing.two,
+    flexShrink: 1,
+  },
+  infoButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: Rolder.input,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  infoGlyph: {
+    color: Rolder.violet,
+    fontSize: 15,
+    fontStyle: 'italic',
+    fontWeight: '800',
   },
   chatArea: {
     flex: 1,
