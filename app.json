@@ -38,6 +38,19 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "d0a442fb-2e92-464d-b2c9-9bbdadf14ed0"
+      }
+    },
+    "owner": "captain-games",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/d0a442fb-2e92-464d-b2c9-9bbdadf14ed0"
     }
   }
 }
