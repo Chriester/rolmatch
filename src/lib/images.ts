@@ -9,7 +9,7 @@ import { supabase } from '@/lib/supabase';
  */
 export async function pickAndUploadImage(
   userId: string,
-  prefix: 'avatar' | 'group' | 'character',
+  prefix: 'avatar' | 'group' | 'character' | 'journal',
   aspect: [number, number] = [1, 1]
 ): Promise<string | null> {
   const result = await ImagePicker.launchImageLibraryAsync({
