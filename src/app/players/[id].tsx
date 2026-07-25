@@ -16,11 +16,12 @@ import {
 import { CardChip, CardChipRow } from '@/components/swipe/card-shell';
 import { CharacterLikeButton } from '@/components/swipe/character-like-button';
 import { ThemedView } from '@/components/themed-view';
-import { ListRow, SectionLabel, StatusPill, StyleBar } from '@/components/ui';
+import { ListRow, SectionLabel, StatusPill, StyleBar, XpBar } from '@/components/ui';
 import { MaxContentWidth, Rolder, RolderFonts, Spacing } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
 import { VTT_LABELS } from '@/lib/groups';
 import { fetchPlayerProfile, type PlayerProfile } from '@/lib/players';
+import { levelInfoFromXp } from '@/lib/xp';
 
 const ROLE_LABELS: Record<string, string> = {
   player: 'Jugador/a',
@@ -64,6 +65,7 @@ export default function PlayerProfileScreen() {
 
   const isMe = session?.user.id === id;
   const publicCharacters = profile.characters.filter((c) => c.is_public || isMe);
+  const levelInfo = levelInfoFromXp(profile.xpTotal);
 
   return (
     <ThemedView style={styles.container}>
@@ -83,6 +85,7 @@ export default function PlayerProfileScreen() {
             <CardChipRow>
               <CardChip label={ROLE_LABELS[profile.role] ?? profile.role} />
               <CardChip label={`🌍 ${profile.timezone}`} />
+              <CardChip label={`⚔️ Nv. ${levelInfo.level} · ${levelInfo.title}`} />
               {profile.reliability && profile.reliability.count > 0 && (
                 <CardChip
                   variant="green"
@@ -91,6 +94,13 @@ export default function PlayerProfileScreen() {
               )}
             </CardChipRow>
           </View>
+
+          {isMe && (
+            <View style={styles.block}>
+              <SectionLabel>Mi nivel</SectionLabel>
+              <XpBar info={levelInfo} />
+            </View>
+          )}
 
           {profile.bio && (
             <View style={styles.block}>
