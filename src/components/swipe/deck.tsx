@@ -179,15 +179,40 @@ const TopCard = forwardRef<TopCardHandle, TopCardProps>(function TopCard(
     transform: [{ translateY: -sheet.value * height }],
   }));
 
+  // Legibles desde el primer centímetro: opacidad completa a mitad del
+  // umbral y pop de escala 0.8→1 (la rotación va aquí porque el transform
+  // animado pisa al estático).
   const likeStampStyle = useAnimatedStyle(() => ({
     opacity:
-      interpolate(tx.value, [threshold * 0.15, threshold], [0, 1], Extrapolation.CLAMP) *
+      interpolate(tx.value, [threshold * 0.1, threshold * 0.5], [0, 1], Extrapolation.CLAMP) *
       (1 - sheet.value),
+    transform: [
+      { rotate: '8deg' },
+      {
+        scale: interpolate(
+          tx.value,
+          [threshold * 0.1, threshold * 0.5],
+          [0.8, 1],
+          Extrapolation.CLAMP
+        ),
+      },
+    ],
   }));
   const passStampStyle = useAnimatedStyle(() => ({
     opacity:
-      interpolate(tx.value, [-threshold, -threshold * 0.15], [1, 0], Extrapolation.CLAMP) *
+      interpolate(tx.value, [-threshold * 0.5, -threshold * 0.1], [1, 0], Extrapolation.CLAMP) *
       (1 - sheet.value),
+    transform: [
+      { rotate: '-7deg' },
+      {
+        scale: interpolate(
+          tx.value,
+          [-threshold * 0.5, -threshold * 0.1],
+          [1, 0.8],
+          Extrapolation.CLAMP
+        ),
+      },
+    ],
   }));
 
   return (
@@ -327,19 +352,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 7,
   },
+  // Retranqueados hacia el centro: en móvil quedan siempre a la vista
+  // aunque la tarjeta se desplace y rote con el arrastre.
   stampLike: {
-    right: 18,
+    right: '14%',
     backgroundColor: '#3BD16F',
     borderColor: '#0B2416',
     boxShadow: '4px 4px 0 rgba(0,0,0,0.35)',
-    transform: [{ rotate: '8deg' }],
   },
   stampPass: {
-    left: 18,
+    left: '14%',
     backgroundColor: '#FF5A5F',
     borderColor: '#3D0A0C',
     boxShadow: '4px 4px 0 rgba(0,0,0,0.35)',
-    transform: [{ rotate: '-7deg' }],
   },
   stampText: {
     fontSize: 19,
