@@ -2,16 +2,28 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
 
 import { supabase } from '@/lib/supabase';
 
+export type MessageKind = 'text' | 'gif' | 'sticker';
+
 export type ChatMessage = {
   id: string;
   group_id: string;
   sender_id: string;
-  body: string;
+  body: string | null;
+  kind: MessageKind;
+  media_url: string | null;
   created_at: string;
   profiles: { alias: string; avatar_url: string | null } | null;
 };
 
-const MESSAGE_SELECT = 'id, group_id, sender_id, body, created_at, profiles(alias, avatar_url)';
+const MESSAGE_SELECT =
+  'id, group_id, sender_id, body, kind, media_url, created_at, profiles(alias, avatar_url)';
+
+/** Preview de un mensaje para listas (los media no tienen body legible) */
+export function messagePreview(message: { body: string | null; kind: MessageKind }): string {
+  if (message.kind === 'gif') return '🎞️ GIF';
+  if (message.kind === 'sticker') return `${message.body ?? '🎟️'} sticker`;
+  return message.body ?? '';
+}
 
 export type ChatSummary = {
   groupId: string;
@@ -37,7 +49,7 @@ export async function fetchMyChats(userId: string): Promise<ChatSummary[]> {
   // es su último mensaje (con 200 sobra para una lista de chats de alpha).
   const { data: recent, error: msgError } = await supabase
     .from('messages')
-    .select('group_id, body, created_at, profiles(alias)')
+    .select('group_id, body, kind, created_at, profiles(alias)')
     .in(
       'group_id',
       groups.map((g) => g.id)
@@ -51,7 +63,7 @@ export async function fetchMyChats(userId: string): Promise<ChatSummary[]> {
     if (lastByGroup.has(row.group_id)) continue;
     const sender = row.profiles as unknown as { alias: string } | null;
     lastByGroup.set(row.group_id, {
-      body: row.body,
+      body: messagePreview(row as { body: string | null; kind: MessageKind }),
       sender: sender?.alias ?? null,
       created_at: row.created_at,
     });
@@ -93,7 +105,29 @@ export async function sendMessage(
 ): Promise<ChatMessage> {
   const { data, error } = await supabase
     .from('messages')
-    .insert({ group_id: groupId, sender_id: senderId, body: body.trim() })
+    .insert({ group_id: groupId, sender_id: senderId, body: body.trim(), kind: 'text' })
+    .select(MESSAGE_SELECT)
+    .single();
+  if (error) throw error;
+  return data as unknown as ChatMessage;
+}
+
+/** Envía un GIF (URL de Tenor) o un sticker (emoji en body, o media_url) */
+export async function sendMediaMessage(
+  groupId: string,
+  senderId: string,
+  kind: 'gif' | 'sticker',
+  content: { mediaUrl?: string; body?: string }
+): Promise<ChatMessage> {
+  const { data, error } = await supabase
+    .from('messages')
+    .insert({
+      group_id: groupId,
+      sender_id: senderId,
+      kind,
+      media_url: content.mediaUrl ?? null,
+      body: content.body ?? null,
+    })
     .select(MESSAGE_SELECT)
     .single();
   if (error) throw error;

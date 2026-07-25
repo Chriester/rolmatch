@@ -19,9 +19,16 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { LinearGradient } from 'expo-linear-gradient';
 
+import { Image } from 'expo-image';
+
 import { showAlert } from '@/lib/alert';
 import { AppHeader } from '@/components/app-header';
 import { ChatInfoPanel } from '@/components/chat-info-panel';
+import {
+  ChatMediaPickers,
+  gifSearchAvailable,
+  type PickerTab,
+} from '@/components/chat-media-pickers';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Rolder, RolderFonts, Spacing } from '@/constants/theme';
@@ -29,6 +36,7 @@ import { useSession } from '@/hooks/use-session';
 import { fetchGroup, type GroupDetail } from '@/lib/groups';
 import {
   fetchMessages,
+  sendMediaMessage,
   sendMessage,
   subscribeToMessages,
   unsubscribeFromMessages,
@@ -43,6 +51,7 @@ export default function GroupChatScreen() {
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
+  const [pickerTab, setPickerTab] = useState<PickerTab | null>(null);
   const groupRef = useRef<GroupDetail | null | undefined>(undefined);
 
   useEffect(() => {
@@ -90,6 +99,19 @@ export default function GroupChatScreen() {
     }
   };
 
+  const handleSendMedia = async (kind: 'gif' | 'sticker', content: { mediaUrl?: string; body?: string }) => {
+    if (!id || !session || sending) return;
+    setSending(true);
+    setPickerTab(null);
+    try {
+      await sendMediaMessage(id, session.user.id, kind, content);
+    } catch (error) {
+      showAlert('No se pudo enviar', error instanceof Error ? error.message : String(error));
+    } finally {
+      setSending(false);
+    }
+  };
+
   if (group === undefined || messages === undefined) {
     return (
       <ThemedView style={[styles.container, styles.loading]}>
@@ -112,16 +134,39 @@ export default function GroupChatScreen() {
     const isMine = item.sender_id === session?.user.id;
     return (
       <View style={[styles.messageRow, isMine && styles.messageRowMine]}>
-        {isMine ? (
-          <View style={[styles.bubble, styles.bubbleMine]}>
-            <Text style={styles.bubbleTextMine}>{item.body}</Text>
-          </View>
-        ) : (
-          <View style={[styles.bubble, styles.bubbleTheirs]}>
-            <Text style={styles.senderName}>{item.profiles?.alias ?? 'Jugador/a'}</Text>
-            <Text style={styles.bubbleText}>{item.body}</Text>
-          </View>
-        )}
+        {(() => {
+          const media =
+            item.kind === 'gif' && item.media_url ? (
+              <Image source={{ uri: item.media_url }} style={styles.gifMessage} contentFit="cover" />
+            ) : item.kind === 'sticker' ? (
+              item.media_url ? (
+                <Image source={{ uri: item.media_url }} style={styles.stickerImage} contentFit="contain" />
+              ) : (
+                <Text style={styles.stickerMessage}>{item.body ?? '🎟️'}</Text>
+              )
+            ) : null;
+
+          if (isMine) {
+            return media ? (
+              <View style={styles.mediaWrap}>{media}</View>
+            ) : (
+              <View style={[styles.bubble, styles.bubbleMine]}>
+                <Text style={styles.bubbleTextMine}>{item.body}</Text>
+              </View>
+            );
+          }
+          return media ? (
+            <View style={styles.mediaWrap}>
+              <Text style={styles.senderName}>{item.profiles?.alias ?? 'Jugador/a'}</Text>
+              {media}
+            </View>
+          ) : (
+            <View style={[styles.bubble, styles.bubbleTheirs]}>
+              <Text style={styles.senderName}>{item.profiles?.alias ?? 'Jugador/a'}</Text>
+              <Text style={styles.bubbleText}>{item.body}</Text>
+            </View>
+          );
+        })()}
       </View>
     );
   };
@@ -171,6 +216,36 @@ export default function GroupChatScreen() {
                 </View>
               }
             />
+            {pickerTab !== null && (
+              <ChatMediaPickers
+                tab={pickerTab}
+                onEmoji={(e) => setDraft((d) => d + e)}
+                onSticker={(s) => handleSendMedia('sticker', { body: s })}
+                onGif={(url) => handleSendMedia('gif', { mediaUrl: url })}
+              />
+            )}
+            <View style={styles.pickerTabs}>
+              <Pressable
+                style={[styles.tabButton, pickerTab === 'emoji' && styles.tabActive]}
+                onPress={() => setPickerTab(pickerTab === 'emoji' ? null : 'emoji')}
+                accessibilityLabel="Emojis">
+                <Text style={styles.tabGlyph}>😀</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.tabButton, pickerTab === 'sticker' && styles.tabActive]}
+                onPress={() => setPickerTab(pickerTab === 'sticker' ? null : 'sticker')}
+                accessibilityLabel="Stickers">
+                <Text style={styles.tabGlyph}>🎟️</Text>
+              </Pressable>
+              {gifSearchAvailable && (
+                <Pressable
+                  style={[styles.tabButton, pickerTab === 'gif' && styles.tabActive]}
+                  onPress={() => setPickerTab(pickerTab === 'gif' ? null : 'gif')}
+                  accessibilityLabel="GIFs">
+                  <Text style={styles.tabLabel}>GIF</Text>
+                </Pressable>
+              )}
+            </View>
             <View style={styles.composerRow}>
               <TextInput
                 style={[styles.input, styles.composerInput]}
@@ -320,6 +395,47 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontFamily: RolderFonts.semibold,
     fontWeight: '600',
+  },
+  mediaWrap: {
+    gap: 2,
+  },
+  gifMessage: {
+    width: 200,
+    height: 150,
+    borderRadius: 14,
+    backgroundColor: Rolder.surface,
+  },
+  stickerMessage: {
+    fontSize: 56,
+    lineHeight: 66,
+  },
+  stickerImage: {
+    width: 96,
+    height: 96,
+  },
+  pickerTabs: {
+    flexDirection: 'row',
+    gap: 6,
+    paddingTop: Spacing.two,
+  },
+  tabButton: {
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+  },
+  tabActive: {
+    backgroundColor: 'rgba(139,108,255,0.3)',
+  },
+  tabGlyph: {
+    fontSize: 16,
+  },
+  tabLabel: {
+    color: Rolder.violetSofter,
+    fontSize: 13,
+    fontFamily: RolderFonts.bold,
+    fontWeight: '700',
+    lineHeight: 20,
   },
   composerRow: {
     flexDirection: 'row',

@@ -112,6 +112,14 @@ token en expo.dev → Account Settings → **Access tokens** y añádelo como se
 > Push en Android: requiere además credenciales FCM (proyecto de Firebase gratis
 > + `npx eas-cli credentials`). Hasta entonces la app omite el push sin fallar.
 
+### GIFs del chat (Tenor)
+
+El buscador de GIFs del chat usa la [API de Tenor](https://developers.google.com/tenor) (gratuita).
+Setup: [console.cloud.google.com](https://console.cloud.google.com) → proyecto nuevo → habilitar
+**Tenor API** → Credenciales → **clave de API** → ponla como `EXPO_PUBLIC_TENOR_API_KEY` en el
+`.env` local y como secret del repo (para el deploy). Sin clave la pestaña GIF no aparece; los
+emojis y stickers funcionan igualmente. Requiere la migración `00014`.
+
 ### Datos de prueba (probar en solitario)
 
 Para probar el feed y los matches sin necesitar una segunda cuenta, pega [supabase/seed/dev-seed.sql](supabase/seed/dev-seed.sql) en el SQL Editor: crea un GM y dos jugadores falsos, dos mesas de prueba y los likes preparados para provocar matches instantáneos con tu cuenta. Es idempotente (re-ejecútalo si creas mesas nuevas). Se limpia con [supabase/seed/dev-cleanup.sql](supabase/seed/dev-cleanup.sql). **Solo para entornos de desarrollo.**
