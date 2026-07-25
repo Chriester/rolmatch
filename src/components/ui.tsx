@@ -7,6 +7,7 @@ import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { Rolder, RolderFonts } from '@/constants/theme';
+import type { LevelInfo } from '@/lib/xp';
 
 /** Título de pantalla (20/800 según handoff) */
 export function ScreenTitle({ children }: { children: ReactNode }) {
@@ -141,6 +142,30 @@ export function StyleBar({ left, right, value }: { left: string; right: string; 
   );
 }
 
+/** Barra de nivel (gamificación v1): título rolero + progreso al siguiente nivel */
+export function XpBar({ info }: { info: LevelInfo }) {
+  return (
+    <View style={styles.axisBlock}>
+      <View style={styles.axisLabels}>
+        <Text style={styles.xpTitle}>
+          Nv. {info.level} · {info.title}
+        </Text>
+        <Text style={styles.axisLabel}>
+          {info.totalXp - info.levelFloor} / {info.nextLevelAt - info.levelFloor} XP
+        </Text>
+      </View>
+      <View style={styles.xpTrack}>
+        <LinearGradient
+          colors={Rolder.brandGradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={[styles.xpFill, { width: `${Math.max(2, Math.round(info.progress * 100))}%` }]}
+        />
+      </View>
+    </View>
+  );
+}
+
 /** Pill de estado (EN JUEGO / BUSCANDO MESA / COMPLETA…) */
 export function StatusPill({
   label,
@@ -260,6 +285,22 @@ const styles = StyleSheet.create({
     borderRadius: 7,
     marginLeft: -7,
     backgroundColor: Rolder.violet,
+  },
+  xpTitle: {
+    color: '#fff',
+    fontSize: 13,
+    fontFamily: RolderFonts.semibold,
+    fontWeight: '600',
+  },
+  xpTrack: {
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    overflow: 'hidden',
+  },
+  xpFill: {
+    height: '100%',
+    borderRadius: 5,
   },
   pill: {
     borderRadius: 999,

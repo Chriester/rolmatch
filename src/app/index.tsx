@@ -44,6 +44,7 @@ import {
 } from '@/lib/groups';
 import { blockUser } from '@/lib/moderation';
 import { registerPushToken } from '@/lib/notifications';
+import { levelFromXp, titleForLevel } from '@/lib/xp';
 import { fetchPremiumStatus, isBoostActive } from '@/lib/premium';
 import { fetchProfileData, hasCompletedOnboarding } from '@/lib/profile';
 import {
@@ -261,6 +262,7 @@ export default function HomeScreen() {
     const publicLooking = c.player.characters.filter(
       (ch) => ch.status === 'looking' && ch.is_public
     );
+    const playerLevel = levelFromXp(c.player.xpTotal);
     const playerFace = (
       <CardShell
         imageUrl={c.player.avatar_url}
@@ -288,6 +290,7 @@ export default function HomeScreen() {
         <CardChipRow>
           <CardChip label={ROLE_LABELS[c.player.role] ?? c.player.role} />
           <CardChip label={c.player.timezone} />
+          <CardChip label={`⚔️ Nv. ${playerLevel} · ${titleForLevel(playerLevel)}`} />
         </CardChipRow>
         <CardChipRow>
           <CardChip

@@ -2,6 +2,7 @@ import { matchPlayerToGroup, type MatchGroup, type MatchPlayer, type MatchResult
 import { fetchBlockRelations } from '@/lib/moderation';
 import { fetchReliability } from '@/lib/ratings';
 import { supabase } from '@/lib/supabase';
+import { fetchXpTotals } from '@/lib/xp';
 import type { GroupFormat } from '@/lib/groups';
 import type { VttType } from '@/lib/profile';
 
@@ -38,6 +39,7 @@ export type PlayerCandidate = {
     alias: string;
     role: string;
     characters: ShowcaseCharacter[];
+    xpTotal: number;
   };
   /** true si este jugador ya dio like a la mesa */
   likedGroup: boolean;
@@ -161,10 +163,14 @@ export async function fetchGroupCandidates(
   const eligible = (profiles ?? []).filter(
     (p) => !excluded.has(p.id) && p.availability_slots.length > 0
   );
-  // Fiabilidad real (fase 3): media de valoraciones para el 10 % del score
-  const reliability = await fetchReliability(eligible.map((p) => p.id)).catch(
-    () => new Map<string, { average: number; count: number }>()
-  );
+  // Fiabilidad real (fase 3): media de valoraciones para el 10 % del score.
+  // XP solo para pintar nivel/título en la tarjeta; no puntúa en el matching.
+  const [reliability, xpTotals] = await Promise.all([
+    fetchReliability(eligible.map((p) => p.id)).catch(
+      () => new Map<string, { average: number; count: number }>()
+    ),
+    fetchXpTotals(eligible.map((p) => p.id)).catch(() => new Map<string, number>()),
+  ]);
 
   return eligible
     .map((p) => {
@@ -179,6 +185,7 @@ export async function fetchGroupCandidates(
           alias: p.alias,
           role: p.role,
           characters,
+          xpTotal: xpTotals.get(p.id) ?? 0,
         },
         likedGroup,
         proposal: characters.find((c) => c.id === proposedId) ?? null,
