@@ -477,6 +477,15 @@ export default function GroupDetailScreen() {
             </Pressable>
           )}
 
+          {group.group_members.some((m) => m.user_id === session?.user.id) && (
+            <OutlineButton
+              label="📖 Histórico de la mesa"
+              onPress={() =>
+                router.push({ pathname: '/groups/[id]/journal', params: { id: group.id } })
+              }
+            />
+          )}
+
           {session?.user.id === group.owner_id &&
             (isBoostActive(boostedUntil) ? (
               <Text style={styles.boostActive}>
