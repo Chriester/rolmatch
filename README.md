@@ -112,13 +112,15 @@ token en expo.dev → Account Settings → **Access tokens** y añádelo como se
 > Push en Android: requiere además credenciales FCM (proyecto de Firebase gratis
 > + `npx eas-cli credentials`). Hasta entonces la app omite el push sin fallar.
 
-### GIFs del chat (Tenor)
+### GIFs del chat (KLIPY)
 
-El buscador de GIFs del chat usa la [API de Tenor](https://developers.google.com/tenor) (gratuita).
-Setup: [console.cloud.google.com](https://console.cloud.google.com) → proyecto nuevo → habilitar
-**Tenor API** → Credenciales → **clave de API** → ponla como `EXPO_PUBLIC_TENOR_API_KEY` en el
-`.env` local y como secret del repo (para el deploy). Sin clave la pestaña GIF no aparece; los
-emojis y stickers funcionan igualmente. Requiere la migración `00014`.
+El buscador de GIFs del chat usa la [API de KLIPY](https://klipy.com/developers) — el relevo de
+Tenor (Google cerró la API de Tenor el 30-06-2026; KLIPY la fundó el equipo original y la usan
+WhatsApp y compañía). Setup: cuenta gratuita en [partner.klipy.com](https://partner.klipy.com) →
+API key (la de test da 100 llamadas/hora; la de producción se pide desde el mismo panel) → ponla
+como `EXPO_PUBLIC_KLIPY_API_KEY` en el `.env` local y como secret del repo (para el deploy).
+Sin clave la pestaña GIF no aparece; los emojis y stickers funcionan igualmente. Requiere la
+migración `00014`.
 
 ### Datos de prueba (probar en solitario)
 
