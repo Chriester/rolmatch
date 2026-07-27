@@ -11,6 +11,7 @@ import { AppMenu } from '@/components/app-menu';
 import { RolderBrand } from '@/components/brand';
 import { Rolder, Spacing } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
+import { fetchUnreadTotal } from '@/lib/messages';
 import { fetchProfileData } from '@/lib/profile';
 
 type AppHeaderProps = {
@@ -25,6 +26,7 @@ export function AppHeader({ onBack, right }: AppHeaderProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [alias, setAlias] = useState<string | null>(null);
+  const [unread, setUnread] = useState(0);
 
   useEffect(() => {
     if (!session) return;
@@ -34,6 +36,7 @@ export function AppHeader({ onBack, right }: AppHeaderProps) {
         setAlias(p.alias);
       })
       .catch(() => {});
+    fetchUnreadTotal(session.user.id).then(setUnread);
   }, [session]);
 
   return (
@@ -62,6 +65,7 @@ export function AppHeader({ onBack, right }: AppHeaderProps) {
                 <Text style={styles.avatarGlyph}>☰</Text>
               </View>
             )}
+            {unread > 0 && <View style={styles.unreadDot} />}
           </Pressable>
         ) : (
           <View style={styles.spacer} />
@@ -71,6 +75,7 @@ export function AppHeader({ onBack, right }: AppHeaderProps) {
         visible={menuOpen}
         alias={alias}
         avatarUrl={avatarUrl}
+        unread={unread}
         onClose={() => setMenuOpen(false)}
       />
     </View>
@@ -118,5 +123,16 @@ const styles = StyleSheet.create({
   },
   spacer: {
     width: 44,
+  },
+  unreadDot: {
+    position: 'absolute',
+    top: -1,
+    right: -1,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: Rolder.coral,
+    borderWidth: 2,
+    borderColor: Rolder.page,
   },
 });

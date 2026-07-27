@@ -12,6 +12,8 @@ type AppMenuProps = {
   visible: boolean;
   alias: string | null;
   avatarUrl: string | null;
+  /** total de mensajes no leídos (badge en «Mis chats») */
+  unread?: number;
   onClose: () => void;
 };
 
@@ -25,7 +27,7 @@ const ITEMS: { icon: string; label: string; href: Href }[] = [
   { icon: '⚙️', label: 'Opciones', href: '/settings' },
 ];
 
-export function AppMenu({ visible, alias, avatarUrl, onClose }: AppMenuProps) {
+export function AppMenu({ visible, alias, avatarUrl, unread = 0, onClose }: AppMenuProps) {
   if (!visible) return null;
   return (
     // Modal: el menú se superpone a CUALQUIER pantalla (la cabecera lo abre
@@ -66,6 +68,11 @@ export function AppMenu({ visible, alias, avatarUrl, onClose }: AppMenuProps) {
             }}>
             <Text style={styles.itemIcon}>{item.icon}</Text>
             <Text style={styles.itemLabel}>{item.label}</Text>
+            {item.href === '/chats' && unread > 0 && (
+              <View style={styles.badge}>
+                <Text style={styles.badgeLabel}>{unread >= 99 ? '99+' : unread}</Text>
+              </View>
+            )}
             <Text style={styles.chevron}>›</Text>
           </Pressable>
         ))}
@@ -173,5 +180,20 @@ const styles = StyleSheet.create({
   },
   signOut: {
     color: '#F3485B',
+  },
+  badge: {
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
+    paddingHorizontal: 5,
+    backgroundColor: '#8B6CFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgeLabel: {
+    color: '#fff',
+    fontSize: 10.5,
+    fontFamily: 'Sora_700Bold',
+    fontWeight: '700',
   },
 });

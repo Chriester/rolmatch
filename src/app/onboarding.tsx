@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { Modal, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 
 import { showAlert } from '@/lib/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -53,6 +53,9 @@ export default function OnboardingScreen() {
   const session = useSession();
   const [step, setStep] = useState(0);
   const [busy, setBusy] = useState(false);
+  // primera vez que se completa el perfil → pantalla de celebración
+  const [wasComplete, setWasComplete] = useState(false);
+  const [celebrate, setCelebrate] = useState(false);
 
   // Paso 1 — quién eres
   const [alias, setAlias] = useState('');
@@ -96,6 +99,7 @@ export default function OnboardingScreen() {
         const age = ageFromBirthYear(profile.birth_year);
         setAgeText(age === null ? '' : String(age));
         if (profile.availability.length > 0) {
+          setWasComplete(true);
           setTimezone(profile.timezone);
           setAvailability(
             new Set(profile.availability.map((a) => availabilityKey(a.weekday, a.slot)))
@@ -183,7 +187,11 @@ export default function OnboardingScreen() {
         }),
         [...experienceBySystem].map(([system_id, experience]) => ({ system_id, experience }))
       );
-      router.replace('/');
+      if (wasComplete) {
+        router.replace('/');
+      } else {
+        setCelebrate(true);
+      }
     } catch (error) {
       showAlert('No se pudo guardar', error instanceof Error ? error.message : String(error));
     } finally {
@@ -414,6 +422,22 @@ export default function OnboardingScreen() {
           </View>
         </ScrollView>
       </SafeAreaView>
+
+      {celebrate && (
+        <Modal transparent visible animationType="fade">
+          <View style={styles.celebrateBackdrop}>
+            <View style={styles.celebrateCard}>
+              <Text style={styles.celebrateEmoji}>🎲</Text>
+              <Text style={styles.celebrateTitle}>¡Perfil listo!</Text>
+              <Text style={styles.celebrateBody}>
+                Ya apareces en el feed de las mesas compatibles contigo. Completa tu foto y bio
+                (si no lo has hecho) y gana tus primeros puntos de experiencia.
+              </Text>
+              <PrimaryButton label="¡A rodar dados!" onPress={() => router.replace('/')} />
+            </View>
+          </View>
+        </Modal>
+      )}
     </ThemedView>
   );
 }
@@ -507,6 +531,40 @@ const styles = StyleSheet.create({
   multiline: {
     minHeight: 80,
     textAlignVertical: 'top',
+  },
+  celebrateBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  celebrateCard: {
+    width: '100%',
+    maxWidth: 360,
+    backgroundColor: Rolder.surface,
+    borderWidth: 1,
+    borderColor: 'rgba(139,108,255,0.4)',
+    borderRadius: 20,
+    padding: 24,
+    alignItems: 'center',
+    gap: Spacing.three,
+  },
+  celebrateEmoji: {
+    fontSize: 56,
+  },
+  celebrateTitle: {
+    color: '#fff',
+    fontSize: 22,
+    fontFamily: RolderFonts.extrabold,
+    fontWeight: '800',
+  },
+  celebrateBody: {
+    color: Rolder.textSecondary,
+    fontSize: 13.5,
+    lineHeight: 20,
+    fontFamily: RolderFonts.regular,
+    textAlign: 'center',
   },
   genderAgeRow: {
     flexDirection: 'row',

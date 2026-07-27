@@ -104,6 +104,16 @@ export async function fetchMyChats(userId: string): Promise<ChatSummary[]> {
     });
 }
 
+/** Total de no-leídos entre todas mis mesas (para el punto del avatar). */
+export async function fetchUnreadTotal(userId: string): Promise<number> {
+  try {
+    const chats = await fetchMyChats(userId);
+    return chats.reduce((total, chat) => total + chat.unread, 0);
+  } catch {
+    return 0;
+  }
+}
+
 /** Marca el chat como leído hasta ahora (best effort: sin migración, no-op). */
 export async function markChatRead(groupId: string, userId: string) {
   try {
