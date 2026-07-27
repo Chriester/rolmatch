@@ -86,12 +86,21 @@ export default function ChatsScreen() {
                       <Text style={styles.time}>{timeLabel(item.lastMessage.created_at)}</Text>
                     )}
                   </View>
-                  <Text style={styles.preview} numberOfLines={1}>
+                  <Text
+                    style={[styles.preview, item.unread > 0 && styles.previewUnread]}
+                    numberOfLines={1}>
                     {item.lastMessage
                       ? `${item.lastMessage.sender ?? 'Alguien'}: ${item.lastMessage.body}`
                       : 'Sin mensajes todavía — rompe el hielo.'}
                   </Text>
                 </View>
+                {item.unread > 0 && (
+                  <View style={styles.badge}>
+                    <Text style={styles.badgeLabel}>
+                      {item.unread >= 99 ? '99+' : item.unread}
+                    </Text>
+                  </View>
+                )}
               </ListRow>
             )}
           />
@@ -177,5 +186,25 @@ const styles = StyleSheet.create({
     color: Rolder.textSecondary,
     fontSize: 12.5,
     fontFamily: RolderFonts.regular,
+  },
+  previewUnread: {
+    color: 'rgba(255,255,255,0.92)',
+    fontFamily: RolderFonts.semibold,
+    fontWeight: '600',
+  },
+  badge: {
+    minWidth: 22,
+    height: 22,
+    borderRadius: 11,
+    paddingHorizontal: 6,
+    backgroundColor: Rolder.violet,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgeLabel: {
+    color: '#fff',
+    fontSize: 11,
+    fontFamily: RolderFonts.bold,
+    fontWeight: '700',
   },
 });

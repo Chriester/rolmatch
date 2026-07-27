@@ -30,6 +30,8 @@ export type ChatSummary = {
   name: string;
   imageUrl: string | null;
   lastMessage: { body: string; sender: string | null; created_at: string } | null;
+  /** mensajes ajenos posteriores a mi última lectura (tope 99) */
+  unread: number;
 };
 
 /** Mesas donde soy miembro, con el último mensaje de cada una (para «Mis chats»). */
@@ -47,26 +49,41 @@ export async function fetchMyChats(userId: string): Promise<ChatSummary[]> {
 
   // Últimos mensajes de todas mis mesas de una tacada; el primero por mesa
   // es su último mensaje (con 200 sobra para una lista de chats de alpha).
-  const { data: recent, error: msgError } = await supabase
-    .from('messages')
-    .select('group_id, body, kind, created_at, profiles(alias)')
-    .in(
-      'group_id',
-      groups.map((g) => g.id)
-    )
-    .order('created_at', { ascending: false })
-    .limit(200);
+  const [{ data: recent, error: msgError }, { data: reads, error: readsError }] =
+    await Promise.all([
+      supabase
+        .from('messages')
+        .select('group_id, sender_id, body, kind, created_at, profiles(alias)')
+        .in(
+          'group_id',
+          groups.map((g) => g.id)
+        )
+        .order('created_at', { ascending: false })
+        .limit(200),
+      supabase.from('chat_reads').select('group_id, last_read_at').eq('user_id', userId),
+    ]);
   if (msgError) throw msgError;
 
+  // Sin la migración 00019 aplicada, reads falla: todo cuenta como leído
+  const readByGroup = new Map(
+    readsError ? [] : (reads ?? []).map((r) => [r.group_id, r.last_read_at])
+  );
+
   const lastByGroup = new Map<string, ChatSummary['lastMessage']>();
+  const unreadByGroup = new Map<string, number>();
   for (const row of recent ?? []) {
-    if (lastByGroup.has(row.group_id)) continue;
-    const sender = row.profiles as unknown as { alias: string } | null;
-    lastByGroup.set(row.group_id, {
-      body: messagePreview(row as { body: string | null; kind: MessageKind }),
-      sender: sender?.alias ?? null,
-      created_at: row.created_at,
-    });
+    if (!lastByGroup.has(row.group_id)) {
+      const sender = row.profiles as unknown as { alias: string } | null;
+      lastByGroup.set(row.group_id, {
+        body: messagePreview(row as { body: string | null; kind: MessageKind }),
+        sender: sender?.alias ?? null,
+        created_at: row.created_at,
+      });
+    }
+    const lastRead = readByGroup.get(row.group_id);
+    if (row.sender_id !== userId && (!lastRead || row.created_at > lastRead)) {
+      unreadByGroup.set(row.group_id, (unreadByGroup.get(row.group_id) ?? 0) + 1);
+    }
   }
 
   return groups
@@ -75,6 +92,7 @@ export async function fetchMyChats(userId: string): Promise<ChatSummary[]> {
       name: g.name,
       imageUrl: g.image_url,
       lastMessage: lastByGroup.get(g.id) ?? null,
+      unread: readsError ? 0 : Math.min(unreadByGroup.get(g.id) ?? 0, 99),
     }))
     .sort((a, b) => {
       // con mensajes primero (más reciente arriba); vacíos al final por nombre
@@ -84,6 +102,17 @@ export async function fetchMyChats(userId: string): Promise<ChatSummary[]> {
       if (b.lastMessage) return 1;
       return a.name.localeCompare(b.name);
     });
+}
+
+/** Marca el chat como leído hasta ahora (best effort: sin migración, no-op). */
+export async function markChatRead(groupId: string, userId: string) {
+  try {
+    await supabase
+      .from('chat_reads')
+      .upsert({ group_id: groupId, user_id: userId, last_read_at: new Date().toISOString() });
+  } catch {
+    // tabla aún no migrada o sin red: el badge simplemente no se actualiza
+  }
 }
 
 // Ultimos `limit` mensajes de la mesa, mas reciente primero (para FlatList invertido).
