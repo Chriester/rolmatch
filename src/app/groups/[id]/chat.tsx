@@ -38,6 +38,7 @@ import {
   fetchMessages,
   sendMediaMessage,
   sendMessage,
+  markChatRead,
   subscribeToMessages,
   unsubscribeFromMessages,
   type ChatMessage,
@@ -82,9 +83,16 @@ export default function GroupChatScreen() {
         const message: ChatMessage = { ...row, profiles: sender?.profiles ?? null };
         return [message, ...(list ?? [])];
       });
+      // Lo estoy viendo llegar: no debe contar como no-leído
+      if (session) markChatRead(id, session.user.id);
     });
     return () => unsubscribeFromMessages(channel);
-  }, [id]);
+  }, [id, session]);
+
+  // Entrar al chat marca todo como leído (badge de «Mis chats»)
+  useEffect(() => {
+    if (id && session) markChatRead(id, session.user.id);
+  }, [id, session]);
 
   const handleSend = async () => {
     if (!id || !session || !draft.trim() || sending) return;
