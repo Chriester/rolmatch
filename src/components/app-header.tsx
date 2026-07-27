@@ -1,13 +1,12 @@
 // Cabecera persistente de la app: la marca rolder siempre visible y
-// clicable (vuelve al feed), y el avatar con el menú principal SIEMPRE
-// disponible en la esquina, en todas las pantallas.
+// clicable (vuelve al feed), y el avatar en la esquina como atajo al tab
+// Perfil (la navegación principal vive en la barra de pestañas inferior).
 
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useEffect, useState, type ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { AppMenu } from '@/components/app-menu';
 import { RolderBrand } from '@/components/brand';
 import { Rolder, Spacing } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
@@ -23,18 +22,13 @@ type AppHeaderProps = {
 
 export function AppHeader({ onBack, right }: AppHeaderProps) {
   const session = useSession();
-  const [menuOpen, setMenuOpen] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  const [alias, setAlias] = useState<string | null>(null);
   const [unread, setUnread] = useState(0);
 
   useEffect(() => {
     if (!session) return;
     fetchProfileData(session.user.id)
-      .then((p) => {
-        setAvatarUrl(p.avatar_url);
-        setAlias(p.alias);
-      })
+      .then((p) => setAvatarUrl(p.avatar_url))
       .catch(() => {});
     fetchUnreadTotal(session.user.id).then(setUnread);
   }, [session]);
@@ -55,14 +49,14 @@ export function AppHeader({ onBack, right }: AppHeaderProps) {
       {right ??
         (session ? (
           <Pressable
-            onPress={() => setMenuOpen(true)}
-            accessibilityLabel="Abrir menú"
+            onPress={() => router.push('/profile')}
+            accessibilityLabel="Ir a mi perfil"
             style={styles.menuButton}>
             {avatarUrl ? (
               <Image source={{ uri: avatarUrl }} style={styles.avatar} />
             ) : (
               <View style={[styles.avatar, styles.avatarFallback]}>
-                <Text style={styles.avatarGlyph}>☰</Text>
+                <Text style={styles.avatarGlyph}>👤</Text>
               </View>
             )}
             {unread > 0 && <View style={styles.unreadDot} />}
@@ -70,14 +64,6 @@ export function AppHeader({ onBack, right }: AppHeaderProps) {
         ) : (
           <View style={styles.spacer} />
         ))}
-
-      <AppMenu
-        visible={menuOpen}
-        alias={alias}
-        avatarUrl={avatarUrl}
-        unread={unread}
-        onClose={() => setMenuOpen(false)}
-      />
     </View>
   );
 }
