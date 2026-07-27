@@ -20,7 +20,9 @@ import { ListRow, SectionLabel, StatusPill, StyleBar, XpBar } from '@/components
 import { MaxContentWidth, Rolder, RolderFonts, Spacing } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
 import { VTT_LABELS } from '@/lib/groups';
+import { characterAgeLabel } from '@/lib/characters';
 import { fetchPlayerProfile, type PlayerProfile } from '@/lib/players';
+import { GENDER_LABELS, ageFromBirthYear } from '@/lib/profile';
 import { levelInfoFromXp } from '@/lib/xp';
 
 const ROLE_LABELS: Record<string, string> = {
@@ -66,6 +68,7 @@ export default function PlayerProfileScreen() {
   const isMe = session?.user.id === id;
   const publicCharacters = profile.characters.filter((c) => c.is_public || isMe);
   const levelInfo = levelInfoFromXp(profile.xpTotal);
+  const age = ageFromBirthYear(profile.birth_year);
 
   return (
     <ThemedView style={styles.container}>
@@ -81,9 +84,13 @@ export default function PlayerProfileScreen() {
                 <Text style={styles.avatarEmoji}>🧙</Text>
               </View>
             )}
-            <Text style={styles.alias}>{profile.alias}</Text>
+            <Text style={styles.alias}>
+              {profile.alias}
+              {age !== null ? `, ${age}` : ''}
+            </Text>
             <CardChipRow>
               <CardChip label={ROLE_LABELS[profile.role] ?? profile.role} />
+              {profile.gender && <CardChip label={GENDER_LABELS[profile.gender]} />}
               <CardChip label={`🌍 ${profile.timezone}`} />
               <CardChip label={`⚔️ Nv. ${levelInfo.level} · ${levelInfo.title}`} />
               {profile.reliability && profile.reliability.count > 0 && (
@@ -171,7 +178,13 @@ export default function PlayerProfileScreen() {
                         {ch.name}
                       </Text>
                       <Text style={styles.bodySoft} numberOfLines={1}>
-                        {[ch.archetype, ch.systems?.name, ch.level && `Nivel ${ch.level}`]
+                        {[
+                          ch.archetype,
+                          ch.systems?.name,
+                          ch.level && `Nivel ${ch.level}`,
+                          ch.gender && GENDER_LABELS[ch.gender],
+                          characterAgeLabel(ch.age),
+                        ]
                           .filter(Boolean)
                           .join(' · ')}
                       </Text>

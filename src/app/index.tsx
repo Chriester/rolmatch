@@ -32,7 +32,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Rolder, RolderFonts, Spacing } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
-import { fetchMyCharacters, type Character } from '@/lib/characters';
+import { characterAgeLabel, fetchMyCharacters, type Character } from '@/lib/characters';
 import { fetchUnifiedFeed, type FeedItem } from '@/lib/feed';
 import {
   EXPERIENCE_LABELS,
@@ -46,7 +46,13 @@ import { blockUser } from '@/lib/moderation';
 import { registerPushToken } from '@/lib/notifications';
 import { levelFromXp, titleForLevel } from '@/lib/xp';
 import { fetchPremiumStatus, isBoostActive } from '@/lib/premium';
-import { fetchProfileData, hasCompletedOnboarding } from '@/lib/profile';
+import {
+  GENDER_LABELS,
+  ageFromBirthYear,
+  fetchProfileData,
+  hasCompletedOnboarding,
+  type Gender,
+} from '@/lib/profile';
 import {
   groupSwipeOnUser,
   swipeOnGroup,
@@ -263,6 +269,8 @@ export default function HomeScreen() {
       (ch) => ch.status === 'looking' && ch.is_public
     );
     const playerLevel = levelFromXp(c.player.xpTotal);
+    const playerAge = ageFromBirthYear(c.player.birth_year);
+    const playerGender = c.player.gender ? GENDER_LABELS[c.player.gender as Gender] : null;
     const playerFace = (
       <CardShell
         imageUrl={c.player.avatar_url}
@@ -286,9 +294,11 @@ export default function HomeScreen() {
         }>
         <Text style={cardText.title} numberOfLines={1}>
           {c.player.alias}
+          {playerAge !== null ? `, ${playerAge}` : ''}
         </Text>
         <CardChipRow>
           <CardChip label={ROLE_LABELS[c.player.role] ?? c.player.role} />
+          {playerGender && <CardChip label={playerGender} />}
           <CardChip label={c.player.timezone} />
           <CardChip label={`⚔️ Nv. ${playerLevel} · ${titleForLevel(playerLevel)}`} />
         </CardChipRow>
@@ -321,6 +331,8 @@ export default function HomeScreen() {
           {ch.archetype && <CardChip label={ch.archetype} />}
           {ch.systems?.name && <CardChip label={ch.systems.name} />}
           {ch.level != null && <CardChip label={`Nivel ${ch.level}`} />}
+          {ch.gender && <CardChip label={GENDER_LABELS[ch.gender as Gender]} />}
+          {ch.age && <CardChip label={characterAgeLabel(ch.age)!} />}
         </CardChipRow>
         {ch.concept && (
           <Text style={styles.characterConcept} numberOfLines={2}>

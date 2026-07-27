@@ -26,6 +26,8 @@ export type ShowcaseCharacter = {
   name: string;
   archetype: string | null;
   level: string | null;
+  gender: string | null;
+  age: string | null;
   concept: string | null;
   portrait_url: string | null;
   status: string;
@@ -38,6 +40,8 @@ export type PlayerCandidate = {
     id: string;
     alias: string;
     role: string;
+    gender: string | null;
+    birth_year: number | null;
     characters: ShowcaseCharacter[];
     xpTotal: number;
   };
@@ -153,10 +157,10 @@ export async function fetchGroupCandidates(
   const { data: profiles, error } = await supabase
     .from('profiles')
     .select(
-      `id, alias, role, timezone, languages, open_to_any_system, bio, avatar_url,
+      `id, alias, role, gender, birth_year, timezone, languages, open_to_any_system, bio, avatar_url,
        style_combat_narrative, style_serious_humor, style_roleplay_weight, preferred_vtt,
        availability_slots(weekday, slot), user_systems(system_id, experience),
-       characters!characters_user_id_fkey(id, name, archetype, level, concept, portrait_url, status, is_public, systems(name))`
+       characters!characters_user_id_fkey(id, name, archetype, level, gender, age, concept, portrait_url, status, is_public, systems(name))`
     );
   if (error) throw error;
 
@@ -184,6 +188,8 @@ export async function fetchGroupCandidates(
           id: p.id,
           alias: p.alias,
           role: p.role,
+          gender: p.gender,
+          birth_year: p.birth_year,
           characters,
           xpTotal: xpTotals.get(p.id) ?? 0,
         },

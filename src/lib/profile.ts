@@ -1,6 +1,20 @@
 import { supabase } from '@/lib/supabase';
 
 export type UserRole = 'player' | 'gm' | 'both';
+export type Gender = 'male' | 'female' | 'other';
+
+export const GENDER_LABELS: Record<Gender, string> = {
+  male: 'Hombre',
+  female: 'Mujer',
+  other: 'Otro',
+};
+
+/** Edad mostrada a partir del año de nacimiento (null si no hay o es absurda). */
+export function ageFromBirthYear(birthYear: number | null): number | null {
+  if (!birthYear) return null;
+  const age = new Date().getFullYear() - birthYear;
+  return age >= 10 && age <= 120 ? age : null;
+}
 export type ExperienceLevel = 'none' | 'beginner' | 'intermediate' | 'veteran';
 export type VttType = 'roll20' | 'foundry' | 'discord_only' | 'other';
 
@@ -11,6 +25,8 @@ export type AvailabilityCell = { weekday: number; slot: number };
 export type ProfileUpdate = {
   alias: string;
   bio: string | null;
+  gender: Gender | null;
+  birth_year: number | null;
   timezone: string;
   role: UserRole;
   avatar_url: string | null;
@@ -35,7 +51,7 @@ export async function fetchProfileData(userId: string): Promise<ProfileData> {
   const { data, error } = await supabase
     .from('profiles')
     .select(
-      `alias, bio, timezone, role, avatar_url, open_to_any_system,
+      `alias, bio, gender, birth_year, timezone, role, avatar_url, open_to_any_system,
        style_combat_narrative, style_serious_humor, style_roleplay_weight,
        voice_chat, camera_ok, preferred_vtt,
        availability_slots(weekday, slot), user_systems(system_id, experience)`
@@ -46,6 +62,8 @@ export async function fetchProfileData(userId: string): Promise<ProfileData> {
   return {
     alias: data.alias,
     bio: data.bio,
+    gender: data.gender as Gender | null,
+    birth_year: data.birth_year,
     timezone: data.timezone,
     role: data.role as UserRole,
     avatar_url: data.avatar_url,
