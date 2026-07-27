@@ -78,7 +78,7 @@ export default function LikesScreen() {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        <AppHeader onBack={() => (router.canGoBack() ? router.back() : router.replace('/'))} />
+        <AppHeader />
         <ScreenTitle>💘 Te han dado like</ScreenTitle>
 
         {loadError ? (

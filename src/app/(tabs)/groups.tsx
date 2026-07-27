@@ -30,7 +30,7 @@ export default function MyGroupsScreen() {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        <AppHeader onBack={router.canGoBack() ? () => router.back() : undefined} />
+        <AppHeader />
         <ScreenTitle>🛡️ Mis mesas</ScreenTitle>
 
         {groups === undefined ? (
