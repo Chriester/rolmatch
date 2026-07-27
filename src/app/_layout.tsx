@@ -16,6 +16,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Rolder } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
 import { ensureCommunityMembership } from '@/lib/auth';
+import { useNotificationTapRouting } from '@/lib/notifications';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -32,6 +33,7 @@ const RolderNavTheme = {
 
 export default function RootLayout() {
   const session = useSession();
+  useNotificationTapRouting();
   const [fontsLoaded] = useFonts({
     Sora_400Regular,
     Sora_600SemiBold,
