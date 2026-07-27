@@ -44,6 +44,7 @@ import {
 } from '@/lib/groups';
 import { blockUser } from '@/lib/moderation';
 import { registerPushToken } from '@/lib/notifications';
+import { shouldShowTutorial } from '@/lib/tutorial';
 import { levelFromXp, titleForLevel } from '@/lib/xp';
 import { fetchPremiumStatus, isBoostActive } from '@/lib/premium';
 import {
@@ -90,6 +91,17 @@ export default function HomeScreen() {
   const deckRef = useRef<SwipeDeckHandle | null>(null);
 
   const [onboarded, setOnboarded] = useState<boolean | undefined>(undefined);
+
+  // Primera visita con perfil completo → tutorial de bienvenida (una vez;
+  // el propio tutorial marca el flag al montarse, así no hay bucle)
+  useEffect(() => {
+    if (onboarded !== true) return;
+    shouldShowTutorial()
+      .then((show) => {
+        if (show) router.push('/tutorial');
+      })
+      .catch(() => {});
+  }, [onboarded]);
   const [items, setItems] = useState<FeedItem[] | undefined>(undefined);
   const [myAvailability, setMyAvailability] = useState<Set<string>>(new Set());
   const [loadError, setLoadError] = useState(false);
