@@ -14,11 +14,14 @@ import { OutlineButton, PrimaryButton, SectionLabel } from '@/components/ui';
 import { MaxContentWidth, Rolder, RolderFonts, Spacing } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
 import {
+  GENDER_LABELS,
+  ageFromBirthYear,
   detectTimezone,
   fetchProfileData,
   fetchSystems,
   saveOnboarding,
   type ExperienceLevel,
+  type Gender,
   type System,
   type UserRole,
   type VttType,
@@ -56,6 +59,8 @@ export default function OnboardingScreen() {
   const [role, setRole] = useState<UserRole>('player');
   const [bio, setBio] = useState('');
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [gender, setGender] = useState<Gender | null>(null);
+  const [ageText, setAgeText] = useState('');
 
   // Paso 2 — cuándo juegas
   const [timezone, setTimezone] = useState(detectTimezone());
@@ -87,6 +92,9 @@ export default function OnboardingScreen() {
         setRole(profile.role);
         setBio(profile.bio ?? '');
         setAvatarUrl(profile.avatar_url);
+        setGender(profile.gender);
+        const age = ageFromBirthYear(profile.birth_year);
+        setAgeText(age === null ? '' : String(age));
         if (profile.availability.length > 0) {
           setTimezone(profile.timezone);
           setAvailability(
@@ -141,6 +149,12 @@ export default function OnboardingScreen() {
     }
   };
 
+  // Edad opcional: solo se guarda si es un número razonable
+  const parsedAge = (() => {
+    const n = Number.parseInt(ageText.trim(), 10);
+    return Number.isInteger(n) && n >= 14 && n <= 99 ? n : null;
+  })();
+
   const handleFinish = async () => {
     if (!session) return;
     setBusy(true);
@@ -150,6 +164,8 @@ export default function OnboardingScreen() {
         {
           alias: alias.trim(),
           bio: bio.trim() || null,
+          gender,
+          birth_year: parsedAge === null ? null : new Date().getFullYear() - parsedAge,
           timezone: timezone.trim() || 'UTC',
           role,
           avatar_url: avatarUrl,
@@ -210,6 +226,33 @@ export default function OnboardingScreen() {
                 placeholder="Tu alias en las mesas"
                 placeholderTextColor="rgba(255,255,255,0.35)"
               />
+              <View style={styles.genderAgeRow}>
+                <View style={styles.genderColumn}>
+                  <SectionLabel>Género</SectionLabel>
+                  <View style={styles.chipRow}>
+                    {(Object.keys(GENDER_LABELS) as Gender[]).map((value) => (
+                      <Chip
+                        key={value}
+                        label={GENDER_LABELS[value]}
+                        selected={gender === value}
+                        onPress={() => setGender(gender === value ? null : value)}
+                      />
+                    ))}
+                  </View>
+                </View>
+                <View style={styles.ageColumn}>
+                  <SectionLabel>Edad</SectionLabel>
+                  <TextInput
+                    style={styles.input}
+                    value={ageText}
+                    onChangeText={setAgeText}
+                    placeholder="—"
+                    placeholderTextColor="rgba(255,255,255,0.35)"
+                    keyboardType="number-pad"
+                    maxLength={2}
+                  />
+                </View>
+              </View>
               <SectionLabel>Tu rol</SectionLabel>
               <View style={styles.chipRow}>
                 {ROLES.map((r) => (
@@ -464,6 +507,19 @@ const styles = StyleSheet.create({
   multiline: {
     minHeight: 80,
     textAlignVertical: 'top',
+  },
+  genderAgeRow: {
+    flexDirection: 'row',
+    gap: Spacing.three,
+    alignItems: 'flex-start',
+  },
+  genderColumn: {
+    flex: 1,
+    gap: Spacing.two,
+  },
+  ageColumn: {
+    width: 88,
+    gap: Spacing.two,
   },
   chipRow: {
     flexDirection: 'row',

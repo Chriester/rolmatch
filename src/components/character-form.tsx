@@ -10,7 +10,7 @@ import {
   type CharacterInput,
   type CharacterStatus,
 } from '@/lib/characters';
-import { fetchSystems, type System } from '@/lib/profile';
+import { GENDER_LABELS, fetchSystems, type Gender, type System } from '@/lib/profile';
 
 type CharacterFormProps = {
   userId: string;
@@ -30,6 +30,8 @@ export function CharacterForm({ userId, initial, busy, submitLabel, onSubmit }: 
   const [concept, setConcept] = useState(initial?.concept ?? '');
   const [backstory, setBackstory] = useState(initial?.backstory ?? '');
   const [status, setStatus] = useState<CharacterStatus>(initial?.status ?? 'looking');
+  const [gender, setGender] = useState<Gender | null>(initial?.gender ?? null);
+  const [age, setAge] = useState(initial?.age ?? '');
   const [isPublic, setIsPublic] = useState(initial?.is_public ?? true);
 
   useEffect(() => {
@@ -92,6 +94,33 @@ export function CharacterForm({ userId, initial, busy, submitLabel, onSubmit }: 
         </View>
       </View>
 
+      <View style={styles.twoColumns}>
+        <View style={styles.column}>
+          <ThemedText type="small">Género (opcional)</ThemedText>
+          <View style={styles.chipRow}>
+            {(Object.keys(GENDER_LABELS) as Gender[]).map((value) => (
+              <Chip
+                key={value}
+                label={GENDER_LABELS[value]}
+                selected={gender === value}
+                onPress={() => setGender(gender === value ? null : value)}
+              />
+            ))}
+          </View>
+        </View>
+        <View style={styles.column}>
+          <ThemedText type="small">Edad (opcional)</ThemedText>
+          <TextInput
+            style={styles.input}
+            value={age}
+            onChangeText={setAge}
+            placeholder="234, joven eterno…"
+            placeholderTextColor="#888"
+            maxLength={20}
+          />
+        </View>
+      </View>
+
       <ThemedText type="small">Concepto (1-2 frases)</ThemedText>
       <TextInput
         style={styles.input}
@@ -144,6 +173,8 @@ export function CharacterForm({ userId, initial, busy, submitLabel, onSubmit }: 
             system_id: systemId,
             archetype: archetype.trim() || null,
             level: level.trim() || null,
+            gender,
+            age: age.trim() || null,
             concept: concept.trim() || null,
             backstory: backstory.trim() || null,
             status,

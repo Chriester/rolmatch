@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import type { Gender } from '@/lib/profile';
 
 export type CharacterStatus = 'looking' | 'playing' | 'retired';
 
@@ -15,6 +16,8 @@ export type Character = {
   system_id: number | null;
   archetype: string | null;
   level: string | null;
+  gender: Gender | null;
+  age: string | null;
   concept: string | null;
   backstory: string | null;
   status: CharacterStatus;
@@ -29,13 +32,22 @@ export type CharacterInput = {
   system_id: number | null;
   archetype: string | null;
   level: string | null;
+  gender: Gender | null;
+  age: string | null;
   concept: string | null;
   backstory: string | null;
   status: CharacterStatus;
 };
 
-const CHARACTER_FIELDS = `id, name, is_public, system_id, archetype, level, concept, backstory,
-  status, portrait_url, systems(name)`;
+/** "234" → "234 años"; texto libre ("joven eterno") se muestra tal cual. */
+export function characterAgeLabel(age: string | null): string | null {
+  if (!age) return null;
+  const trimmed = age.trim();
+  return /^\d+$/.test(trimmed) ? `${trimmed} años` : trimmed;
+}
+
+const CHARACTER_FIELDS = `id, name, is_public, system_id, archetype, level, gender, age, concept,
+  backstory, status, portrait_url, systems(name)`;
 
 export async function fetchMyCharacters(userId: string): Promise<Character[]> {
   const { data, error } = await supabase
