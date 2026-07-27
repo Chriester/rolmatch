@@ -12,6 +12,7 @@
     },
     "android": {
       "package": "com.chriester.rolmatch",
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "backgroundColor": "#1B1B26",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -26,6 +27,13 @@
     },
     "plugins": [
       "expo-router",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/android-icon-monochrome.png",
+          "color": "#8B6CFF"
+        }
+      ],
       [
         "expo-splash-screen",
         {
