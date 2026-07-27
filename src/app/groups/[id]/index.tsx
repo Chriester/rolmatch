@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { showAlert } from '@/lib/alert';
+import { confirmAction, showAlert } from '@/lib/alert';
 import { AppHeader } from '@/components/app-header';
 import { CardChip, CardChipRow } from '@/components/swipe/card-shell';
 import { ThemedText } from '@/components/themed-text';
@@ -315,6 +315,13 @@ export default function GroupDetailScreen() {
                     {session?.user.id === group.owner_id && !isGm && (
                       <Pressable
                         onPress={async () => {
+                          const alias = member.profiles?.alias ?? 'este miembro';
+                          const ok = await confirmAction(
+                            `¿Echar a ${alias}?`,
+                            'Saldrá de la mesa y del chat. Podrá volver si hacéis match de nuevo.',
+                            'Sí, echar'
+                          );
+                          if (!ok) return;
                           try {
                             await removeGroupMember(group.id, member.user_id);
                             setGroup((g) =>
@@ -585,6 +592,12 @@ export default function GroupDetailScreen() {
                 label="🚪 Salir de la mesa"
                 tone="red"
                 onPress={async () => {
+                  const ok = await confirmAction(
+                    '¿Salir de la mesa?',
+                    'Dejarás de ver su chat, sesiones e histórico. Para volver tendréis que hacer match otra vez.',
+                    'Sí, salir'
+                  );
+                  if (!ok) return;
                   try {
                     await removeGroupMember(group.id, session.user.id);
                     router.replace('/');
