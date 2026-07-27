@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "938669874838",
+    "project_id": "rolder-c5cdb",
+    "storage_bucket": "rolder-c5cdb.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:938669874838:android:700ef06ee784076146ecb7",
+        "android_client_info": {
+          "package_name": "com.chriester.rolmatch"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCIY_tsw-HJcB0UPrxboZ1IBz8fO9qw8Z0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
