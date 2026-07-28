@@ -23,7 +23,14 @@ import {
   availabilityCellKey,
 } from '@/components/swipe/availability-mini-grid';
 import { CardCycle } from '@/components/swipe/card-cycle';
-import { CardChip, CardChipRow, CardShell, cardText } from '@/components/swipe/card-shell';
+import {
+  CardBlurb,
+  CardChip,
+  CardChipRow,
+  CardHint,
+  CardShell,
+  cardText,
+} from '@/components/swipe/card-shell';
 import { CharacterLikeButton } from '@/components/swipe/character-like-button';
 import { SwipeDeck, type SwipeChoice, type SwipeDeckHandle } from '@/components/swipe/deck';
 import { DetailsFace, sheetText } from '@/components/swipe/details-face';
@@ -258,20 +265,22 @@ export default function HomeScreen() {
             <CardChip label={g.systems?.name ?? 'Sistema sin definir'} />
             <CardChip label={FORMAT_LABELS[g.format]} />
             {g.frequency && <CardChip label={g.frequency} />}
-            <CardChip label={VTT_LABELS[g.vtt]} />
           </CardChipRow>
-          <CardChipRow>
-            <CardChip
-              variant="green"
-              label={
-                g.session_weekday !== null && g.session_slot !== null
-                  ? `📅 ${WEEKDAY_LABELS[g.session_weekday]} ${SLOT_LABELS[
-                      g.session_slot
-                    ].toLowerCase()} · coincidís ${item.result.overlapHours} h`
-                  : `📅 Horario por definir · coincidís ${item.result.overlapHours} h`
-              }
-            />
-          </CardChipRow>
+          <CardHint />
+          <CardBlurb>
+            {g.description && (
+              <Text style={cardText.blurb} numberOfLines={2}>
+                {g.description}
+              </Text>
+            )}
+            <Text style={cardText.compat}>
+              {g.session_weekday !== null && g.session_slot !== null
+                ? `📅 ${WEEKDAY_LABELS[g.session_weekday]} ${SLOT_LABELS[
+                    g.session_slot
+                  ].toLowerCase()} · coincidís ${item.result.overlapHours} h`
+                : `📅 Horario por definir · coincidís ${item.result.overlapHours} h`}
+            </Text>
+          </CardBlurb>
         </CardShell>
       );
     }
@@ -311,19 +320,23 @@ export default function HomeScreen() {
         <CardChipRow>
           <CardChip label={ROLE_LABELS[c.player.role] ?? c.player.role} />
           {playerGender && <CardChip label={playerGender} />}
-          <CardChip label={c.player.timezone} />
           <CardChip label={`⚔️ Nv. ${playerLevel} · ${titleForLevel(playerLevel)}`} />
         </CardChipRow>
-        <CardChipRow>
-          <CardChip
-            variant="green"
-            label={`⏱ Coincide ${c.result.overlapHours} h con vuestra sesión`}
-          />
-        </CardChipRow>
-        <Text style={cardText.soft}>
-          🛡️ Candidato para «{item.forGroup.name}»
-          {publicLooking.length > 0 ? ' · toca para ver sus personajes' : ''}
-        </Text>
+        <CardHint />
+        <CardBlurb>
+          {c.player.bio && (
+            <Text style={cardText.blurb} numberOfLines={2}>
+              {c.player.bio}
+            </Text>
+          )}
+          <Text style={cardText.compat}>
+            ⏱ Coincide {c.result.overlapHours} h con vuestra sesión
+          </Text>
+          <Text style={cardText.soft}>
+            🛡️ Candidato para «{item.forGroup.name}»
+            {publicLooking.length > 0 ? ' · toca para ver sus personajes' : ''}
+          </Text>
+        </CardBlurb>
       </CardShell>
     );
     const characterFaces = publicLooking.map((ch) => (
@@ -610,6 +623,8 @@ const styles = StyleSheet.create({
   deckArea: {
     flex: 1,
     position: 'relative',
+    // tarjeta más ancha: come casi todo el padding lateral del safeArea
+    marginHorizontal: -(Spacing.three - 6),
   },
   actionOverlap: {
     marginTop: -34,

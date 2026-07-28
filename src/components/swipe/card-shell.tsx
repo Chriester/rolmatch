@@ -3,6 +3,16 @@
 // con emoji grande — nunca un hueco gris (handoff rolder §1).
 
 import { Image } from 'expo-image';
+import { useEffect } from 'react';
+import Animated, {
+  ReduceMotion,
+  interpolate,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withSequence,
+  withTiming,
+} from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import type { ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
@@ -56,6 +66,34 @@ export function CardShell({
   );
 }
 
+/** Chevron pulsante: «desliza hacia arriba para más info» (va sobre la caja) */
+export function CardHint() {
+  const pulse = useSharedValue(0);
+  useEffect(() => {
+    pulse.value = withRepeat(
+      withSequence(
+        withTiming(1, { duration: 900, reduceMotion: ReduceMotion.Never }),
+        withTiming(0, { duration: 900, reduceMotion: ReduceMotion.Never })
+      ),
+      -1
+    );
+  }, [pulse]);
+  const style = useAnimatedStyle(() => ({
+    opacity: 0.45 + 0.55 * pulse.value,
+    transform: [{ translateY: interpolate(pulse.value, [0, 1], [2, -3]) }],
+  }));
+  return (
+    <View style={hintStyles.wrap} pointerEvents="none">
+      <Animated.Text style={[hintStyles.glyph, style]}>︿</Animated.Text>
+    </View>
+  );
+}
+
+/** Caja translúcida de descripción (patrón Tinder, bajo el título) */
+export function CardBlurb({ children }: { children: ReactNode }) {
+  return <View style={blurbStyles.box}>{children}</View>;
+}
+
 /** Chip translúcido de la tarjeta (fila bajo el título) */
 export function CardChip({ label, variant = 'default' }: { label: string; variant?: 'default' | 'green' }) {
   return (
@@ -85,6 +123,18 @@ export const cardText = StyleSheet.create({
   line: {
     color: 'rgba(255,255,255,0.92)',
     fontSize: 14,
+    fontFamily: RolderFonts.semibold,
+    fontWeight: '600',
+  },
+  blurb: {
+    color: 'rgba(255,255,255,0.92)',
+    fontSize: 13.5,
+    lineHeight: 19,
+    fontFamily: RolderFonts.regular,
+  },
+  compat: {
+    color: Rolder.likeChipText,
+    fontSize: 13,
     fontFamily: RolderFonts.semibold,
     fontWeight: '600',
   },
@@ -121,6 +171,32 @@ const chipStyles = StyleSheet.create({
   },
   labelGreen: {
     color: Rolder.likeChipText,
+  },
+});
+
+const hintStyles = StyleSheet.create({
+  wrap: {
+    alignItems: 'center',
+    marginBottom: -2,
+  },
+  glyph: {
+    color: 'rgba(255,255,255,0.9)',
+    fontSize: 19,
+    fontWeight: '700',
+    textShadowColor: 'rgba(0,0,0,0.6)',
+    textShadowRadius: 6,
+  },
+});
+
+const blurbStyles = StyleSheet.create({
+  box: {
+    backgroundColor: 'rgba(12,12,20,0.55)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    gap: 5,
   },
 });
 
