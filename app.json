@@ -2,7 +2,7 @@
   "expo": {
     "name": "Rolder",
     "slug": "rolmatch",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "rolmatch",
@@ -12,6 +12,7 @@
     },
     "android": {
       "package": "com.chriester.rolmatch",
+      "versionCode": 2,
       "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "backgroundColor": "#1B1B26",

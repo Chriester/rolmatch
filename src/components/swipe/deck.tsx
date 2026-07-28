@@ -24,6 +24,8 @@ import {
 } from 'react';
 import { Dimensions, StyleSheet, Text, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+
+import { hapticArm, hapticSwipe } from '@/lib/haptics';
 import Animated, {
   Easing,
   Extrapolation,
@@ -90,6 +92,8 @@ const TopCard = forwardRef<TopCardHandle, TopCardProps>(function TopCard(
   const sheetAtStart = useSharedValue(0);
   // 0 = sin decidir · 1 = horizontal (like/pass) · 2 = vertical (tira)
   const axis = useSharedValue(0);
+  // 1 mientras el arrastre supera el umbral (para el tick háptico)
+  const armed = useSharedValue(0);
   const threshold = width * THRESHOLD_FRACTION;
   const exitDistance = Math.max(width * 1.6, Dimensions.get('window').width * 1.1);
   const hasDetails = details !== undefined;
@@ -97,6 +101,7 @@ const TopCard = forwardRef<TopCardHandle, TopCardProps>(function TopCard(
   const finish = (dir: number) => onSwiped(dir > 0 ? 'like' : 'pass');
 
   const fly = (dir: 1 | -1) => {
+    hapticSwipe();
     tx.value = withTiming(dir * exitDistance, EXIT_TIMING, (done) => {
       if (done) runOnJS(finish)(dir);
     });
@@ -128,6 +133,12 @@ const TopCard = forwardRef<TopCardHandle, TopCardProps>(function TopCard(
       if (axis.value === 1) {
         tx.value = event.translationX;
         progress.value = Math.min(Math.abs(tx.value) / threshold, 1);
+        // Tick háptico al armar el sello (una vez por cruce del umbral)
+        const isArmed = Math.abs(tx.value) > threshold ? 1 : 0;
+        if (isArmed !== armed.value) {
+          armed.value = isArmed;
+          if (isArmed === 1) runOnJS(hapticArm)();
+        }
       } else if (axis.value === 2 && hasDetails && height > 0) {
         sheet.value = Math.min(
           Math.max(sheetAtStart.value - event.translationY / height, 0),

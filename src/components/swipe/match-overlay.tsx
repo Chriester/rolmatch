@@ -6,11 +6,13 @@
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
+import { useEffect } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeIn, ReduceMotion, ZoomIn } from 'react-native-reanimated';
 
 import { RolderGradientText, RolderLogo } from '@/components/brand';
 import { Rolder, RolderFonts } from '@/constants/theme';
+import { hapticMatch } from '@/lib/haptics';
 
 type Side = { imageUrl: string | null; fallbackEmoji: string };
 
@@ -35,6 +37,10 @@ function Portrait({ side, offset }: { side: Side; offset: number }) {
 }
 
 export function MatchOverlay({ visible, left, right, subtitle, onClose }: MatchOverlayProps) {
+  useEffect(() => {
+    if (visible) hapticMatch();
+  }, [visible]);
+
   if (!visible) return null;
   return (
     <Animated.View
