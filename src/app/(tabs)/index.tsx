@@ -531,6 +531,16 @@ export default function HomeScreen() {
               />
             </View>
 
+            {/* La botonera monta sobre el borde inferior de la tarjeta (Tinder) */}
+            <View style={styles.actionOverlap}>
+              <ActionBar
+                onPass={() => deckRef.current?.swipe('pass')}
+                onLike={() => deckRef.current?.swipe('like')}
+                onInfo={() => deckRef.current?.toggleDetails()}
+                onRewind={handleRewind}
+              />
+            </View>
+
             {current.kind === 'group' && myCharacters.length > 0 && (
               <ScrollView
                 horizontal
@@ -550,13 +560,6 @@ export default function HomeScreen() {
                 ))}
               </ScrollView>
             )}
-
-            <ActionBar
-              onPass={() => deckRef.current?.swipe('pass')}
-              onLike={() => deckRef.current?.swipe('like')}
-              onInfo={() => deckRef.current?.toggleDetails()}
-              onRewind={handleRewind}
-            />
           </>
         )}
       </SafeAreaView>
@@ -607,6 +610,10 @@ const styles = StyleSheet.create({
   deckArea: {
     flex: 1,
     position: 'relative',
+  },
+  actionOverlap: {
+    marginTop: -34,
+    zIndex: 2,
   },
   centerBox: {
     flex: 1,
