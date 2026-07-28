@@ -24,6 +24,8 @@ import { Image } from 'expo-image';
 import { showAlert } from '@/lib/alert';
 import { AppHeader } from '@/components/app-header';
 import { ChatInfoPanel } from '@/components/chat-info-panel';
+import { ChatPollBanner } from '@/components/chat-poll-banner';
+import { fetchPolls, type SessionPoll } from '@/lib/polls';
 import {
   ChatMediaPickers,
   gifSearchAvailable,
@@ -52,6 +54,7 @@ export default function GroupChatScreen() {
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
+  const [activePoll, setActivePoll] = useState<SessionPoll | null>(null);
   const [pickerTab, setPickerTab] = useState<PickerTab | null>(null);
   const groupRef = useRef<GroupDetail | null | undefined>(undefined);
 
@@ -71,6 +74,14 @@ export default function GroupChatScreen() {
         showAlert('No se pudo cargar el chat', 'Vuelve a entrar en unos segundos.');
       });
   }, [id]);
+
+  // Votación activa → banner arriba del chat
+  useEffect(() => {
+    if (!id || !session) return;
+    fetchPolls(id, session.user.id)
+      .then((polls) => setActivePoll(polls.find((p) => p.status === 'open') ?? null))
+      .catch(() => {});
+  }, [id, session]);
 
   useEffect(() => {
     if (!id) return;
@@ -208,6 +219,15 @@ export default function GroupChatScreen() {
             <Text style={styles.infoGlyph}>i</Text>
           </Pressable>
         </View>
+
+        {activePoll && session && id && iAmMember && (
+          <ChatPollBanner
+            groupId={id}
+            poll={activePoll}
+            viewerId={session.user.id}
+            onChanged={setActivePoll}
+          />
+        )}
 
         {!iAmMember ? (
           <View style={styles.centerBox}>
