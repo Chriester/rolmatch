@@ -1,12 +1,13 @@
-// Tutorial de bienvenida: carrusel de páginas que enseña el swipe, los
+// Tutorial de bienvenida: carrusel animado que enseña el swipe, los
 // matches, el chat, las sesiones y el XP. Se abre solo la primera vez
 // (flag local en lib/tutorial.ts) y siempre desde Opciones.
+// Animación ligada al scroll (parallax): el emoji escala y rota al entrar,
+// el texto funde, los puntos se estiran.
 
 import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import {
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -14,6 +15,15 @@ import {
   type NativeScrollEvent,
   type NativeSyntheticEvent,
 } from 'react-native';
+import Animated, {
+  Extrapolation,
+  interpolate,
+  interpolateColor,
+  useAnimatedScrollHandler,
+  useAnimatedStyle,
+  useSharedValue,
+  type SharedValue,
+} from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { RolderWordmark } from '@/components/brand';
@@ -22,54 +32,193 @@ import { PrimaryButton } from '@/components/ui';
 import { MaxContentWidth, Rolder, RolderFonts, Spacing } from '@/constants/theme';
 import { markTutorialSeen } from '@/lib/tutorial';
 
-const SLIDES: { emoji: string; title: string; body: string }[] = [
+// Texto por partes: los objetos {b} se pintan en negrita blanca
+type Part = string | { b: string };
+
+const SLIDES: { emoji: string; title: string; body: Part[] }[] = [
   {
     emoji: '🎲',
     title: 'Bienvenida a rolder',
-    body: 'Desliza para encontrar mesa si juegas, o jugadores si diriges. El feed solo te enseña gente y mesas compatibles contigo: horario, sistemas, idioma y estilo de juego.',
+    body: [
+      'Desliza para encontrar ',
+      { b: 'mesa' },
+      ' si juegas, o ',
+      { b: 'jugadores' },
+      ' si diriges. Solo verás perfiles ',
+      { b: 'compatibles contigo' },
+      ': horario, sistemas, idioma y estilo.',
+    ],
   },
   {
     emoji: '⚔️',
     title: 'El swipe',
-    body: 'Derecha = ¡CRÍTICO! (te interesa). Izquierda = PIFIA (paso). Toca la tarjeta para ver los personajes del jugador, y el botón ⓘ para el detalle completo.',
+    body: [
+      { b: 'Derecha' },
+      ' = ¡CRÍTICO!, te interesa. ',
+      { b: 'Izquierda' },
+      ' = PIFIA, paso. ',
+      { b: 'Toca' },
+      ' la tarjeta para ver los personajes, y ',
+      { b: 'ⓘ' },
+      ' para el detalle completo.',
+    ],
   },
   {
     emoji: '🤝',
     title: 'Matches',
-    body: 'Si os gustáis los dos, hay match: entras en la mesa y el bot os abre un canal privado en el Discord de la comunidad. Todo sigue desde ahí… o desde el chat de la app.',
+    body: [
+      'Si os gustáis los dos, ',
+      { b: 'match' },
+      ': entras en la mesa y el bot os abre un ',
+      { b: 'canal privado de Discord' },
+      '. Sigue ahí… o en el chat de la app.',
+    ],
   },
   {
     emoji: '💬',
     title: 'Chats de mesa',
-    body: 'Cada mesa tiene su chat con emojis, GIFs y stickers. El botón ⓘ del chat abre la info de la mesa: horario, próxima sesión y miembros (toca uno para ver su perfil).',
+    body: [
+      'Cada mesa tiene su ',
+      { b: 'chat' },
+      ' con emojis, GIFs y stickers. El botón ',
+      { b: 'ⓘ' },
+      ' enseña horario, próxima sesión y miembros.',
+    ],
   },
   {
     emoji: '📅',
     title: 'Sesiones e histórico',
-    body: 'El GM programa sesiones en el perfil de la mesa. Después de jugar, confirmadla: con 3 confirmaciones todos ganáis +150 XP. Y subid vuestros momentos al histórico.',
+    body: [
+      'Programad sesiones y ',
+      { b: 'confirmadlas al jugar' },
+      ': con 3 confirmaciones, ',
+      { b: '+150 XP' },
+      ' para todos. Y subid vuestros momentos al ',
+      { b: 'histórico' },
+      '.',
+    ],
   },
   {
     emoji: '🏆',
     title: 'Sube de nivel',
-    body: 'Jugar da experiencia: completa tu perfil, únete a mesas, valora a tus compañeros. Tu título rolero — de «Dado prestado» a «Mito viviente» — aparece en tu tarjeta.',
+    body: [
+      'Jugar da ',
+      { b: 'XP' },
+      ': completa tu perfil, únete a mesas, valora a tus compañeros. Tu ',
+      { b: 'título rolero' },
+      ' — de ',
+      { b: 'Dado prestado' },
+      ' a ',
+      { b: 'Mito viviente' },
+      ' — sale en tu tarjeta.',
+    ],
   },
 ];
+
+function Slide({
+  slide,
+  index,
+  pageWidth,
+  scrollX,
+}: {
+  slide: (typeof SLIDES)[number];
+  index: number;
+  pageWidth: number;
+  scrollX: SharedValue<number>;
+}) {
+  // posición relativa del slide respecto al viewport: -1 antes, 0 centrado, 1 después
+  const emojiStyle = useAnimatedStyle(() => {
+    const pos = scrollX.value / pageWidth - index;
+    return {
+      opacity: interpolate(pos, [-1, 0, 1], [0.2, 1, 0.2], Extrapolation.CLAMP),
+      transform: [
+        { translateY: interpolate(pos, [-1, 0, 1], [46, 0, 46], Extrapolation.CLAMP) },
+        { scale: interpolate(pos, [-1, 0, 1], [0.4, 1, 0.4], Extrapolation.CLAMP) },
+        { rotate: `${interpolate(pos, [-1, 0, 1], [-24, 0, 24], Extrapolation.CLAMP)}deg` },
+      ],
+    };
+  });
+
+  const textStyle = useAnimatedStyle(() => {
+    const pos = scrollX.value / pageWidth - index;
+    return {
+      opacity: interpolate(pos, [-0.6, 0, 0.6], [0, 1, 0], Extrapolation.CLAMP),
+      // el texto viaja algo más lento que el dedo: profundidad
+      transform: [
+        { translateX: interpolate(pos, [-1, 0, 1], [90, 0, -90], Extrapolation.CLAMP) },
+      ],
+    };
+  });
+
+  return (
+    <View style={[styles.slide, { width: pageWidth }]}>
+      <Animated.Text style={[styles.emoji, emojiStyle]}>{slide.emoji}</Animated.Text>
+      <Animated.View style={[styles.textBlock, textStyle]}>
+        <Text style={styles.title}>{slide.title}</Text>
+        <Text style={styles.body}>
+          {slide.body.map((part, i) =>
+            typeof part === 'string' ? (
+              part
+            ) : (
+              <Text key={i} style={styles.bold}>
+                {part.b}
+              </Text>
+            )
+          )}
+        </Text>
+      </Animated.View>
+    </View>
+  );
+}
+
+function Dot({
+  index,
+  pageWidth,
+  scrollX,
+}: {
+  index: number;
+  pageWidth: number;
+  scrollX: SharedValue<number>;
+}) {
+  const style = useAnimatedStyle(() => {
+    const pos = scrollX.value / pageWidth - index;
+    return {
+      width: interpolate(pos, [-1, 0, 1], [8, 22, 8], Extrapolation.CLAMP),
+      backgroundColor: interpolateColor(
+        Math.min(Math.abs(pos), 1),
+        [0, 1],
+        [Rolder.violet, 'rgba(255,255,255,0.25)']
+      ),
+    };
+  });
+  return <Animated.View style={[styles.dot, style]} />;
+}
 
 export default function TutorialScreen() {
   const { width } = useWindowDimensions();
   const pageWidth = Math.min(width, MaxContentWidth);
   const [page, setPage] = useState(0);
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<Animated.ScrollView>(null);
+  const scrollX = useSharedValue(0);
 
   useEffect(() => {
     markTutorialSeen();
   }, []);
 
+  const onScroll = useAnimatedScrollHandler((event) => {
+    scrollX.value = event.contentOffset.x;
+  });
+
   const finish = () => (router.canGoBack() ? router.back() : router.replace('/'));
 
-  const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+  const syncPage = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const next = Math.round(event.nativeEvent.contentOffset.x / pageWidth);
     if (next !== page && next >= 0 && next < SLIDES.length) setPage(next);
+  };
+
+  const goTo = (next: number) => {
+    setPage(next);
+    scrollRef.current?.scrollTo({ x: next * pageWidth, animated: true });
   };
 
   const isLast = page === SLIDES.length - 1;
@@ -84,32 +233,31 @@ export default function TutorialScreen() {
           </Pressable>
         </View>
 
-        <ScrollView
+        <Animated.ScrollView
           ref={scrollRef}
           horizontal
           pagingEnabled
           showsHorizontalScrollIndicator={false}
-          onMomentumScrollEnd={handleScroll}
-          onScrollEndDrag={handleScroll}
+          onScroll={onScroll}
+          scrollEventThrottle={16}
+          onMomentumScrollEnd={syncPage}
+          onScrollEndDrag={syncPage}
           style={styles.pager}>
-          {SLIDES.map((slide) => (
-            <View key={slide.title} style={[styles.slide, { width: pageWidth }]}>
-              <Text style={styles.emoji}>{slide.emoji}</Text>
-              <Text style={styles.title}>{slide.title}</Text>
-              <Text style={styles.body}>{slide.body}</Text>
-            </View>
+          {SLIDES.map((slide, index) => (
+            <Slide
+              key={slide.title}
+              slide={slide}
+              index={index}
+              pageWidth={pageWidth}
+              scrollX={scrollX}
+            />
           ))}
-        </ScrollView>
+        </Animated.ScrollView>
 
         <View style={styles.dots}>
           {SLIDES.map((slide, i) => (
-            <Pressable
-              key={slide.title}
-              onPress={() => {
-                setPage(i);
-                scrollRef.current?.scrollTo({ x: i * pageWidth, animated: true });
-              }}>
-              <View style={[styles.dot, i === page && styles.dotActive]} />
+            <Pressable key={slide.title} onPress={() => goTo(i)}>
+              <Dot index={i} pageWidth={pageWidth} scrollX={scrollX} />
             </Pressable>
           ))}
         </View>
@@ -118,14 +266,7 @@ export default function TutorialScreen() {
           {isLast ? (
             <PrimaryButton label="¡A rodar dados! 🎲" onPress={finish} />
           ) : (
-            <PrimaryButton
-              label="Siguiente ›"
-              onPress={() => {
-                const next = page + 1;
-                setPage(next);
-                scrollRef.current?.scrollTo({ x: next * pageWidth, animated: true });
-              }}
-            />
+            <PrimaryButton label="Siguiente ›" onPress={() => goTo(page + 1)} />
           )}
         </View>
       </SafeAreaView>
@@ -164,42 +305,46 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 32,
-    gap: Spacing.three,
+    paddingHorizontal: 36,
+    gap: Spacing.four,
   },
   emoji: {
-    fontSize: 72,
+    fontSize: 84,
+  },
+  textBlock: {
+    alignItems: 'center',
+    gap: Spacing.two,
   },
   title: {
     color: '#fff',
-    fontSize: 24,
+    fontSize: 25,
     fontFamily: RolderFonts.extrabold,
     fontWeight: '800',
     textAlign: 'center',
   },
   body: {
-    color: 'rgba(255,255,255,0.85)',
-    fontSize: 15,
-    lineHeight: 23,
+    color: Rolder.textSecondary,
+    fontSize: 14.5,
+    lineHeight: 22,
     fontFamily: RolderFonts.regular,
     textAlign: 'center',
-    maxWidth: 340,
+    maxWidth: 320,
+  },
+  bold: {
+    color: '#fff',
+    fontFamily: RolderFonts.bold,
+    fontWeight: '700',
   },
   dots: {
     flexDirection: 'row',
     justifyContent: 'center',
+    alignItems: 'center',
     gap: 8,
     paddingVertical: Spacing.three,
   },
   dot: {
-    width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: 'rgba(255,255,255,0.25)',
-  },
-  dotActive: {
-    backgroundColor: Rolder.violet,
-    width: 20,
   },
   footer: {
     paddingHorizontal: 20,
