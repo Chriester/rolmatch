@@ -31,9 +31,12 @@ export async function registerPushToken(userId: string) {
   if (Platform.OS === 'web' || !Device.isDevice) return;
   try {
     if (Platform.OS === 'android') {
+      // MAX = heads-up: banner flotante + vibración, como una app de mensajería
       await Notifications.setNotificationChannelAsync('default', {
         name: 'Notificaciones',
-        importance: Notifications.AndroidImportance.DEFAULT,
+        importance: Notifications.AndroidImportance.MAX,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: '#8B6CFF',
       });
     }
 
