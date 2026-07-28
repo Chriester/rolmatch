@@ -17,6 +17,7 @@ import { Rolder } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
 import { ensureCommunityMembership } from '@/lib/auth';
 import { useNotificationTapRouting } from '@/lib/notifications';
+import { useQuickActions } from '@/lib/quick-actions';
 import { useOtaUpdates } from '@/lib/updates';
 
 SplashScreen.preventAutoHideAsync();
@@ -36,6 +37,7 @@ export default function RootLayout() {
   const session = useSession();
   useNotificationTapRouting();
   useOtaUpdates();
+  useQuickActions();
   const [fontsLoaded] = useFonts({
     Sora_400Regular,
     Sora_600SemiBold,
