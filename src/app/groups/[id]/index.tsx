@@ -15,6 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { confirmAction, showAlert } from '@/lib/alert';
+import { DISCORD_ENABLED } from '@/lib/config';
 import { AppHeader } from '@/components/app-header';
 import { CardChip, CardChipRow } from '@/components/swipe/card-shell';
 import { ThemedText } from '@/components/themed-text';
@@ -397,7 +398,7 @@ export default function GroupDetailScreen() {
                     )}
                     <View style={styles.matchBody}>
                       <ThemedText>{match.alias}</ThemedText>
-                      {url ? (
+                      {!DISCORD_ENABLED ? null : url ? (
                         <Pressable onPress={() => Linking.openURL(url)}>
                           <ThemedText type="small" style={styles.matchLink}>
                             Abrir canal en Discord
@@ -618,7 +619,7 @@ export default function GroupDetailScreen() {
               />
             )}
 
-          {group.discord_invite_url && (
+          {DISCORD_ENABLED && group.discord_invite_url && (
             <DiscordButton
               label="🔗 Servidor de Discord"
               onPress={() => Linking.openURL(group.discord_invite_url!)}

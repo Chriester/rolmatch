@@ -16,6 +16,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Rolder } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
 import { ensureCommunityMembership } from '@/lib/auth';
+import { DISCORD_ENABLED } from '@/lib/config';
 import { UpdateOverlay } from '@/components/update-overlay';
 import { useNotificationTapRouting } from '@/lib/notifications';
 import { useQuickActions } from '@/lib/quick-actions';
@@ -52,7 +53,7 @@ export default function RootLayout() {
       SplashScreen.hideAsync();
     }
     // Tras un login OAuth fresco, el bot une al usuario al servidor comunitario
-    if (session?.provider_token) {
+    if (DISCORD_ENABLED && session?.provider_token) {
       ensureCommunityMembership(session.provider_token);
     }
   }, [session, fontsLoaded]);
