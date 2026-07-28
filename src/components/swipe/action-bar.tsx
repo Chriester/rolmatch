@@ -3,9 +3,8 @@
 // ↩ rewind 46 · ✕ pass 64 · ⚔ like 64 (gradiente verde) · ⓘ info 46.
 
 import { LinearGradient } from 'expo-linear-gradient';
-import { Pressable, StyleSheet, Text } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { ThemedView } from '@/components/themed-view';
 import { Rolder } from '@/constants/theme';
 
 type ActionBarProps = {
@@ -19,7 +18,7 @@ type ActionBarProps = {
 
 export function ActionBar({ onPass, onLike, onInfo, onRewind, disabled }: ActionBarProps) {
   return (
-    <ThemedView style={styles.row}>
+    <View style={styles.row}>
       {onRewind && (
         <Pressable
           style={({ pressed }) => [styles.button, styles.small, pressed && styles.pressed]}
@@ -64,7 +63,7 @@ export function ActionBar({ onPass, onLike, onInfo, onRewind, disabled }: Action
           <Text style={styles.infoGlyph}>i</Text>
         </Pressable>
       )}
-    </ThemedView>
+    </View>
   );
 }
 
@@ -74,7 +73,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     gap: 18,
-    paddingVertical: 14,
+    paddingBottom: 10,
   },
   button: {
     width: 64,
@@ -83,6 +82,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: Rolder.input,
+    boxShadow: '0 4px 14px rgba(0,0,0,0.45)',
   },
   small: {
     width: 46,

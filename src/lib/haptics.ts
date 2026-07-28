@@ -1,10 +1,13 @@
-// Háptica con red de seguridad: import dinámico + try/catch para que los
-// binarios viejos sin el módulo nativo (o la web) sigan funcionando igual.
+// Háptica del swipe. En Android usamos Vibration directamente: expo-haptics
+// mapea a efectos "finos" que muchos dispositivos ignoran o apagan con los
+// ajustes de sistema, y la vibración explícita sí se siente. En iOS,
+// expo-haptics con import dinámico + try/catch (binarios viejos y web
+// siguen funcionando sin el módulo).
 
-import { Platform } from 'react-native';
+import { Platform, Vibration } from 'react-native';
 
-async function haptics() {
-  if (Platform.OS === 'web') return null;
+async function ios() {
+  if (Platform.OS !== 'ios') return null;
   try {
     return await import('expo-haptics');
   } catch {
@@ -14,7 +17,14 @@ async function haptics() {
 
 /** Tick ligero al armar el sello de ¡CRÍTICO!/PIFIA (cruce del umbral). */
 export async function hapticArm() {
-  const H = await haptics();
+  if (Platform.OS === 'web') return;
+  if (Platform.OS === 'android') {
+    try {
+      Vibration.vibrate(25);
+    } catch {}
+    return;
+  }
+  const H = await ios();
   try {
     await H?.impactAsync(H.ImpactFeedbackStyle.Light);
   } catch {}
@@ -22,7 +32,14 @@ export async function hapticArm() {
 
 /** Golpe medio al confirmar el swipe (la tarjeta sale volando). */
 export async function hapticSwipe() {
-  const H = await haptics();
+  if (Platform.OS === 'web') return;
+  if (Platform.OS === 'android') {
+    try {
+      Vibration.vibrate(45);
+    } catch {}
+    return;
+  }
+  const H = await ios();
   try {
     await H?.impactAsync(H.ImpactFeedbackStyle.Medium);
   } catch {}
@@ -30,7 +47,14 @@ export async function hapticSwipe() {
 
 /** Celebración al hacer match. */
 export async function hapticMatch() {
-  const H = await haptics();
+  if (Platform.OS === 'web') return;
+  if (Platform.OS === 'android') {
+    try {
+      Vibration.vibrate([0, 60, 80, 120]);
+    } catch {}
+    return;
+  }
+  const H = await ios();
   try {
     await H?.notificationAsync(H.NotificationFeedbackType.Success);
   } catch {}

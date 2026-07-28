@@ -161,7 +161,8 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 20,
     right: 20,
-    bottom: 18,
+    // hueco para la botonera que monta sobre el borde inferior (Tinder)
+    bottom: 56,
     gap: 8,
   },
 });
