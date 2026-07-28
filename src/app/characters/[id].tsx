@@ -1,11 +1,24 @@
+import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Linking, Platform, Pressable, StyleSheet, Switch, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Linking,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { showAlert } from '@/lib/alert';
 import { AppHeader } from '@/components/app-header';
 import { CharacterForm } from '@/components/character-form';
+import { CharacterSheetView } from '@/components/character-sheet-view';
+import { PrimaryButton } from '@/components/ui';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
@@ -29,8 +42,10 @@ import {
 } from '@/lib/sheets';
 
 export default function EditCharacterScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, edit } = useLocalSearchParams<{ id: string; edit?: string }>();
   const session = useSession();
+  // vista por defecto: la hoja; editar es una decisión explícita
+  const [editing, setEditing] = useState(edit === '1');
   const [character, setCharacter] = useState<Character | null | undefined>(undefined);
   const [sheet, setSheet] = useState<CharacterSheet | null | undefined>(undefined);
   const [busy, setBusy] = useState(false);
@@ -125,7 +140,13 @@ export default function EditCharacterScreen() {
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
         <AppHeader
-          onBack={() => (router.canGoBack() ? router.back() : router.replace('/characters'))}
+          onBack={() =>
+            editing
+              ? setEditing(false)
+              : router.canGoBack()
+                ? router.back()
+                : router.replace('/characters')
+          }
           right={
             <Pressable onPress={handleDelete} disabled={busy}>
               <ThemedText type="small" style={styles.deleteLabel}>
@@ -139,12 +160,39 @@ export default function EditCharacterScreen() {
           <ActivityIndicator style={styles.loading} />
         ) : character === null ? (
           <ThemedText style={styles.empty}>No se pudo cargar el personaje.</ThemedText>
-        ) : (
+        ) : editing ? (
           <>
             <ThemedText type="title">{character.name}</ThemedText>
+            {session && (
+              <CharacterForm
+                userId={session.user.id}
+                initial={character}
+                busy={busy}
+                submitLabel="Guardar cambios"
+                onSubmit={handleSave}
+                themeStatus={themeStatus}
+              />
+            )}
+          </>
+        ) : (
+          <ScrollView contentContainerStyle={styles.viewScroll}>
+            <View style={styles.hero}>
+              {character.portrait_url ? (
+                <Image source={{ uri: character.portrait_url }} style={styles.portrait} />
+              ) : (
+                <View style={[styles.portrait, styles.portraitFallback]}>
+                  <Text style={styles.portraitEmoji}>🧝</Text>
+                </View>
+              )}
+              <ThemedText type="title">{character.name}</ThemedText>
+            </View>
+
+            <CharacterSheetView character={character} />
+
+            <PrimaryButton label="✏️ Editar personaje" onPress={() => setEditing(true)} />
 
             <View style={styles.sheetBox}>
-              <ThemedText type="subtitle">Hoja de personaje</ThemedText>
+              <ThemedText type="subtitle">Hoja en PDF / imagen</ThemedText>
               {sheetBusy ? (
                 <ActivityIndicator />
               ) : sheet ? (
@@ -188,18 +236,7 @@ export default function EditCharacterScreen() {
                 </View>
               )}
             </View>
-
-            {session && (
-              <CharacterForm
-                userId={session.user.id}
-                initial={character}
-                busy={busy}
-                submitLabel="Guardar cambios"
-                onSubmit={handleSave}
-                themeStatus={themeStatus}
-              />
-            )}
-          </>
+          </ScrollView>
         )}
       </SafeAreaView>
     </ThemedView>
@@ -256,5 +293,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: Spacing.two,
+  },
+  viewScroll: {
+    gap: Spacing.three,
+    paddingBottom: Spacing.five,
+  },
+  hero: {
+    alignItems: 'center',
+    gap: Spacing.two,
+  },
+  portrait: {
+    width: 120,
+    height: 120,
+    borderRadius: 24,
+  },
+  portraitFallback: {
+    backgroundColor: 'rgba(255,90,95,0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  portraitEmoji: {
+    fontSize: 52,
   },
 });

@@ -4,7 +4,7 @@
 import { Image } from 'expo-image';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppHeader } from '@/components/app-header';
@@ -95,7 +95,20 @@ export default function MyCharactersScreen() {
                       </Text>
                     )}
                   </View>
-                  <StatusPill label={pill.label} tone={pill.tone} />
+                  <View style={styles.rowActions}>
+                    <StatusPill label={pill.label} tone={pill.tone} />
+                    <Pressable
+                      onPress={() =>
+                        router.push({
+                          pathname: '/characters/[id]',
+                          params: { id: item.id, edit: '1' },
+                        })
+                      }
+                      hitSlop={8}
+                      accessibilityLabel={`Editar ${item.name}`}>
+                      <Text style={styles.editLink}>✏️ Editar</Text>
+                    </Pressable>
+                  </View>
                 </ListRow>
               );
             }}
@@ -107,6 +120,16 @@ export default function MyCharactersScreen() {
 }
 
 const styles = StyleSheet.create({
+  rowActions: {
+    alignItems: 'flex-end',
+    gap: 8,
+  },
+  editLink: {
+    color: Rolder.violetSoft,
+    fontSize: 12,
+    fontFamily: RolderFonts.semibold,
+    fontWeight: '600',
+  },
   container: {
     flex: 1,
     flexDirection: 'row',
