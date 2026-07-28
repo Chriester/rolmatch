@@ -16,6 +16,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Rolder } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
 import { ensureCommunityMembership } from '@/lib/auth';
+import { UpdateOverlay } from '@/components/update-overlay';
 import { useNotificationTapRouting } from '@/lib/notifications';
 import { useQuickActions } from '@/lib/quick-actions';
 import { useOtaUpdates } from '@/lib/updates';
@@ -36,7 +37,7 @@ const RolderNavTheme = {
 export default function RootLayout() {
   const session = useSession();
   useNotificationTapRouting();
-  useOtaUpdates();
+  const updating = useOtaUpdates();
   useQuickActions();
   const [fontsLoaded] = useFonts({
     Sora_400Regular,
@@ -89,6 +90,7 @@ export default function RootLayout() {
             <Stack.Screen name="login" />
           </Stack.Protected>
         </Stack>
+        {updating && <UpdateOverlay />}
       </ThemeProvider>
     </GestureHandlerRootView>
   );
