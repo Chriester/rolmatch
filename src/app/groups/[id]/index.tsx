@@ -478,6 +478,13 @@ export default function GroupDetailScreen() {
                 </View>
               )}
 
+              <OutlineButton
+                label="📅 Organizar partida — calendario y votaciones"
+                onPress={() =>
+                  router.push({ pathname: '/groups/[id]/schedule', params: { id: group.id } })
+                }
+              />
+
               {session?.user.id === group.owner_id && (
                 <View style={styles.sessionForm}>
                   <TextInput

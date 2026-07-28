@@ -120,7 +120,18 @@ export function parseSessionDateTime(dateText: string, timeText: string): Date |
 }
 
 // Hora local de inicio de cada franja (alineado con el matching)
-const SLOT_START_HOUR: Record<number, number> = { 0: 8, 1: 14, 2: 20, 3: 2 };
+export const SLOT_START_HOUR: Record<number, number> = { 0: 8, 1: 14, 2: 20, 3: 2 };
+
+/** «viernes, 1 ago, 20:00» — para listas de sesiones y votaciones */
+export function formatSessionDate(iso: string): string {
+  return new Date(iso).toLocaleString('es-ES', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
 
 /**
  * Próxima ocurrencia del horario habitual de la mesa (día × franja) en la
