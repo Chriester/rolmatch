@@ -22,9 +22,12 @@ import { GENDER_LABELS, fetchSystems, type Gender, type System } from '@/lib/pro
 import {
   SHEET_THEMES,
   canUseTheme,
-  fieldsForSystem,
+  isHomebrew,
+  sectionsForSystem,
   themeForCharacter,
   unlockLabel,
+  type SheetField,
+  type SheetSection,
 } from '@/lib/sheet-schema';
 
 const STEP_TITLES = ['Quién es', 'Su hoja', 'Su historia'];
@@ -68,8 +71,9 @@ export function CharacterForm({
   }, []);
 
   const systemSlug = systems.find((s) => s.id === systemId)?.slug ?? null;
-  const fields = fieldsForSystem(systemSlug);
+  const sections = sectionsForSystem(systemSlug);
   const activeTheme = themeForCharacter(sheetTheme, systemSlug);
+  const [homebrewMode, setHomebrewMode] = useState(false);
 
   const setTrait = (key: string, value: string) =>
     setTraits((prev) => ({ ...prev, [key]: value }));
@@ -77,11 +81,16 @@ export function CharacterForm({
   const stepValid = step !== 0 || name.trim().length > 0;
 
   const handleSubmit = () => {
-    // solo persistimos rasgos del esquema activo, limpios
+    // solo persistimos claves del esquema activo, limpias
+    const keys: string[] = [];
+    for (const section of sections) {
+      if ('fields' in section) keys.push(...section.fields.map((f) => f.key));
+      else keys.push(section.key);
+    }
     const cleanTraits: Record<string, string> = {};
-    for (const field of fields) {
-      const value = (traits[field.key] ?? '').trim();
-      if (value) cleanTraits[field.key] = value;
+    for (const key of keys) {
+      const value = (traits[key] ?? '').trim();
+      if (value) cleanTraits[key] = value;
     }
     onSubmit({
       name: name.trim(),
@@ -98,6 +107,126 @@ export function CharacterForm({
       traits: cleanTraits,
       sheet_theme: sheetTheme,
     });
+  };
+
+  const renderOptionField = (field: SheetField) => {
+    const value = traits[field.key] ?? '';
+    const homebrewValue = field.options && !field.options.includes(value) ? value : '';
+    return (
+      <View key={field.key} style={styles.fieldBlock}>
+        <ThemedText type="small">
+          {field.label}
+          {isHomebrew(field, value) ? '  ·  ⌂ homebrew' : ''}
+        </ThemedText>
+        {field.options ? (
+          <>
+            <View style={styles.chipRow}>
+              {field.options.map((option) => (
+                <Chip
+                  key={option}
+                  label={option}
+                  selected={value === option}
+                  onPress={() => setTrait(field.key, value === option ? '' : option)}
+                />
+              ))}
+            </View>
+            {(homebrewMode || homebrewValue !== '') && (
+              <TextInput
+                style={styles.input}
+                value={homebrewValue}
+                onChangeText={(v) => setTrait(field.key, v)}
+                placeholder="⌂ O escribe tu versión homebrew…"
+                placeholderTextColor="rgba(255,255,255,0.35)"
+                maxLength={60}
+              />
+            )}
+          </>
+        ) : (
+          <TextInput
+            style={styles.input}
+            value={value}
+            onChangeText={(v) => setTrait(field.key, v)}
+            placeholder={field.placeholder}
+            placeholderTextColor="rgba(255,255,255,0.35)"
+            maxLength={140}
+          />
+        )}
+      </View>
+    );
+  };
+
+  const renderEditorSection = (section: SheetSection, index: number) => {
+    const title = 'title' in section ? section.title : undefined;
+    const header = title ? <SectionLabel key={`t-${index}`}>{title}</SectionLabel> : null;
+
+    if (section.kind === 'fields') {
+      return (
+        <View key={index} style={styles.sectionBlock}>
+          {header}
+          {section.fields.map(renderOptionField)}
+        </View>
+      );
+    }
+    if (section.kind === 'stats' || section.kind === 'dots' || section.kind === 'track') {
+      const hint =
+        section.kind === 'dots' ? `0-${section.max ?? 5}` : section.kind === 'track' ? '4/9' : '';
+      return (
+        <View key={index} style={styles.sectionBlock}>
+          {header}
+          <View style={styles.compactGrid}>
+            {section.fields.map((field) => (
+              <View key={field.key} style={styles.compactCell}>
+                <ThemedText type="small">{field.label}</ThemedText>
+                <TextInput
+                  style={styles.input}
+                  value={traits[field.key] ?? ''}
+                  onChangeText={(v) => setTrait(field.key, v)}
+                  placeholder={field.placeholder ?? hint}
+                  placeholderTextColor="rgba(255,255,255,0.35)"
+                  maxLength={12}
+                />
+              </View>
+            ))}
+          </View>
+        </View>
+      );
+    }
+    if (section.kind === 'text') {
+      return (
+        <View key={index} style={styles.sectionBlock}>
+          {header}
+          <TextInput
+            style={[styles.input, styles.multiline]}
+            value={traits[section.key] ?? ''}
+            onChangeText={(v) => setTrait(section.key, v)}
+            placeholder={section.placeholder}
+            placeholderTextColor="rgba(255,255,255,0.35)"
+            multiline
+          />
+        </View>
+      );
+    }
+    // list / table / cards / chips: una entrada por línea con separadores
+    const helper =
+      section.kind === 'chips'
+        ? 'Separadas por comas'
+        : section.kind === 'cards'
+          ? 'Una por línea · «Título :: descripción»'
+          : 'Una por línea · partes separadas con «·»';
+    return (
+      <View key={index} style={styles.sectionBlock}>
+        {header}
+        <TextInput
+          style={[styles.input, styles.multiline]}
+          value={traits[section.key] ?? ''}
+          onChangeText={(v) => setTrait(section.key, v)}
+          placeholder={section.hint}
+          placeholderTextColor="rgba(255,255,255,0.35)"
+          multiline
+        />
+        <ThemedText type="small">{helper}</ThemedText>
+      </View>
+    );
   };
 
   return (
@@ -197,24 +326,17 @@ export function CharacterForm({
             </View>
           </View>
 
-          <SectionLabel>
-            Mini-hoja {systemSlug ? 'del sistema' : 'genérica (elige sistema en el paso 1)'}
-          </SectionLabel>
-          {fields.map((field) => (
-            <View key={field.key} style={styles.fieldBlock}>
-              <ThemedText type="small">{field.label}</ThemedText>
-              <TextInput
-                style={[styles.input, field.type === 'multiline' && styles.multiline]}
-                value={traits[field.key] ?? ''}
-                onChangeText={(value) => setTrait(field.key, value)}
-                placeholder={field.placeholder}
-                placeholderTextColor="rgba(255,255,255,0.35)"
-                multiline={field.type === 'multiline'}
-                keyboardType={field.type === 'number' ? 'number-pad' : 'default'}
-                maxLength={140}
-              />
+          <View style={styles.homebrewRow}>
+            <View style={styles.homebrewLabel}>
+              <ThemedText>⌂ Modo homebrew</ThemedText>
+              <ThemedText type="small">
+                Escribe lo que quieras en los campos con opciones; se marcará como homebrew
+              </ThemedText>
             </View>
-          ))}
+            <Switch value={homebrewMode} onValueChange={setHomebrewMode} />
+          </View>
+
+          {sections.map((section, index) => renderEditorSection(section, index))}
 
           <SectionLabel>Diseño de la hoja</SectionLabel>
           <View style={styles.themeRow}>
@@ -393,6 +515,34 @@ const styles = StyleSheet.create({
   },
   fieldBlock: {
     gap: Spacing.one,
+  },
+  sectionBlock: {
+    gap: Spacing.two,
+  },
+  compactGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.two,
+  },
+  compactCell: {
+    width: '47%',
+    flexGrow: 1,
+    gap: 2,
+  },
+  homebrewRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: Spacing.three,
+    backgroundColor: 'rgba(139,108,255,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(139,108,255,0.3)',
+    borderRadius: 14,
+    padding: 12,
+  },
+  homebrewLabel: {
+    flex: 1,
+    gap: 2,
   },
   themeRow: {
     flexDirection: 'row',
