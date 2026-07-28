@@ -17,6 +17,8 @@ import {
   type Character,
   type CharacterInput,
 } from '@/lib/characters';
+import { fetchPremiumStatus } from '@/lib/premium';
+import { fetchXpTotals, levelFromXp } from '@/lib/xp';
 import {
   deleteSheet,
   fetchSheet,
@@ -33,6 +35,18 @@ export default function EditCharacterScreen() {
   const [sheet, setSheet] = useState<CharacterSheet | null | undefined>(undefined);
   const [busy, setBusy] = useState(false);
   const [sheetBusy, setSheetBusy] = useState(false);
+  const [themeStatus, setThemeStatus] = useState({ isPremium: false, level: 1 });
+
+  useEffect(() => {
+    if (!session) return;
+    const userId = session.user.id;
+    Promise.all([
+      fetchPremiumStatus(userId).catch(() => ({ active: false })),
+      fetchXpTotals([userId]).catch(() => new Map<string, number>()),
+    ]).then(([premium, xp]) =>
+      setThemeStatus({ isPremium: premium.active, level: levelFromXp(xp.get(userId) ?? 0) })
+    );
+  }, [session]);
 
   useEffect(() => {
     if (!id) return;
@@ -182,6 +196,7 @@ export default function EditCharacterScreen() {
                 busy={busy}
                 submitLabel="Guardar cambios"
                 onSubmit={handleSave}
+                themeStatus={themeStatus}
               />
             )}
           </>

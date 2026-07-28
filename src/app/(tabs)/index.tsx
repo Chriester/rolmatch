@@ -22,6 +22,7 @@ import {
   AvailabilityMiniGrid,
   availabilityCellKey,
 } from '@/components/swipe/availability-mini-grid';
+import { CharacterSheetView } from '@/components/character-sheet-view';
 import { CardCycle } from '@/components/swipe/card-cycle';
 import {
   CardBlurb,
@@ -113,6 +114,9 @@ export default function HomeScreen() {
   const [myAvailability, setMyAvailability] = useState<Set<string>>(new Set());
   const [loadError, setLoadError] = useState(false);
   const [index, setIndex] = useState(0);
+  // cara visible de la tarjeta superior (0 = jugador, 1+ = personajes):
+  // decide qué enseña la tira de detalles al deslizar hacia arriba
+  const [topFace, setTopFace] = useState(0);
   const [myCharacters, setMyCharacters] = useState<Character[]>([]);
   const [proposedId, setProposedId] = useState<string | null>(null);
   const [matchWith, setMatchWith] = useState<FeedItem | null>(null);
@@ -170,6 +174,7 @@ export default function HomeScreen() {
     const proposal = proposedId;
     setProposedId(null);
     setIndex((i) => i + 1);
+    setTopFace(0);
 
     const direction = choice === 'like' ? ('like' as const) : ('pass' as const);
     const request =
@@ -208,6 +213,7 @@ export default function HomeScreen() {
       }
       setLastSwiped(null);
       setIndex((i) => Math.max(0, i - 1));
+      setTopFace(0);
     } catch (error) {
       showAlert('No se pudo deshacer', error instanceof Error ? error.message : String(error));
     }
@@ -366,7 +372,7 @@ export default function HomeScreen() {
         )}
       </CardShell>
     ));
-    return <CardCycle faces={[playerFace, ...characterFaces]} />;
+    return <CardCycle faces={[playerFace, ...characterFaces]} onFaceChange={setTopFace} />;
   };
 
   const detailsFor = (item: FeedItem) => {
@@ -533,12 +539,27 @@ export default function HomeScreen() {
                 index={index}
                 keyFor={itemKey}
                 renderCard={renderCard}
-                renderDetails={(item) => (
-                  <DetailsFace
-                    title={item.kind === 'group' ? item.group.name : item.candidate.player.alias}>
-                    {detailsFor(item)}
-                  </DetailsFace>
-                )}
+                renderDetails={(item) => {
+                  // con una cara de personaje a la vista, la tira enseña SU hoja
+                  if (item.kind === 'player' && topFace > 0) {
+                    const showcased = item.candidate.player.characters.filter(
+                      (ch) => ch.status === 'looking' && ch.is_public
+                    )[topFace - 1];
+                    if (showcased) {
+                      return (
+                        <DetailsFace title={showcased.name}>
+                          <CharacterSheetView character={showcased} />
+                        </DetailsFace>
+                      );
+                    }
+                  }
+                  return (
+                    <DetailsFace
+                      title={item.kind === 'group' ? item.group.name : item.candidate.player.alias}>
+                      {detailsFor(item)}
+                    </DetailsFace>
+                  );
+                }}
                 onSwiped={handleSwiped}
                 deckRef={deckRef}
               />

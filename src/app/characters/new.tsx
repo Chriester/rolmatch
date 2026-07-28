@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -11,10 +11,24 @@ import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
 import { createCharacter, type CharacterInput } from '@/lib/characters';
+import { fetchPremiumStatus } from '@/lib/premium';
+import { fetchXpTotals, levelFromXp } from '@/lib/xp';
 
 export default function NewCharacterScreen() {
   const session = useSession();
   const [busy, setBusy] = useState(false);
+  const [themeStatus, setThemeStatus] = useState({ isPremium: false, level: 1 });
+
+  useEffect(() => {
+    if (!session) return;
+    const userId = session.user.id;
+    Promise.all([
+      fetchPremiumStatus(userId).catch(() => ({ active: false })),
+      fetchXpTotals([userId]).catch(() => new Map<string, number>()),
+    ]).then(([premium, xp]) =>
+      setThemeStatus({ isPremium: premium.active, level: levelFromXp(xp.get(userId) ?? 0) })
+    );
+  }, [session]);
 
   const handleCreate = async (input: CharacterInput) => {
     if (!session) return;
@@ -41,6 +55,7 @@ export default function NewCharacterScreen() {
             busy={busy}
             submitLabel="Crear personaje"
             onSubmit={handleCreate}
+            themeStatus={themeStatus}
           />
         )}
       </SafeAreaView>
