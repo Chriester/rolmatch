@@ -29,6 +29,21 @@ description: Cómo hacer cambios de esquema en Supabase para RolMatch — numera
 - Verificable sin dashboard: `curl` a `https://<ref>.supabase.co/rest/v1/<tabla>?select=<col>&limit=1`
   con header `apikey: <anon>` — 200 = la columna existe, 400 = falta migración.
 
+## Orden migración ↔ merge
+Migración aditiva = aplicarla ANTES de mergear código que la selecciona
+(o el fetch degrada con catch → vacío). Verificar aplicación sin dashboard:
+`curl "$URL/rest/v1/<tabla>?select=<col>&limit=1" -H "apikey: $ANON"` → 200.
+
+## Helpers y triggers que YA existen (no duplicar)
+- `is_group_member(group_id)` security definer (00021) — para políticas de mesa.
+- `grant_xp(...)` + triggers de XP (00016/00017): matches, group_members,
+  ratings, group_journal_entries, session_confirmations ya dan XP — al crear
+  tablas de actividad nueva, plantearse si deben dar XP vía grant_xp.
+- `handle_reciprocal_swipe` crea match + membresía; webhooks INSERT en
+  matches/messages disparan discord-match y push-notify.
+- Seed: los bots deben quedar "maduros" (avatar + created_at -30d) o no
+  generan XP (regla de contrapartida de 00017).
+
 ## Datos de prueba
 `supabase/seed/dev-reset.sql` = reset total del mundo de prueba (idempotente,
 ids deterministas). Si la migración afecta a tablas seedeadas, actualiza el

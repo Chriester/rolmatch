@@ -25,7 +25,10 @@ Lee la documentación versionada exacta en https://docs.expo.dev/versions/v57.0.
 ## Skills del proyecto (cargar la que toque antes de trabajar)
 
 - **nueva-feature** — flujo completo rama→PR→merge→tablero y convenciones. Usar SIEMPRE.
-- **migracion-db** — cambios de esquema, RLS y gotchas de PostgREST.
+- **migracion-db** — cambios de esquema, RLS, orden migración↔merge y helpers existentes.
+- **qa-visual** — capturas headless (rig, cuenta QA, gotchas) antes de mergear UI.
+- **ui-rolder** — inventario del design system: tokens, primitivas y componentes.
+- **apk-y-ota** — OTA vs build nativo, runtime versions, EAS y FCM.
 - **bot-discord** — Edge Functions, webhooks, canales por mesa, depuración.
 - **swipe-feel** — física y arquitectura del feed Tinder.
 - **matching** — reglas para tocar el algoritmo (exige tests).
