@@ -1,3 +1,4 @@
+import { normalizeTimezone } from '@/lib/matching';
 import { supabase } from '@/lib/supabase';
 
 export type UserRole = 'player' | 'gm' | 'both';
@@ -117,7 +118,8 @@ export async function saveOnboarding(
 ) {
   const { error: profileError } = await supabase
     .from('profiles')
-    .update(profile)
+    // saneamos la zona: una "GMT+1" guardada rompía el matching de todos
+    .update({ ...profile, timezone: normalizeTimezone(profile.timezone) === profile.timezone ? profile.timezone : detectTimezone() })
     .eq('id', userId);
   if (profileError) throw profileError;
 
@@ -150,7 +152,10 @@ export async function saveOnboarding(
 
 export function detectTimezone(): string {
   try {
-    return Intl.DateTimeFormat().resolvedOptions().timeZone ?? 'Europe/Madrid';
+    const detected = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    // algunos Android devuelven "GMT+1" u otras no-IANA que rompen Intl
+    if (detected && normalizeTimezone(detected) === detected) return detected;
+    return 'Europe/Madrid';
   } catch {
     return 'Europe/Madrid';
   }

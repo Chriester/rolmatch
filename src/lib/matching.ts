@@ -71,11 +71,31 @@ const WEEK_MINUTES = 7 * 24 * 60;
 // tolera desfases horarios parciales sin emparejar imposibles.
 export const MIN_OVERLAP_HOURS = 3;
 
+// Algunos dispositivos guardan zonas no-IANA ("GMT+1") que hacen que Intl
+// LANCE y tumbaba el feed entero por una sola fila mala. Validamos con caché
+// y degradamos a UTC: matching aproximado antes que pantalla rota.
+const tzValidity = new Map<string, boolean>();
+
+export function normalizeTimezone(timeZone: string | null | undefined): string {
+  if (!timeZone) return 'UTC';
+  let valid = tzValidity.get(timeZone);
+  if (valid === undefined) {
+    try {
+      new Intl.DateTimeFormat('en-US', { timeZone });
+      valid = true;
+    } catch {
+      valid = false;
+    }
+    tzValidity.set(timeZone, valid);
+  }
+  return valid ? timeZone : 'UTC';
+}
+
 /** Offset UTC en minutos de una zona IANA en un instante dado. */
 export function getOffsetMinutes(timeZone: string, at: Date): number {
   const parts = Object.fromEntries(
     new Intl.DateTimeFormat('en-US', {
-      timeZone,
+      timeZone: normalizeTimezone(timeZone),
       hour12: false,
       year: 'numeric',
       month: '2-digit',
