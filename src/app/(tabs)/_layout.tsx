@@ -10,10 +10,12 @@ import { Pressable, StyleSheet, Text, View, type PressableProps, type StyleProp,
 
 import { Rolder, RolderFonts } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
+import { hapticTap } from '@/lib/haptics';
 import { fetchUnreadTotal } from '@/lib/messages';
 
 // Sin ripple de Android (el círculo se recortaba contra el borde de la
-// barra): feedback por opacidad y escala, coherente con los botones sueltos.
+// barra): el círculo del botón solo aparece MIENTRAS se presiona, con un
+// toque háptico — en reposo solo se ven los iconos sobre el fondo.
 type BarButtonProps = {
   children: React.ReactNode;
   onPress?: PressableProps['onPress'];
@@ -27,12 +29,12 @@ function BarButton({ children, onPress, onLongPress, accessibilityState, style }
     <Pressable
       onPress={onPress}
       onLongPress={onLongPress}
+      onPressIn={() => hapticTap()}
       accessibilityState={accessibilityState}
-      style={({ pressed }) => [
-        style as object,
-        pressed && { opacity: 0.7, transform: [{ scale: 0.94 }] },
-      ]}>
-      {children}
+      style={[style as object, styles.itemCenter]}>
+      {({ pressed }) => (
+        <View style={[styles.halo, pressed && styles.haloPressed]}>{children}</View>
+      )}
     </Pressable>
   );
 }
@@ -47,8 +49,9 @@ function TabButton({
   badge?: number;
 }) {
   return (
-    <View style={[styles.button, focused && styles.buttonActive]}>
+    <View style={styles.button}>
       <Text style={[styles.buttonEmoji, !focused && styles.buttonEmojiInactive]}>{emoji}</Text>
+      {focused && <View style={styles.activeDot} />}
       {badge > 0 && (
         <View style={styles.badge}>
           <Text style={styles.badgeLabel}>{badge >= 99 ? '99+' : badge}</Text>
@@ -155,25 +158,39 @@ const styles = StyleSheet.create({
   item: {
     overflow: 'visible',
   },
+  itemCenter: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  halo: {
+    borderRadius: 31,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  haloPressed: {
+    backgroundColor: 'rgba(139,108,255,0.22)',
+    transform: [{ scale: 0.94 }],
+  },
   button: {
     width: 46,
     height: 46,
     borderRadius: 23,
-    backgroundColor: Rolder.surface,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  buttonActive: {
-    backgroundColor: 'rgba(139,108,255,0.3)',
-    borderColor: 'rgba(139,108,255,0.9)',
-  },
   buttonEmoji: {
-    fontSize: 21,
+    fontSize: 22,
   },
   buttonEmojiInactive: {
-    opacity: 0.55,
+    opacity: 0.4,
+  },
+  activeDot: {
+    position: 'absolute',
+    bottom: 2,
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: Rolder.violetSoft,
   },
   feedButton: {
     width: 62,
