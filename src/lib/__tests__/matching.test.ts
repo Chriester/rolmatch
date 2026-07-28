@@ -2,6 +2,7 @@ import {
   MIN_OVERLAP_HOURS,
   getOffsetMinutes,
   matchPlayerToGroup,
+  normalizeTimezone,
   overlapHours,
   toUtcCells,
   type MatchGroup,
@@ -288,5 +289,28 @@ describe('score', () => {
     expect(worst.pass).toBe(true);
     expect(worst.score).toBeGreaterThanOrEqual(0);
     expect(worst.score).toBeLessThanOrEqual(100);
+  });
+});
+
+describe('zonas horarias inválidas (caso real: "GMT+1" guardado por un Android)', () => {
+  it('normalizeTimezone valida IANA y degrada lo demás a UTC', () => {
+    expect(normalizeTimezone('Europe/Madrid')).toBe('Europe/Madrid');
+    expect(normalizeTimezone('GMT+1')).toBe('UTC');
+    expect(normalizeTimezone('')).toBe('UTC');
+    expect(normalizeTimezone(null)).toBe('UTC');
+  });
+
+  it('getOffsetMinutes no lanza con una zona corrupta', () => {
+    expect(() => getOffsetMinutes('GMT+1', AT)).not.toThrow();
+    expect(getOffsetMinutes('GMT+1', AT)).toBe(0);
+  });
+
+  it('el matching completo sobrevive a un perfil con zona corrupta', () => {
+    const result = matchPlayerToGroup(
+      basePlayer({ timezone: 'GMT+1' }),
+      baseGroup({ timezone: 'GMT+1' }),
+      AT
+    );
+    expect(result.score).toBeGreaterThanOrEqual(0);
   });
 });
