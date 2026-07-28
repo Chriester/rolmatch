@@ -15,6 +15,21 @@ async function ios() {
   }
 }
 
+/** Toque sutil de UI (tabs, selecciones). */
+export async function hapticTap() {
+  if (Platform.OS === 'web') return;
+  if (Platform.OS === 'android') {
+    try {
+      Vibration.vibrate(12);
+    } catch {}
+    return;
+  }
+  const H = await ios();
+  try {
+    await H?.selectionAsync();
+  } catch {}
+}
+
 /** Tick ligero al armar el sello de ¡CRÍTICO!/PIFIA (cruce del umbral). */
 export async function hapticArm() {
   if (Platform.OS === 'web') return;
