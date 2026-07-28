@@ -13,11 +13,21 @@ description: Flujo completo para construir y entregar una feature en RolMatch �
 
 ## Antes de commitear (siempre los tres)
 ```
-npm run typecheck && npm run lint && npm test
+npm run typecheck 2>&1 | tail -4; npm run lint 2>&1 | tail -4; npm test 2>&1 | tail -3
 ```
+(encadenados con `;` y tail — con `&&`+pipe el exit code se lo come el tail)
 - Rutas nuevas de Expo Router: las rutas tipadas se regeneran con el dev
-  server corriendo; si `tsc` no las ve, `curl http://localhost:8081/` o
-  reinicia `npm start` (a veces registra `/x/index` en vez de `/x` con caché sucia).
+  server corriendo. Si `tsc` da errores raros de rutas (`/index` en vez de
+  `/`, paths `/../lib/...`): el server es VIEJO → matar el proceso del puerto
+  8081, `rm -rf .expo/types`, `npx expo start --clear`.
+- Cambio visual → skill **qa-visual** (capturas antes de mergear).
+- Pantalla nueva → registrarla en el Stack de `src/app/_layout.tsx`.
+
+## Migraciones y orden de merge
+- Si el código NUEVO hace select de columnas/tablas nuevas: o el fetch degrada
+  con gracia (catch → valor vacío, patrón fetchMyChats/chat_reads), o la
+  migración se aplica ANTES de mergear (pedírselo a Chris y verificar por REST
+  con curl+apikey). Ya rompimos el feed una vez por esto (00020).
 
 ## Commit y PR
 - Conventional Commits en español sin tildes ni comillas dobles en el mensaje
