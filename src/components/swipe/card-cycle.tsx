@@ -17,14 +17,18 @@ const HALF_FLIP = { duration: 150, reduceMotion: ReduceMotion.Never };
 
 type CardCycleProps = {
   faces: ReactNode[];
+  /** avisa qué cara queda visible (la tira de detalles depende de ella) */
+  onFaceChange?: (index: number) => void;
 };
 
-export function CardCycle({ faces }: CardCycleProps) {
+export function CardCycle({ faces, onFaceChange }: CardCycleProps) {
   const [face, setFace] = useState(0);
   const rotation = useSharedValue(0);
 
   const advance = () => {
-    setFace((f) => (f + 1) % faces.length);
+    const next = (face + 1) % faces.length;
+    setFace(next);
+    onFaceChange?.(next);
     rotation.value = -90;
     rotation.value = withTiming(0, HALF_FLIP);
   };

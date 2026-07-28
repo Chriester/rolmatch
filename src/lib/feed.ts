@@ -29,10 +29,13 @@ export type ShowcaseCharacter = {
   gender: string | null;
   age: string | null;
   concept: string | null;
+  backstory: string | null;
   portrait_url: string | null;
   status: string;
   is_public: boolean;
-  systems: { name: string } | null;
+  traits: Record<string, string>;
+  sheet_theme: string | null;
+  systems: { name: string; slug: string } | null;
 };
 
 export type PlayerCandidate = {
@@ -160,7 +163,7 @@ export async function fetchGroupCandidates(
       `id, alias, role, gender, birth_year, timezone, languages, open_to_any_system, bio, avatar_url,
        style_combat_narrative, style_serious_humor, style_roleplay_weight, preferred_vtt,
        availability_slots(weekday, slot), user_systems(system_id, experience),
-       characters!characters_user_id_fkey(id, name, archetype, level, gender, age, concept, portrait_url, status, is_public, systems(name))`
+       characters!characters_user_id_fkey(id, name, archetype, level, gender, age, concept, backstory, portrait_url, status, is_public, traits, sheet_theme, systems(name, slug))`
     );
   if (error) throw error;
 

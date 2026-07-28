@@ -22,7 +22,9 @@ export type Character = {
   backstory: string | null;
   status: CharacterStatus;
   portrait_url: string | null;
-  systems: { name: string } | null;
+  traits: Record<string, string>;
+  sheet_theme: string | null;
+  systems: { name: string; slug: string } | null;
 };
 
 export type CharacterInput = {
@@ -37,6 +39,8 @@ export type CharacterInput = {
   concept: string | null;
   backstory: string | null;
   status: CharacterStatus;
+  traits: Record<string, string>;
+  sheet_theme: string | null;
 };
 
 /** "234" → "234 años"; texto libre ("joven eterno") se muestra tal cual. */
@@ -47,7 +51,7 @@ export function characterAgeLabel(age: string | null): string | null {
 }
 
 const CHARACTER_FIELDS = `id, name, is_public, system_id, archetype, level, gender, age, concept,
-  backstory, status, portrait_url, systems(name)`;
+  backstory, status, portrait_url, traits, sheet_theme, systems(name, slug)`;
 
 export async function fetchMyCharacters(userId: string): Promise<Character[]> {
   const { data, error } = await supabase
