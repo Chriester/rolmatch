@@ -46,6 +46,22 @@ const VTTS: { value: VttType; label: string }[] = [
   { value: 'other', label: 'Otro' },
 ];
 
+// Solo zonas IANA válidas: el campo de texto libre nos coló un "GMT+1"
+// que reventaba el matching. Si la detectada no está aquí, aparece como
+// chip extra ya seleccionado.
+const TIMEZONES: { value: string; label: string }[] = [
+  { value: 'Europe/Madrid', label: 'España (península)' },
+  { value: 'Atlantic/Canary', label: 'Canarias' },
+  { value: 'America/Mexico_City', label: 'México' },
+  { value: 'America/Bogota', label: 'Colombia' },
+  { value: 'America/Lima', label: 'Perú' },
+  { value: 'America/Argentina/Buenos_Aires', label: 'Argentina' },
+  { value: 'America/Santiago', label: 'Chile' },
+  { value: 'America/Montevideo', label: 'Uruguay' },
+  { value: 'America/Caracas', label: 'Venezuela' },
+  { value: 'America/New_York', label: 'EE. UU. (Este)' },
+];
+
 const TOTAL_STEPS = 4;
 const STEP_TITLES = ['Quién eres', 'Cuándo juegas', 'A qué juegas', 'Cómo juegas'];
 
@@ -299,13 +315,24 @@ export default function OnboardingScreen() {
                   ? 'Marca al menos una franja'
                   : `${availability.size} ${availability.size === 1 ? 'franja marcada' : 'franjas marcadas'}`}
               </Text>
-              <SectionLabel>Zona horaria (detectada automáticamente)</SectionLabel>
-              <TextInput
-                style={styles.input}
-                value={timezone}
-                onChangeText={setTimezone}
-                autoCapitalize="none"
+              <SectionLabel>Zona horaria</SectionLabel>
+              <OutlineButton
+                label="📍 Usar la de mi dispositivo"
+                onPress={() => setTimezone(detectTimezone())}
               />
+              <View style={styles.chipRow}>
+                {TIMEZONES.map((tz) => (
+                  <Chip
+                    key={tz.value}
+                    label={tz.label}
+                    selected={timezone === tz.value}
+                    onPress={() => setTimezone(tz.value)}
+                  />
+                ))}
+                {!TIMEZONES.some((tz) => tz.value === timezone) && (
+                  <Chip label={`🌍 ${timezone}`} selected onPress={() => {}} />
+                )}
+              </View>
             </View>
           )}
 
