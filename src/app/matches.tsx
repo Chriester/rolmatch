@@ -12,6 +12,7 @@ import { ThemedView } from '@/components/themed-view';
 import { DiscordButton, ListRow, OutlineButton, ScreenTitle } from '@/components/ui';
 import { MaxContentWidth, Rolder, RolderFonts, Spacing } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
+import { DISCORD_ENABLED } from '@/lib/config';
 import { fetchMyMatches, matchChannelUrl, type MyMatch } from '@/lib/matches';
 
 export default function MatchesScreen() {
@@ -91,7 +92,7 @@ export default function MatchesScreen() {
                       </Text>
                     </View>
                   </View>
-                  {url ? (
+                  {!DISCORD_ENABLED ? null : url ? (
                     <DiscordButton label="Abrir canal en Discord" onPress={() => Linking.openURL(url)} />
                   ) : (
                     <Text style={styles.pending}>⏳ El canal de Discord se creará en unos segundos…</Text>

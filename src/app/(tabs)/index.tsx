@@ -52,6 +52,7 @@ import {
 } from '@/lib/groups';
 import { blockUser } from '@/lib/moderation';
 import { registerPushToken } from '@/lib/notifications';
+import { DISCORD_ENABLED } from '@/lib/config';
 import { shouldShowTutorial } from '@/lib/tutorial';
 import { levelFromXp, titleForLevel } from '@/lib/xp';
 import { fetchPremiumStatus, isBoostActive } from '@/lib/premium';
@@ -625,9 +626,9 @@ export default function HomeScreen() {
         }}
         subtitle={
           matchWith?.kind === 'group'
-            ? `A «${matchWith.group.name}» también le interesas. El bot os está abriendo un canal en Discord.`
+            ? `A «${matchWith.group.name}» también le interesas. ${DISCORD_ENABLED ? 'El bot os está abriendo un canal en Discord.' : 'Ya podéis hablar en el chat de la mesa.'}`
             : matchWith
-              ? `${matchWith.candidate.player.alias} también quiere jugar en «${matchWith.forGroup.name}». El bot os está abriendo un canal en Discord.`
+              ? `${matchWith.candidate.player.alias} también quiere jugar en «${matchWith.forGroup.name}». ${DISCORD_ENABLED ? 'El bot os está abriendo un canal en Discord.' : 'Ya podéis hablar en el chat de la mesa.'}`
               : ''
         }
         onClose={() => setMatchWith(null)}
