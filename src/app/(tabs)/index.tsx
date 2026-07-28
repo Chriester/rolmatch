@@ -113,6 +113,9 @@ export default function HomeScreen() {
   const [items, setItems] = useState<FeedItem[] | undefined>(undefined);
   const [myAvailability, setMyAvailability] = useState<Set<string>>(new Set());
   const [loadError, setLoadError] = useState(false);
+  // el mensaje real del fallo, visible en pantalla: sin él es imposible
+  // diagnosticar problemas que solo pasan en el dispositivo de alguien
+  const [loadErrorDetail, setLoadErrorDetail] = useState<string | null>(null);
   const [index, setIndex] = useState(0);
   // cara visible de la tarjeta superior (0 = jugador, 1+ = personajes):
   // decide qué enseña la tira de detalles al deslizar hacia arriba
@@ -127,6 +130,7 @@ export default function HomeScreen() {
   const load = useCallback(() => {
     if (!session) return;
     setLoadError(false);
+    setLoadErrorDetail(null);
     setItems(undefined);
     setIndex(0);
     setProposedId(null);
@@ -145,7 +149,10 @@ export default function HomeScreen() {
           new Set(feed.myAvailability.map((a) => availabilityCellKey(a.weekday, a.slot)))
         );
       })
-      .catch(() => setLoadError(true));
+      .catch((error) => {
+        setLoadError(true);
+        setLoadErrorDetail(error instanceof Error ? error.message : String(error));
+      });
     fetchMyCharacters(session.user.id)
       .then((all) => setMyCharacters(all.filter((c) => c.status === 'looking')))
       .catch(() => {});
@@ -510,6 +517,11 @@ export default function HomeScreen() {
             <Pressable style={styles.retryButton} onPress={load}>
               <ThemedText>Reintentar</ThemedText>
             </Pressable>
+            {loadErrorDetail && (
+              <Text style={styles.errorDetail} selectable>
+                {loadErrorDetail}
+              </Text>
+            )}
           </View>
         ) : items === undefined || onboarded === undefined ? (
           <View style={styles.centerBox}>
@@ -663,6 +675,13 @@ const styles = StyleSheet.create({
   },
   centerText: {
     textAlign: 'center',
+  },
+  errorDetail: {
+    color: Rolder.textTertiary,
+    fontSize: 11,
+    fontFamily: RolderFonts.regular,
+    textAlign: 'center',
+    paddingHorizontal: Spacing.three,
   },
   retryButton: {
     borderWidth: 1,
