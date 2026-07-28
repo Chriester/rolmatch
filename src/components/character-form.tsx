@@ -1,7 +1,6 @@
-// Asistente de creación/edición de personaje en 3 pasos:
-// ① quién es → ② mini-hoja del sistema elegido (campos dinámicos por
-// esquema + diseño visual de hoja) → ③ historia y estado.
-// Sirve para crear y editar (misma pieza, precargada con `initial`).
+// Creación/edición de personaje SIN asistente: eliges sistema y se genera
+// la hoja vacía con su diseño; se rellena directamente sobre la hoja
+// (desplegables por chips, modo homebrew, entradas con el estilo del tema).
 
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useState } from 'react';
@@ -10,7 +9,7 @@ import { Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from
 import { Chip } from '@/components/chip';
 import { PhotoPicker } from '@/components/photo-picker';
 import { ThemedText } from '@/components/themed-text';
-import { OutlineButton, PrimaryButton, SectionLabel } from '@/components/ui';
+import { PrimaryButton, SectionLabel } from '@/components/ui';
 import { Rolder, RolderFonts, Spacing } from '@/constants/theme';
 import { showAlert } from '@/lib/alert';
 import {
@@ -30,15 +29,12 @@ import {
   type SheetSection,
 } from '@/lib/sheet-schema';
 
-const STEP_TITLES = ['Quién es', 'Su hoja', 'Su historia'];
-
 type CharacterFormProps = {
   userId: string;
   initial?: CharacterInput;
   busy: boolean;
   submitLabel: string;
   onSubmit: (input: CharacterInput) => void;
-  /** estado de desbloqueo de diseños (premium / nivel de cuenta) */
   themeStatus?: { isPremium: boolean; level: number };
 };
 
@@ -50,7 +46,6 @@ export function CharacterForm({
   onSubmit,
   themeStatus = { isPremium: false, level: 1 },
 }: CharacterFormProps) {
-  const [step, setStep] = useState(0);
   const [systems, setSystems] = useState<System[]>([]);
   const [name, setName] = useState(initial?.name ?? '');
   const [portraitUrl, setPortraitUrl] = useState<string | null>(initial?.portrait_url ?? null);
@@ -65,6 +60,7 @@ export function CharacterForm({
   const [isPublic, setIsPublic] = useState(initial?.is_public ?? true);
   const [traits, setTraits] = useState<Record<string, string>>(initial?.traits ?? {});
   const [sheetTheme, setSheetTheme] = useState<string | null>(initial?.sheet_theme ?? null);
+  const [homebrewMode, setHomebrewMode] = useState(false);
 
   useEffect(() => {
     fetchSystems().then(setSystems).catch(() => {});
@@ -72,16 +68,12 @@ export function CharacterForm({
 
   const systemSlug = systems.find((s) => s.id === systemId)?.slug ?? null;
   const sections = sectionsForSystem(systemSlug);
-  const activeTheme = themeForCharacter(sheetTheme, systemSlug);
-  const [homebrewMode, setHomebrewMode] = useState(false);
+  const theme = themeForCharacter(sheetTheme, systemSlug);
 
   const setTrait = (key: string, value: string) =>
     setTraits((prev) => ({ ...prev, [key]: value }));
 
-  const stepValid = step !== 0 || name.trim().length > 0;
-
   const handleSubmit = () => {
-    // solo persistimos claves del esquema activo, limpias
     const keys: string[] = [];
     for (const section of sections) {
       if ('fields' in section) keys.push(...section.fields.map((f) => f.key));
@@ -114,10 +106,10 @@ export function CharacterForm({
     const homebrewValue = field.options && !field.options.includes(value) ? value : '';
     return (
       <View key={field.key} style={styles.fieldBlock}>
-        <ThemedText type="small">
+        <Text style={[styles.fieldLabel, { color: theme.accent }]}>
           {field.label}
-          {isHomebrew(field, value) ? '  ·  ⌂ homebrew' : ''}
-        </ThemedText>
+          {isHomebrew(field, value) ? '  ⌂' : ''}
+        </Text>
         {field.options ? (
           <>
             <View style={styles.chipRow}>
@@ -136,7 +128,7 @@ export function CharacterForm({
                 value={homebrewValue}
                 onChangeText={(v) => setTrait(field.key, v)}
                 placeholder="⌂ O escribe tu versión homebrew…"
-                placeholderTextColor="rgba(255,255,255,0.35)"
+                placeholderTextColor="rgba(255,255,255,0.3)"
                 maxLength={60}
               />
             )}
@@ -147,7 +139,7 @@ export function CharacterForm({
             value={value}
             onChangeText={(v) => setTrait(field.key, v)}
             placeholder={field.placeholder}
-            placeholderTextColor="rgba(255,255,255,0.35)"
+            placeholderTextColor="rgba(255,255,255,0.3)"
             maxLength={140}
           />
         )}
@@ -155,9 +147,11 @@ export function CharacterForm({
     );
   };
 
-  const renderEditorSection = (section: SheetSection, index: number) => {
+  const renderSection = (section: SheetSection, index: number) => {
     const title = 'title' in section ? section.title : undefined;
-    const header = title ? <SectionLabel key={`t-${index}`}>{title}</SectionLabel> : null;
+    const header = title ? (
+      <Text style={[styles.sectionTitle, { color: theme.accent }]}>{title}</Text>
+    ) : null;
 
     if (section.kind === 'fields') {
       return (
@@ -169,20 +163,20 @@ export function CharacterForm({
     }
     if (section.kind === 'stats' || section.kind === 'dots' || section.kind === 'track') {
       const hint =
-        section.kind === 'dots' ? `0-${section.max ?? 5}` : section.kind === 'track' ? '4/9' : '';
+        section.kind === 'dots' ? `0-${section.max ?? 5}` : section.kind === 'track' ? '4/9' : '—';
       return (
         <View key={index} style={styles.sectionBlock}>
           {header}
           <View style={styles.compactGrid}>
             {section.fields.map((field) => (
               <View key={field.key} style={styles.compactCell}>
-                <ThemedText type="small">{field.label}</ThemedText>
+                <Text style={styles.compactLabel}>{field.label}</Text>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, styles.compactInput]}
                   value={traits[field.key] ?? ''}
                   onChangeText={(v) => setTrait(field.key, v)}
                   placeholder={field.placeholder ?? hint}
-                  placeholderTextColor="rgba(255,255,255,0.35)"
+                  placeholderTextColor="rgba(255,255,255,0.25)"
                   maxLength={12}
                 />
               </View>
@@ -200,19 +194,18 @@ export function CharacterForm({
             value={traits[section.key] ?? ''}
             onChangeText={(v) => setTrait(section.key, v)}
             placeholder={section.placeholder}
-            placeholderTextColor="rgba(255,255,255,0.35)"
+            placeholderTextColor="rgba(255,255,255,0.3)"
             multiline
           />
         </View>
       );
     }
-    // list / table / cards / chips: una entrada por línea con separadores
     const helper =
       section.kind === 'chips'
-        ? 'Separadas por comas'
+        ? 'separadas por comas'
         : section.kind === 'cards'
-          ? 'Una por línea · «Título :: descripción»'
-          : 'Una por línea · partes separadas con «·»';
+          ? 'una por línea · «Título :: descripción»'
+          : 'una por línea · partes con «·»';
     return (
       <View key={index} style={styles.sectionBlock}>
         {header}
@@ -220,284 +213,238 @@ export function CharacterForm({
           style={[styles.input, styles.multiline]}
           value={traits[section.key] ?? ''}
           onChangeText={(v) => setTrait(section.key, v)}
-          placeholder={section.hint}
-          placeholderTextColor="rgba(255,255,255,0.35)"
+          placeholder={`${section.hint}\n(${helper})`}
+          placeholderTextColor="rgba(255,255,255,0.3)"
           multiline
         />
-        <ThemedText type="small">{helper}</ThemedText>
       </View>
     );
   };
 
   return (
     <ScrollView contentContainerStyle={styles.scroll}>
-      <View style={styles.stepHeader}>
-        <ThemedText type="subtitle">{STEP_TITLES[step]}</ThemedText>
-        <ThemedText type="small">Paso {step + 1} de 3</ThemedText>
+      {/* básicos compactos */}
+      <View style={styles.basicsRow}>
+        <PhotoPicker
+          userId={userId}
+          prefix="character"
+          url={portraitUrl}
+          onPicked={setPortraitUrl}
+          label="Retrato"
+        />
       </View>
-      <View style={styles.progressRow}>
-        {STEP_TITLES.map((_, i) => (
-          <View key={i} style={[styles.progressSegment, i <= step && styles.progressDone]} />
+      <TextInput
+        style={[styles.input, styles.nameInput]}
+        value={name}
+        onChangeText={setName}
+        placeholder="Nombre del personaje *"
+        placeholderTextColor="rgba(255,255,255,0.35)"
+      />
+
+      <SectionLabel>Sistema — genera su hoja</SectionLabel>
+      <View style={styles.chipRow}>
+        {systems.map((system) => (
+          <Chip
+            key={system.id}
+            label={system.name}
+            selected={systemId === system.id}
+            onPress={() => setSystemId(systemId === system.id ? null : system.id)}
+          />
         ))}
       </View>
 
-      {step === 0 && (
-        <View style={styles.section}>
-          <PhotoPicker
-            userId={userId}
-            prefix="character"
-            url={portraitUrl}
-            onPicked={setPortraitUrl}
-            label="Retrato"
-          />
-
-          <SectionLabel>Nombre *</SectionLabel>
-          <TextInput
-            style={styles.input}
-            value={name}
-            onChangeText={setName}
-            placeholder="Karlach la Incandescente"
-            placeholderTextColor="rgba(255,255,255,0.35)"
-          />
-
-          <SectionLabel>Sistema de juego</SectionLabel>
-          <View style={styles.chipRow}>
-            {systems.map((system) => (
-              <Chip
-                key={system.id}
-                label={system.name}
-                selected={systemId === system.id}
-                onPress={() => setSystemId(systemId === system.id ? null : system.id)}
-              />
-            ))}
-          </View>
-
-          <View style={styles.twoColumns}>
-            <View style={styles.column}>
-              <SectionLabel>Género (opcional)</SectionLabel>
-              <View style={styles.chipRow}>
-                {(Object.keys(GENDER_LABELS) as Gender[]).map((value) => (
-                  <Chip
-                    key={value}
-                    label={GENDER_LABELS[value]}
-                    selected={gender === value}
-                    onPress={() => setGender(gender === value ? null : value)}
-                  />
-                ))}
-              </View>
+      {systemId === null ? (
+        <Text style={styles.hint}>
+          🎲 Elige un sistema y su hoja aparecerá aquí, lista para rellenar.
+        </Text>
+      ) : (
+        <>
+          {/* diseño + homebrew */}
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <View style={styles.themeRow}>
+              {SHEET_THEMES.map((t) => {
+                const locked = !canUseTheme(t, themeStatus);
+                const selected = theme.id === t.id;
+                return (
+                  <Pressable
+                    key={t.id}
+                    onPress={() => {
+                      if (locked) {
+                        showAlert(
+                          `Diseño «${t.name}» bloqueado`,
+                          t.unlock === 'premium'
+                            ? 'Será parte de rolder premium.'
+                            : `Se desbloquea al alcanzar el ${unlockLabel(t)} de cuenta.`
+                        );
+                        return;
+                      }
+                      setSheetTheme(t.id);
+                    }}>
+                    <LinearGradient
+                      colors={t.colors}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={[
+                        styles.themeSwatch,
+                        { borderColor: selected ? t.accent : 'rgba(255,255,255,0.15)' },
+                      ]}>
+                      <Text style={styles.themeEmblem}>{locked ? '🔒' : t.emblem}</Text>
+                      <Text style={[styles.themeName, { color: t.accent }]} numberOfLines={1}>
+                        {t.name}
+                      </Text>
+                    </LinearGradient>
+                  </Pressable>
+                );
+              })}
             </View>
-            <View style={styles.column}>
-              <SectionLabel>Edad (opcional)</SectionLabel>
-              <TextInput
-                style={styles.input}
-                value={age}
-                onChangeText={setAge}
-                placeholder="234, joven eterno…"
-                placeholderTextColor="rgba(255,255,255,0.35)"
-                maxLength={20}
-              />
-            </View>
-          </View>
-        </View>
-      )}
-
-      {step === 1 && (
-        <View style={styles.section}>
-          <View style={styles.twoColumns}>
-            <View style={styles.column}>
-              <SectionLabel>Clase / arquetipo</SectionLabel>
-              <TextInput
-                style={styles.input}
-                value={archetype}
-                onChangeText={setArchetype}
-                placeholder="Bárbara"
-                placeholderTextColor="rgba(255,255,255,0.35)"
-              />
-            </View>
-            <View style={styles.column}>
-              <SectionLabel>Nivel</SectionLabel>
-              <TextInput
-                style={styles.input}
-                value={level}
-                onChangeText={setLevel}
-                placeholder="5"
-                placeholderTextColor="rgba(255,255,255,0.35)"
-              />
-            </View>
-          </View>
+          </ScrollView>
 
           <View style={styles.homebrewRow}>
-            <View style={styles.homebrewLabel}>
-              <ThemedText>⌂ Modo homebrew</ThemedText>
-              <ThemedText type="small">
-                Escribe lo que quieras en los campos con opciones; se marcará como homebrew
-              </ThemedText>
-            </View>
+            <ThemedText type="small" style={styles.homebrewText}>
+              ⌂ Homebrew: texto libre en los desplegables (marcado en la hoja)
+            </ThemedText>
             <Switch value={homebrewMode} onValueChange={setHomebrewMode} />
           </View>
 
-          {sections.map((section, index) => renderEditorSection(section, index))}
-
-          <SectionLabel>Diseño de la hoja</SectionLabel>
-          <View style={styles.themeRow}>
-            {SHEET_THEMES.map((theme) => {
-              const locked = !canUseTheme(theme, themeStatus);
-              const selected = activeTheme.id === theme.id;
-              return (
-                <Pressable
-                  key={theme.id}
-                  onPress={() => {
-                    if (locked) {
-                      showAlert(
-                        `Diseño «${theme.name}» bloqueado`,
-                        theme.unlock === 'premium'
-                          ? 'Será parte de rolder premium. De momento, los diseños de sistema son gratis.'
-                          : `Se desbloquea al alcanzar el ${unlockLabel(theme)} de cuenta.`
-                      );
-                      return;
-                    }
-                    setSheetTheme(theme.id);
-                  }}>
-                  <LinearGradient
-                    colors={theme.colors}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={[
-                      styles.themeSwatch,
-                      { borderColor: selected ? theme.accent : 'rgba(255,255,255,0.15)' },
-                      selected && styles.themeSwatchSelected,
-                    ]}>
-                    <Text style={styles.themeEmblem}>{locked ? '🔒' : theme.emblem}</Text>
-                    <Text style={[styles.themeName, { color: theme.accent }]} numberOfLines={1}>
-                      {theme.name}
-                    </Text>
-                    {locked && (
-                      <Text style={styles.themeLock} numberOfLines={1}>
-                        {unlockLabel(theme)}
-                      </Text>
-                    )}
-                  </LinearGradient>
-                </Pressable>
-              );
-            })}
-          </View>
-        </View>
-      )}
-
-      {step === 2 && (
-        <View style={styles.section}>
-          <SectionLabel>Concepto (1-2 frases)</SectionLabel>
-          <TextInput
-            style={styles.input}
-            value={concept}
-            onChangeText={setConcept}
-            placeholder="Fugitiva del infierno con un motor infernal por corazón"
-            placeholderTextColor="rgba(255,255,255,0.35)"
-          />
-
-          <SectionLabel>Trasfondo breve (opcional)</SectionLabel>
-          <TextInput
-            style={[styles.input, styles.multiline]}
-            value={backstory}
-            onChangeText={setBackstory}
-            placeholder="Su historia, sus cicatrices, lo que busca…"
-            placeholderTextColor="rgba(255,255,255,0.35)"
-            multiline
-          />
-
-          <SectionLabel>Estado</SectionLabel>
-          <View style={styles.chipRow}>
-            {(Object.keys(CHARACTER_STATUS_LABELS) as CharacterStatus[]).map((value) => (
-              <Chip
-                key={value}
-                label={CHARACTER_STATUS_LABELS[value]}
-                selected={status === value}
-                onPress={() => setStatus(value)}
-              />
-            ))}
-          </View>
-
-          <View style={styles.switchRow}>
-            <View style={styles.switchLabel}>
-              <ThemedText>Personaje público</ThemedText>
-              <ThemedText type="small">
-                Los públicos aparecen en tu vitrina cuando los GMs te ven como candidato
-              </ThemedText>
+          {/* LA HOJA editable */}
+          <View style={[styles.sheet, { borderColor: theme.border }]}>
+            <View style={styles.hero}>
+              <LinearGradient
+                colors={theme.colors}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.heroEmblem}>
+                <Text style={styles.heroEmoji}>{theme.emblem}</Text>
+              </LinearGradient>
+              <View style={styles.heroInputs}>
+                <TextInput
+                  style={[styles.input, styles.heroInput]}
+                  value={archetype}
+                  onChangeText={setArchetype}
+                  placeholder="Clase / arquetipo"
+                  placeholderTextColor="rgba(255,255,255,0.3)"
+                />
+                <View style={styles.heroSmallRow}>
+                  <TextInput
+                    style={[styles.input, styles.heroSmall]}
+                    value={level}
+                    onChangeText={setLevel}
+                    placeholder="Nivel"
+                    placeholderTextColor="rgba(255,255,255,0.3)"
+                  />
+                  <TextInput
+                    style={[styles.input, styles.heroSmall]}
+                    value={age}
+                    onChangeText={setAge}
+                    placeholder="Edad"
+                    placeholderTextColor="rgba(255,255,255,0.3)"
+                    maxLength={20}
+                  />
+                </View>
+              </View>
             </View>
-            <Switch value={isPublic} onValueChange={setIsPublic} />
+            <View style={styles.chipRow}>
+              {(Object.keys(GENDER_LABELS) as Gender[]).map((value) => (
+                <Chip
+                  key={value}
+                  label={GENDER_LABELS[value]}
+                  selected={gender === value}
+                  onPress={() => setGender(gender === value ? null : value)}
+                />
+              ))}
+            </View>
+
+            <TextInput
+              style={[styles.input, styles.conceptInput]}
+              value={concept}
+              onChangeText={setConcept}
+              placeholder="«Concepto en una frase»"
+              placeholderTextColor="rgba(255,255,255,0.3)"
+            />
+
+            {sections.map(renderSection)}
+
+            <View style={styles.sectionBlock}>
+              <Text style={[styles.sectionTitle, { color: theme.accent }]}>Trasfondo</Text>
+              <TextInput
+                style={[styles.input, styles.multiline]}
+                value={backstory}
+                onChangeText={setBackstory}
+                placeholder="Su historia, sus cicatrices, lo que busca…"
+                placeholderTextColor="rgba(255,255,255,0.3)"
+                multiline
+              />
+            </View>
           </View>
-        </View>
+        </>
       )}
 
-      <View style={styles.nav}>
-        {step > 0 && (
-          <OutlineButton
-            label="‹ Atrás"
-            tone="white"
-            onPress={() => setStep(step - 1)}
-            disabled={busy}
-            style={styles.backButton}
+      <SectionLabel>Estado</SectionLabel>
+      <View style={styles.chipRow}>
+        {(Object.keys(CHARACTER_STATUS_LABELS) as CharacterStatus[]).map((value) => (
+          <Chip
+            key={value}
+            label={CHARACTER_STATUS_LABELS[value]}
+            selected={status === value}
+            onPress={() => setStatus(value)}
           />
-        )}
-        {step < 2 ? (
-          <PrimaryButton
-            label="Siguiente ›"
-            onPress={() => setStep(step + 1)}
-            disabled={!stepValid || busy}
-            style={styles.nextButton}
-          />
-        ) : (
-          <PrimaryButton
-            label={busy ? 'Guardando…' : submitLabel}
-            onPress={handleSubmit}
-            disabled={name.trim().length === 0 || busy}
-            style={styles.nextButton}
-          />
-        )}
+        ))}
       </View>
+
+      <View style={styles.switchRow}>
+        <View style={styles.switchLabel}>
+          <ThemedText>Personaje público</ThemedText>
+          <ThemedText type="small">
+            Los públicos aparecen en tu vitrina cuando los GMs te ven como candidato
+          </ThemedText>
+        </View>
+        <Switch value={isPublic} onValueChange={setIsPublic} />
+      </View>
+
+      <PrimaryButton
+        label={busy ? 'Guardando…' : submitLabel}
+        onPress={handleSubmit}
+        disabled={name.trim().length === 0 || busy}
+      />
     </ScrollView>
   );
 }
+
+const SHEET_BG = '#101018';
 
 const styles = StyleSheet.create({
   scroll: {
     gap: Spacing.three,
     paddingBottom: Spacing.five,
   },
-  stepHeader: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    justifyContent: 'space-between',
+  basicsRow: {
+    alignItems: 'center',
   },
-  progressRow: {
-    flexDirection: 'row',
-    gap: 6,
+  nameInput: {
+    fontSize: 17,
+    fontFamily: RolderFonts.bold,
+    fontWeight: '700',
   },
-  progressSegment: {
-    flex: 1,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: 'rgba(255,255,255,0.12)',
-  },
-  progressDone: {
-    backgroundColor: Rolder.violet,
-  },
-  section: {
-    gap: Spacing.three,
+  hint: {
+    color: Rolder.textSecondary,
+    fontSize: 13,
+    fontFamily: RolderFonts.regular,
+    textAlign: 'center',
+    paddingVertical: Spacing.three,
   },
   input: {
     backgroundColor: Rolder.input,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.15)',
-    borderRadius: 14,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    borderRadius: 12,
+    paddingHorizontal: 13,
+    paddingVertical: 10,
     color: '#fff',
-    fontSize: 15,
+    fontSize: 14,
     fontFamily: RolderFonts.regular,
   },
   multiline: {
-    minHeight: 90,
+    minHeight: 84,
     textAlignVertical: 'top',
   },
   chipRow: {
@@ -505,19 +452,101 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: Spacing.two,
   },
-  twoColumns: {
+  themeRow: {
     flexDirection: 'row',
-    gap: Spacing.three,
-  },
-  column: {
-    flex: 1,
     gap: Spacing.two,
   },
-  fieldBlock: {
-    gap: Spacing.one,
+  themeSwatch: {
+    width: 84,
+    borderWidth: 1.5,
+    borderRadius: 14,
+    paddingVertical: 9,
+    paddingHorizontal: 6,
+    alignItems: 'center',
+    gap: 2,
+  },
+  themeEmblem: {
+    fontSize: 20,
+  },
+  themeName: {
+    fontSize: 10.5,
+    fontFamily: RolderFonts.bold,
+    fontWeight: '700',
+  },
+  homebrewRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: Spacing.two,
+    backgroundColor: 'rgba(139,108,255,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(139,108,255,0.3)',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  homebrewText: {
+    flex: 1,
+  },
+  sheet: {
+    backgroundColor: SHEET_BG,
+    borderWidth: 1,
+    borderRadius: 18,
+    padding: 14,
+    gap: Spacing.three,
+  },
+  hero: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  heroEmblem: {
+    width: 62,
+    height: 62,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heroEmoji: {
+    fontSize: 30,
+  },
+  heroInputs: {
+    flex: 1,
+    gap: 6,
+  },
+  heroInput: {
+    paddingVertical: 8,
+  },
+  heroSmallRow: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  heroSmall: {
+    flex: 1,
+    paddingVertical: 8,
+  },
+  conceptInput: {
+    fontStyle: 'italic',
   },
   sectionBlock: {
     gap: Spacing.two,
+  },
+  sectionTitle: {
+    fontSize: 10.5,
+    fontFamily: RolderFonts.bold,
+    fontWeight: '700',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+  },
+  fieldBlock: {
+    gap: 6,
+  },
+  fieldLabel: {
+    fontSize: 10,
+    fontFamily: RolderFonts.bold,
+    fontWeight: '700',
+    letterSpacing: 0.7,
+    textTransform: 'uppercase',
   },
   compactGrid: {
     flexDirection: 'row',
@@ -525,54 +554,21 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   compactCell: {
-    width: '47%',
+    width: '30%',
     flexGrow: 1,
-    gap: 2,
-  },
-  homebrewRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: Spacing.three,
-    backgroundColor: 'rgba(139,108,255,0.08)',
-    borderWidth: 1,
-    borderColor: 'rgba(139,108,255,0.3)',
-    borderRadius: 14,
-    padding: 12,
-  },
-  homebrewLabel: {
-    flex: 1,
-    gap: 2,
-  },
-  themeRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.two,
-  },
-  themeSwatch: {
-    width: 96,
-    borderWidth: 1.5,
-    borderRadius: 14,
-    paddingVertical: 10,
-    paddingHorizontal: 8,
-    alignItems: 'center',
     gap: 3,
   },
-  themeSwatchSelected: {
-    transform: [{ scale: 1.04 }],
-  },
-  themeEmblem: {
-    fontSize: 22,
-  },
-  themeName: {
-    fontSize: 11,
+  compactLabel: {
+    color: 'rgba(255,255,255,0.5)',
+    fontSize: 9.5,
     fontFamily: RolderFonts.bold,
     fontWeight: '700',
+    letterSpacing: 0.5,
   },
-  themeLock: {
-    color: 'rgba(255,255,255,0.6)',
-    fontSize: 9.5,
-    fontFamily: RolderFonts.semibold,
+  compactInput: {
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    textAlign: 'center',
   },
   switchRow: {
     flexDirection: 'row',
@@ -583,16 +579,5 @@ const styles = StyleSheet.create({
   switchLabel: {
     flex: 1,
     gap: 2,
-  },
-  nav: {
-    flexDirection: 'row',
-    gap: 10,
-    marginTop: Spacing.two,
-  },
-  backButton: {
-    flex: 1,
-  },
-  nextButton: {
-    flex: 2,
   },
 });
