@@ -34,8 +34,6 @@ import Animated, {
   runOnJS,
   useAnimatedStyle,
   useSharedValue,
-  withRepeat,
-  withSequence,
   withSpring,
   withTiming,
   type SharedValue,
@@ -96,18 +94,6 @@ const TopCard = forwardRef<TopCardHandle, TopCardProps>(function TopCard(
   const axis = useSharedValue(0);
   // 1 mientras el arrastre supera el umbral (para el tick háptico)
   const armed = useSharedValue(0);
-  // Latido del indicador «desliza hacia arriba» (︿)
-  const pulse = useSharedValue(0);
-
-  useEffect(() => {
-    pulse.value = withRepeat(
-      withSequence(
-        withTiming(1, { duration: 900, reduceMotion: ReduceMotion.Never }),
-        withTiming(0, { duration: 900, reduceMotion: ReduceMotion.Never })
-      ),
-      -1
-    );
-  }, [pulse]);
   const threshold = width * THRESHOLD_FRACTION;
   const exitDistance = Math.max(width * 1.6, Dimensions.get('window').width * 1.1);
   const hasDetails = details !== undefined;
@@ -223,15 +209,6 @@ const TopCard = forwardRef<TopCardHandle, TopCardProps>(function TopCard(
       },
     ],
   }));
-  // Visible en reposo, se apaga al arrastrar o con la tira abierta
-  const hintStyle = useAnimatedStyle(() => ({
-    opacity:
-      (0.35 + 0.55 * pulse.value) *
-      (1 - sheet.value) *
-      interpolate(Math.abs(tx.value), [0, threshold * 0.4], [1, 0], Extrapolation.CLAMP),
-    transform: [{ translateY: interpolate(pulse.value, [0, 1], [2, -4]) }],
-  }));
-
   const passStampStyle = useAnimatedStyle(() => ({
     opacity:
       interpolate(tx.value, [-threshold * 0.5, -threshold * 0.1], [1, 0], Extrapolation.CLAMP) *
@@ -262,11 +239,6 @@ const TopCard = forwardRef<TopCardHandle, TopCardProps>(function TopCard(
         <Animated.View style={[styles.stamp, styles.stampPass, passStampStyle]}>
           <Text style={[styles.stampText, styles.stampTextPass]}>{passLabel}</Text>
         </Animated.View>
-        {hasDetails && (
-          <Animated.View style={[styles.hint, hintStyle]} pointerEvents="none">
-            <Text style={styles.hintGlyph}>︿</Text>
-          </Animated.View>
-        )}
       </Animated.View>
     </GestureDetector>
   );
@@ -416,19 +388,5 @@ const styles = StyleSheet.create({
   },
   stampTextPass: {
     color: '#3D0A0C',
-  },
-  hint: {
-    position: 'absolute',
-    bottom: 34,
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-  },
-  hintGlyph: {
-    color: 'rgba(255,255,255,0.9)',
-    fontSize: 20,
-    fontWeight: '700',
-    textShadowColor: 'rgba(0,0,0,0.6)',
-    textShadowRadius: 6,
   },
 });

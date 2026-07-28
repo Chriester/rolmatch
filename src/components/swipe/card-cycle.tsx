@@ -50,13 +50,11 @@ export function CardCycle({ faces }: CardCycleProps) {
     <GestureDetector gesture={tap}>
       <View style={styles.fill}>
         <Animated.View style={[styles.fill, faceStyle]}>{faces[face]}</Animated.View>
-        {faces.length > 1 && (
-          <View style={styles.dots} pointerEvents="none">
-            {faces.map((_, i) => (
-              <View key={i} style={[styles.dot, i === face && styles.dotActive]} />
-            ))}
-          </View>
-        )}
+        <View style={styles.dots} pointerEvents="none">
+          {faces.map((_, i) => (
+            <View key={i} style={[styles.dot, i === face && styles.dotActive]} />
+          ))}
+        </View>
       </View>
     </GestureDetector>
   );
@@ -66,18 +64,18 @@ const styles = StyleSheet.create({
   fill: {
     flex: 1,
   },
-  // Indicador de caras: barras estilo stories (handoff rolder §1)
+  // Indicador de caras: barras estilo stories a ancho completo, en partes
+  // iguales (con una sola cara queda una única barra, como pidió Chris)
   dots: {
     position: 'absolute',
-    top: 8,
-    left: 0,
-    right: 0,
+    top: 10,
+    left: 14,
+    right: 14,
     flexDirection: 'row',
-    justifyContent: 'center',
     gap: 6,
   },
   dot: {
-    width: 26,
+    flex: 1,
     height: 4,
     borderRadius: 2,
     backgroundColor: 'rgba(255,255,255,0.35)',

@@ -6,11 +6,36 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { Tabs } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View, type PressableProps, type StyleProp, type ViewStyle } from 'react-native';
 
 import { Rolder, RolderFonts } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
 import { fetchUnreadTotal } from '@/lib/messages';
+
+// Sin ripple de Android (el círculo se recortaba contra el borde de la
+// barra): feedback por opacidad y escala, coherente con los botones sueltos.
+type BarButtonProps = {
+  children: React.ReactNode;
+  onPress?: PressableProps['onPress'];
+  onLongPress?: PressableProps['onLongPress'];
+  accessibilityState?: PressableProps['accessibilityState'];
+  style?: StyleProp<ViewStyle>;
+};
+
+function BarButton({ children, onPress, onLongPress, accessibilityState, style }: BarButtonProps) {
+  return (
+    <Pressable
+      onPress={onPress}
+      onLongPress={onLongPress}
+      accessibilityState={accessibilityState}
+      style={({ pressed }) => [
+        style as object,
+        pressed && { opacity: 0.7, transform: [{ scale: 0.94 }] },
+      ]}>
+      {children}
+    </Pressable>
+  );
+}
 
 function TabButton({
   emoji,
@@ -75,6 +100,7 @@ export default function TabsLayout() {
         tabBarShowLabel: false,
         tabBarStyle: styles.bar,
         tabBarItemStyle: styles.item,
+        tabBarButton: BarButton,
       }}>
       <Tabs.Screen
         name="likes"
