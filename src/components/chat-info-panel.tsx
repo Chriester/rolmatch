@@ -120,7 +120,17 @@ export function ChatInfoPanel({ visible, group, onClose }: ChatInfoPanelProps) {
             })}
 
             <OutlineButton
+              label="📅 Organizar partida"
+              onPress={() =>
+                navigate(() =>
+                  router.push({ pathname: '/groups/[id]/schedule', params: { id: group.id } })
+                )
+              }
+              style={styles.groupButton}
+            />
+            <OutlineButton
               label="🛡️ Ver mesa completa"
+              tone="white"
               onPress={() =>
                 navigate(() =>
                   router.push({ pathname: '/groups/[id]', params: { id: group.id } })

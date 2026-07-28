@@ -83,6 +83,7 @@ export default function RootLayout() {
           <Stack.Screen name="groups/[id]/candidates" />
           <Stack.Screen name="groups/[id]/edit" />
           <Stack.Screen name="groups/[id]/chat" />
+          <Stack.Screen name="groups/[id]/schedule" />
         </Stack.Protected>
           <Stack.Protected guard={!session}>
             <Stack.Screen name="login" />

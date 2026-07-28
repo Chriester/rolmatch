@@ -195,6 +195,14 @@ export default function GroupChatScreen() {
           </Text>
           <Pressable
             style={({ pressed }) => [styles.infoButton, pressed && styles.pressed]}
+            onPress={() =>
+              router.push({ pathname: '/groups/[id]/schedule', params: { id: id! } })
+            }
+            accessibilityLabel="Organizar partida">
+            <Text style={styles.calendarGlyph}>📅</Text>
+          </Pressable>
+          <Pressable
+            style={({ pressed }) => [styles.infoButton, pressed && styles.pressed]}
             onPress={() => setInfoOpen(true)}
             accessibilityLabel="Información de la mesa">
             <Text style={styles.infoGlyph}>i</Text>
@@ -335,6 +343,9 @@ const styles = StyleSheet.create({
     backgroundColor: Rolder.input,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  calendarGlyph: {
+    fontSize: 15,
   },
   infoGlyph: {
     color: Rolder.violet,
