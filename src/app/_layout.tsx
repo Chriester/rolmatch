@@ -17,10 +17,12 @@ import { Rolder } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
 import { ensureCommunityMembership } from '@/lib/auth';
 import { DISCORD_ENABLED } from '@/lib/config';
+import { UpdateBanner } from '@/components/update-banner';
 import { UpdateOverlay } from '@/components/update-overlay';
 import { useNotificationTapRouting } from '@/lib/notifications';
 import { useQuickActions } from '@/lib/quick-actions';
 import { useOtaUpdates } from '@/lib/updates';
+import { useWebVersionCheck } from '@/lib/version-check';
 import { setupWebPwa } from '@/lib/web-push';
 
 SplashScreen.preventAutoHideAsync();
@@ -40,6 +42,7 @@ export default function RootLayout() {
   const session = useSession();
   useNotificationTapRouting();
   const updating = useOtaUpdates();
+  const webUpdateReady = useWebVersionCheck();
   useQuickActions();
   const [fontsLoaded] = useFonts({
     Sora_400Regular,
@@ -96,6 +99,7 @@ export default function RootLayout() {
           </Stack.Protected>
         </Stack>
         {updating && <UpdateOverlay />}
+        {webUpdateReady && <UpdateBanner />}
       </ThemeProvider>
     </GestureHandlerRootView>
   );

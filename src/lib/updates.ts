@@ -1,12 +1,14 @@
 // OTA determinista: en vez de "descarga en background y aplica en el
 // SIGUIENTE arranque" (el default de expo-updates, que confunde — parece
-// que la app no se actualiza), al arrancar comprobamos, descargamos y
-// recargamos en el momento. La recarga ocurre en los primeros segundos,
-// antes de que el usuario esté haciendo nada.
+// que la app no se actualiza), comprobamos, descargamos y recargamos en el
+// momento: al arrancar y también cada vez que la app vuelve a primer plano
+// (con un mínimo entre comprobaciones para no machacar el servidor).
 
 import * as Updates from 'expo-updates';
 import { useEffect, useState } from 'react';
-import { Platform } from 'react-native';
+import { AppState, Platform } from 'react-native';
+
+const FOREGROUND_MIN_MS = 5 * 60_000;
 
 /**
  * Devuelve true mientras se descarga y aplica una actualización — el layout
@@ -17,10 +19,14 @@ export function useOtaUpdates(): boolean {
 
   useEffect(() => {
     if (Platform.OS === 'web' || __DEV__) return;
-    (async () => {
+    let lastCheck = 0;
+
+    const check = async () => {
+      if (Date.now() - lastCheck < FOREGROUND_MIN_MS) return;
+      lastCheck = Date.now();
       try {
-        const check = await Updates.checkForUpdateAsync();
-        if (check.isAvailable) {
+        const result = await Updates.checkForUpdateAsync();
+        if (result.isAvailable) {
           setUpdating(true);
           await Updates.fetchUpdateAsync();
           await Updates.reloadAsync();
@@ -29,7 +35,13 @@ export function useOtaUpdates(): boolean {
         // sin red o servidor caído: seguimos con lo embebido/cacheado
         setUpdating(false);
       }
-    })();
+    };
+
+    check();
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') check();
+    });
+    return () => subscription.remove();
   }, []);
 
   return updating;
