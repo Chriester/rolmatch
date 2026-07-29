@@ -11,14 +11,26 @@
 // que la APK necesita google-services.json + credenciales FCM V1 en EAS.
 // Los tokens caducados (DeviceNotRegistered) se borran de la tabla.
 //
+// Además de Expo (APK), envía Web Push a los navegadores suscritos en
+// web_push_subscriptions (migr. 00024) — el canal de los usuarios de iOS.
+//
 // Secrets necesarios (Edge Functions → Secrets):
-//   WEBHOOK_SECRET  valor compartido con el webhook (cabecera x-webhook-secret)
-//   SB_SECRET_KEY   clave sb_secret_... (igual que discord-match)
+//   WEBHOOK_SECRET     valor compartido con el webhook (cabecera x-webhook-secret)
+//   SB_SECRET_KEY      clave sb_secret_... (igual que discord-match)
+//   VAPID_PRIVATE_KEY  clave privada VAPID (sin ella el web push se omite)
 // SUPABASE_URL la inyecta Supabase automáticamente.
 
 import { createClient } from 'jsr:@supabase/supabase-js@2';
+import webpush from 'npm:web-push@3.6.7';
 
 const EXPO_PUSH_API = 'https://exp.host/--/api/v2/push/send';
+// La misma clave pública que usa el cliente (src/lib/web-push.ts)
+const VAPID_PUBLIC_KEY =
+  'BBNJD_C2usP--UtS1sMIjhonYI29SyymoD5DAs8Pry77TvC7MTVfG5mgonImqpm34l4isWZ7AqZgl8unElCklwo';
+const VAPID_PRIVATE_KEY = Deno.env.get('VAPID_PRIVATE_KEY');
+if (VAPID_PRIVATE_KEY) {
+  webpush.setVapidDetails('mailto:chrishernandezponce@gmail.com', VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
+}
 
 type MatchRecord = { id: string; user_id: string; group_id: string };
 type MessageRecord = {
@@ -147,6 +159,37 @@ async function sendAll(byUser: Map<string, { title: string; body: string; url: s
   return { sent: pushes.length - dead.length };
 }
 
+/** Web Push a los navegadores suscritos de esos usuarios (iOS/web). */
+async function sendAllWeb(byUser: Map<string, { title: string; body: string; url: string }>) {
+  if (!VAPID_PRIVATE_KEY || byUser.size === 0) return { webSent: 0 };
+  const { data: subs } = await supabase
+    .from('web_push_subscriptions')
+    .select('id, user_id, endpoint, p256dh, auth')
+    .in('user_id', [...byUser.keys()]);
+  let webSent = 0;
+  const dead: string[] = [];
+  for (const sub of subs ?? []) {
+    const content = byUser.get(sub.user_id);
+    if (!content) continue;
+    try {
+      await webpush.sendNotification(
+        { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+        JSON.stringify(content)
+      );
+      webSent++;
+    } catch (err) {
+      const status = (err as { statusCode?: number }).statusCode;
+      // 404/410 = suscripción caducada o revocada
+      if (status === 404 || status === 410) dead.push(sub.id);
+      else console.error(`web push falló (${status}): ${err}`);
+    }
+  }
+  if (dead.length > 0) {
+    await supabase.from('web_push_subscriptions').delete().in('id', dead);
+  }
+  return { webSent };
+}
+
 Deno.serve(async (request) => {
   if (request.headers.get('x-webhook-secret') !== Deno.env.get('WEBHOOK_SECRET')) {
     return new Response('forbidden', { status: 403 });
@@ -164,7 +207,8 @@ Deno.serve(async (request) => {
           : new Map<string, { title: string; body: string; url: string }>();
 
     const result = await sendAll(byUser);
-    return Response.json(result);
+    const webResult = await sendAllWeb(byUser);
+    return Response.json({ ...result, ...webResult });
   } catch (error) {
     console.error(error);
     // 200 igualmente: no queremos que Supabase reintente en bucle

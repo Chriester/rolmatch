@@ -4,7 +4,7 @@
 import { Image } from 'expo-image';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppHeader } from '@/components/app-header';
@@ -13,6 +13,7 @@ import { ListRow, OutlineButton, ScreenTitle } from '@/components/ui';
 import { MaxContentWidth, Rolder, RolderFonts, Spacing } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
 import { fetchMyChats, type ChatSummary } from '@/lib/messages';
+import { webPushState } from '@/lib/web-push';
 
 function timeLabel(iso: string) {
   const date = new Date(iso);
@@ -44,6 +45,14 @@ export default function ChatsScreen() {
       <SafeAreaView style={styles.safeArea}>
         <AppHeader />
         <ScreenTitle>💬 Mis chats</ScreenTitle>
+
+        {['ready', 'ios-install'].includes(webPushState()) && (
+          <Pressable style={styles.pushBanner} onPress={() => router.push('/settings')}>
+            <Text style={styles.pushBannerText}>
+              🔔 Activa las notificaciones para no perderte matches ni mensajes ›
+            </Text>
+          </Pressable>
+        )}
 
         {loadError ? (
           <View style={styles.centerBox}>
@@ -123,6 +132,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: Spacing.two,
     gap: Spacing.three,
+  },
+  pushBanner: {
+    backgroundColor: 'rgba(139,108,255,0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(139,108,255,0.4)',
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+  },
+  pushBannerText: {
+    color: Rolder.violetSofter,
+    fontSize: 13,
+    fontFamily: RolderFonts.semibold,
   },
   loading: {
     marginTop: Spacing.six,

@@ -21,6 +21,7 @@ import { UpdateOverlay } from '@/components/update-overlay';
 import { useNotificationTapRouting } from '@/lib/notifications';
 import { useQuickActions } from '@/lib/quick-actions';
 import { useOtaUpdates } from '@/lib/updates';
+import { setupWebPwa } from '@/lib/web-push';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -56,6 +57,8 @@ export default function RootLayout() {
     if (DISCORD_ENABLED && session?.provider_token) {
       ensureCommunityMembership(session.provider_token);
     }
+    // Web: manifest PWA + refresco silencioso de la suscripción push
+    setupWebPwa(session?.user.id ?? null);
   }, [session, fontsLoaded]);
 
   // Esperando a restaurar la sesión persistida y las fuentes
