@@ -1,6 +1,8 @@
-// Historico de la mesa: jugadores comparten fotos y frases de la partida
-// (ej. "Dia uno: no habran mas dias"), en orden cronologico. Reutiliza el
-// bucket avatars via pickAndUploadImage (prefix 'journal').
+// Historico de la mesa: se lee siempre, pero solo se escribe el dia de la
+// partida (hay una fila en `sessions` cuya fecha, en la timezone de la
+// mesa, es hoy — lo decide el servidor, ver migr. 00028). Al abrirlo ese
+// dia se crea el mensaje de sistema "Partida del <dia>" y todo lo que se
+// publique queda encuadernado bajo ese capitulo.
 
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -8,10 +10,10 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  FlatList,
   KeyboardAvoidingView,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -23,6 +25,7 @@ import { showAlert } from '@/lib/alert';
 import { AppHeader } from '@/components/app-header';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { OutlineButton } from '@/components/ui';
 import { MaxContentWidth, Rolder, RolderFonts, Spacing } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
 import { fetchGroup, type GroupDetail } from '@/lib/groups';
@@ -30,17 +33,15 @@ import { pickAndUploadImage } from '@/lib/images';
 import {
   addJournalEntry,
   deleteJournalEntry,
+  ensureTodayHeader,
   fetchJournalEntries,
+  groupJournalEntries,
   type JournalEntry,
 } from '@/lib/journal';
+import { fetchTodaySession, formatSessionDay, type GameSession } from '@/lib/sessions';
 
-function formatEntryDate(iso: string) {
-  return new Date(iso).toLocaleString('es-ES', {
-    day: 'numeric',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+function formatEntryTime(iso: string) {
+  return new Date(iso).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
 }
 
 export default function GroupJournalScreen() {
@@ -48,6 +49,7 @@ export default function GroupJournalScreen() {
   const session = useSession();
   const [group, setGroup] = useState<GroupDetail | null | undefined>(undefined);
   const [entries, setEntries] = useState<JournalEntry[] | undefined>(undefined);
+  const [todaySession, setTodaySession] = useState<GameSession | null | undefined>(undefined);
   const [draft, setDraft] = useState('');
   const [pendingImage, setPendingImage] = useState<string | null>(null);
   const [pickingImage, setPickingImage] = useState(false);
@@ -64,7 +66,23 @@ export default function GroupJournalScreen() {
         setEntries([]);
         showAlert('No se pudo cargar el historico', 'Vuelve a entrar en unos segundos.');
       });
+    fetchTodaySession(id)
+      .then(setTodaySession)
+      .catch(() => setTodaySession(null));
   }, [id]);
+
+  // Crea el capitulo del dia la primera vez que alguien entra hoy.
+  useEffect(() => {
+    if (!id || !session || !todaySession || entries === undefined) return;
+    const hasHeader = entries.some(
+      (e) => e.is_system && e.session_id === todaySession.id
+    );
+    if (hasHeader) return;
+    ensureTodayHeader(id, session.user.id, formatSessionDay(todaySession.starts_at))
+      .then(() => fetchJournalEntries(id))
+      .then(setEntries)
+      .catch(() => {});
+  }, [id, session, todaySession, entries]);
 
   const handlePickImage = async () => {
     if (!session) return;
@@ -85,7 +103,7 @@ export default function GroupJournalScreen() {
     setPosting(true);
     try {
       const entry = await addJournalEntry(id, session.user.id, draft, pendingImage);
-      setEntries((list) => [entry, ...(list ?? [])]);
+      setEntries((list) => [...(list ?? []), entry]);
       setDraft('');
       setPendingImage(null);
     } catch (error) {
@@ -121,11 +139,12 @@ export default function GroupJournalScreen() {
   }
 
   const iAmMember = group.group_members.some((m) => m.user_id === session?.user.id);
+  const chapters = groupJournalEntries(entries);
 
-  const renderItem = ({ item }: { item: JournalEntry }) => {
+  const renderEntry = (item: JournalEntry) => {
     const isMine = item.author_id === session?.user.id;
     return (
-      <View style={styles.card}>
+      <View key={item.id} style={styles.card}>
         <View style={styles.cardHeader}>
           {item.profiles?.avatar_url ? (
             <Image source={{ uri: item.profiles.avatar_url }} style={styles.authorAvatar} />
@@ -136,7 +155,7 @@ export default function GroupJournalScreen() {
           )}
           <View style={styles.cardHeaderText}>
             <Text style={styles.authorName}>{item.profiles?.alias ?? 'Jugador/a'}</Text>
-            <Text style={styles.entryDate}>{formatEntryDate(item.created_at)}</Text>
+            <Text style={styles.entryDate}>{formatEntryTime(item.created_at)}</Text>
           </View>
           {isMine && (
             <Pressable
@@ -177,76 +196,104 @@ export default function GroupJournalScreen() {
           <KeyboardAvoidingView
             style={styles.listArea}
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-            <FlatList
-              style={styles.list}
-              data={entries}
-              keyExtractor={(e) => e.id}
-              contentContainerStyle={styles.listContent}
-              renderItem={renderItem}
-              ListEmptyComponent={
+            <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
+              {chapters.length === 0 ? (
                 <View style={styles.centerBox}>
                   <ThemedText style={styles.centerText}>
-                    Sin recuerdos todavia. Comparte el primero: una foto o una frase de la partida.
+                    Sin recuerdos todavia. El dia de la partida se abre el histórico para
+                    escribir.
                   </ThemedText>
                 </View>
-              }
-            />
-            {pendingImage && (
-              <View style={styles.previewRow}>
-                <Image source={{ uri: pendingImage }} style={styles.previewThumb} />
-                <Pressable
-                  style={styles.previewRemove}
-                  onPress={() => setPendingImage(null)}
-                  accessibilityLabel="Quitar imagen">
-                  <Text style={styles.previewRemoveLabel}>✕</Text>
-                </Pressable>
-              </View>
-            )}
-            <View style={styles.composerRow}>
-              <Pressable
-                style={styles.attachButton}
-                onPress={handlePickImage}
-                disabled={pickingImage}
-                accessibilityLabel="Anadir foto">
-                {pickingImage ? (
-                  <ActivityIndicator size="small" />
-                ) : (
-                  <Text style={styles.attachLabel}>📷</Text>
+              ) : (
+                chapters.map((chapter) => (
+                  <View key={chapter.sessionId ?? 'sin-sesion'} style={styles.chapter}>
+                    <View style={styles.chapterHeader}>
+                      <Text style={styles.chapterHeaderLabel} numberOfLines={2}>
+                        {chapter.header?.body ?? 'Recuerdos sueltos'}
+                      </Text>
+                    </View>
+                    {chapter.entries.map(renderEntry)}
+                  </View>
+                ))
+              )}
+            </ScrollView>
+
+            {todaySession ? (
+              <>
+                {pendingImage && (
+                  <View style={styles.previewRow}>
+                    <Image source={{ uri: pendingImage }} style={styles.previewThumb} />
+                    <Pressable
+                      style={styles.previewRemove}
+                      onPress={() => setPendingImage(null)}
+                      accessibilityLabel="Quitar imagen">
+                      <Text style={styles.previewRemoveLabel}>✕</Text>
+                    </Pressable>
+                  </View>
                 )}
-              </Pressable>
-              <TextInput
-                style={[styles.input, styles.composerInput]}
-                value={draft}
-                onChangeText={setDraft}
-                placeholder="Escribe un recuerdo…"
-                placeholderTextColor="rgba(255,255,255,0.35)"
-                multiline
-                maxLength={500}
-                onKeyPress={(e) => {
-                  if (Platform.OS !== 'web') return;
-                  const native = e.nativeEvent as unknown as { key: string; shiftKey?: boolean };
-                  if (native.key === 'Enter' && !native.shiftKey) {
-                    e.preventDefault();
-                    handlePost();
+                <View style={styles.composerRow}>
+                  <Pressable
+                    style={styles.attachButton}
+                    onPress={handlePickImage}
+                    disabled={pickingImage}
+                    accessibilityLabel="Anadir foto">
+                    {pickingImage ? (
+                      <ActivityIndicator size="small" />
+                    ) : (
+                      <Text style={styles.attachLabel}>📷</Text>
+                    )}
+                  </Pressable>
+                  <TextInput
+                    style={[styles.input, styles.composerInput]}
+                    value={draft}
+                    onChangeText={setDraft}
+                    placeholder="Escribe un recuerdo…"
+                    placeholderTextColor="rgba(255,255,255,0.35)"
+                    multiline
+                    maxLength={500}
+                    onKeyPress={(e) => {
+                      if (Platform.OS !== 'web') return;
+                      const native = e.nativeEvent as unknown as {
+                        key: string;
+                        shiftKey?: boolean;
+                      };
+                      if (native.key === 'Enter' && !native.shiftKey) {
+                        e.preventDefault();
+                        handlePost();
+                      }
+                    }}
+                  />
+                  <Pressable
+                    style={({ pressed }) => [
+                      (posting || (!draft.trim() && !pendingImage)) && styles.disabled,
+                      pressed && styles.pressed,
+                    ]}
+                    onPress={handlePost}
+                    disabled={posting || (!draft.trim() && !pendingImage)}>
+                    <LinearGradient
+                      colors={[Rolder.violet, Rolder.discord]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={styles.sendButton}>
+                      <Text style={styles.sendLabel}>➤</Text>
+                    </LinearGradient>
+                  </Pressable>
+                </View>
+              </>
+            ) : todaySession === null ? (
+              <View style={styles.noEventBox}>
+                <ThemedText type="small" style={styles.centerText}>
+                  Hoy no hay partida programada — el histórico se abre para escribir el día de
+                  la sesión.
+                </ThemedText>
+                <OutlineButton
+                  label="📅 Ver calendario"
+                  onPress={() =>
+                    router.push({ pathname: '/groups/[id]/schedule', params: { id: group.id } })
                   }
-                }}
-              />
-              <Pressable
-                style={({ pressed }) => [
-                  (posting || (!draft.trim() && !pendingImage)) && styles.disabled,
-                  pressed && styles.pressed,
-                ]}
-                onPress={handlePost}
-                disabled={posting || (!draft.trim() && !pendingImage)}>
-                <LinearGradient
-                  colors={[Rolder.violet, Rolder.discord]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.sendButton}>
-                  <Text style={styles.sendLabel}>➤</Text>
-                </LinearGradient>
-              </Pressable>
-            </View>
+                />
+              </View>
+            ) : null}
           </KeyboardAvoidingView>
         )}
       </SafeAreaView>
@@ -284,7 +331,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   listContent: {
-    gap: Spacing.three,
+    gap: Spacing.four,
     paddingVertical: Spacing.two,
     flexGrow: 1,
   },
@@ -297,6 +344,26 @@ const styles = StyleSheet.create({
   },
   centerText: {
     textAlign: 'center',
+  },
+  chapter: {
+    gap: Spacing.two,
+  },
+  chapterHeader: {
+    alignSelf: 'center',
+    backgroundColor: 'rgba(139,108,255,0.16)',
+    borderWidth: 1,
+    borderColor: 'rgba(139,108,255,0.4)',
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+  },
+  chapterHeaderLabel: {
+    color: Rolder.violetSoft,
+    fontSize: 12,
+    fontFamily: RolderFonts.bold,
+    fontWeight: '700',
+    textAlign: 'center',
+    textTransform: 'capitalize',
   },
   card: {
     backgroundColor: Rolder.surface,
@@ -354,6 +421,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: RolderFonts.regular,
     lineHeight: 20,
+  },
+  noEventBox: {
+    alignItems: 'center',
+    gap: Spacing.two,
+    paddingVertical: Spacing.three,
   },
   previewRow: {
     flexDirection: 'row',
