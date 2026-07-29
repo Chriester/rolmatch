@@ -4,13 +4,17 @@
 
 import Constants from 'expo-constants';
 import { router } from 'expo-router';
+import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { showAlert } from '@/lib/alert';
 import { AppHeader } from '@/components/app-header';
 import { ThemedView } from '@/components/themed-view';
-import { ListRow, ScreenBlurb, ScreenTitle } from '@/components/ui';
+import { ListRow, OutlineButton, ScreenBlurb, ScreenTitle } from '@/components/ui';
 import { MaxContentWidth, Rolder, RolderFonts, Spacing } from '@/constants/theme';
+import { useSession } from '@/hooks/use-session';
+import { enableWebPush, webPushState, type WebPushState } from '@/lib/web-push';
 
 const OPTIONS: { icon: string; label: string; detail: string; route: string }[] = [
   {
@@ -27,6 +31,60 @@ const OPTIONS: { icon: string; label: string; detail: string; route: string }[] 
   },
 ];
 
+// Estado del web push en frases que entienda cualquiera. Solo aparece en web:
+// en el APK las notificaciones nativas ya van solas.
+function WebPushSection() {
+  const session = useSession();
+  const [state, setState] = useState<WebPushState>(() => webPushState());
+  const [busy, setBusy] = useState(false);
+
+  if (state === 'unsupported') return null;
+
+  return (
+    <View style={styles.pushBox}>
+      <Text style={styles.pushTitle}>🔔 Notificaciones</Text>
+      {state === 'ios-install' ? (
+        <Text style={styles.pushDetail}>
+          Para recibir avisos de matches, mensajes y sesiones en iPhone/iPad: abre rolder en
+          Safari, toca Compartir → «Añadir a pantalla de inicio» y entra desde el icono. El
+          botón de activar aparecerá aquí.
+        </Text>
+      ) : state === 'denied' ? (
+        <Text style={styles.pushDetail}>
+          Las notificaciones están bloqueadas en este navegador. Actívalas en los ajustes del
+          navegador para este sitio y recarga.
+        </Text>
+      ) : state === 'granted' ? (
+        <Text style={styles.pushDetail}>✅ Activadas en este dispositivo.</Text>
+      ) : (
+        <>
+          <Text style={styles.pushDetail}>
+            Avisos de matches, mensajes y sesiones aunque no tengas la app abierta.
+          </Text>
+          <OutlineButton
+            label={busy ? 'Activando…' : '🔔 Activar notificaciones'}
+            disabled={busy || !session}
+            onPress={async () => {
+              if (!session) return;
+              setBusy(true);
+              try {
+                setState(await enableWebPush(session.user.id));
+              } catch (error) {
+                showAlert(
+                  'No se pudo activar',
+                  error instanceof Error ? error.message : String(error)
+                );
+              } finally {
+                setBusy(false);
+              }
+            }}
+          />
+        </>
+      )}
+    </View>
+  );
+}
+
 export default function SettingsScreen() {
   return (
     <ThemedView style={styles.container}>
@@ -35,6 +93,8 @@ export default function SettingsScreen() {
           <AppHeader onBack={() => (router.canGoBack() ? router.back() : router.replace('/'))} />
           <ScreenTitle>⚙️ Opciones</ScreenTitle>
           <ScreenBlurb>Ajustes y utilidades de tu cuenta.</ScreenBlurb>
+
+          <WebPushSection />
 
           {OPTIONS.map((option) => (
             <ListRow key={option.label} onPress={() => router.push(option.route as never)}>
@@ -93,6 +153,26 @@ const styles = StyleSheet.create({
   chevron: {
     color: 'rgba(255,255,255,0.4)',
     fontSize: 22,
+  },
+  pushBox: {
+    backgroundColor: Rolder.surface,
+    borderWidth: 1,
+    borderColor: Rolder.surfaceBorder,
+    borderRadius: 16,
+    padding: 14,
+    gap: Spacing.two,
+  },
+  pushTitle: {
+    color: '#fff',
+    fontSize: 15,
+    fontFamily: RolderFonts.semibold,
+    fontWeight: '600',
+  },
+  pushDetail: {
+    color: Rolder.textSecondary,
+    fontSize: 12.5,
+    fontFamily: RolderFonts.regular,
+    lineHeight: 18,
   },
   version: {
     color: Rolder.textTertiary,

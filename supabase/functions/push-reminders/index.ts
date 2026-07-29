@@ -5,12 +5,24 @@
 // discord-reminders mientras Discord está apagado (y conviven si se reactiva:
 // cada canal marca sus propios flags push_reminded_*).
 //
+// Además de Expo (APK), envía Web Push a los navegadores suscritos en
+// web_push_subscriptions (migr. 00024) — el canal de los usuarios de iOS.
+//
 // Desplegar con Verify JWT DESACTIVADO; auth = cabecera x-webhook-secret.
-// Secrets: WEBHOOK_SECRET, SB_SECRET_KEY (los mismos que push-notify).
+// Secrets: WEBHOOK_SECRET, SB_SECRET_KEY, VAPID_PRIVATE_KEY (los mismos
+// que push-notify; sin la clave VAPID el web push se omite).
 
 import { createClient } from 'jsr:@supabase/supabase-js@2';
+import webpush from 'npm:web-push@3.6.7';
 
 const EXPO_PUSH_API = 'https://exp.host/--/api/v2/push/send';
+// La misma clave pública que usa el cliente (src/lib/web-push.ts)
+const VAPID_PUBLIC_KEY =
+  'BBNJD_C2usP--UtS1sMIjhonYI29SyymoD5DAs8Pry77TvC7MTVfG5mgonImqpm34l4isWZ7AqZgl8unElCklwo';
+const VAPID_PRIVATE_KEY = Deno.env.get('VAPID_PRIVATE_KEY');
+if (VAPID_PRIVATE_KEY) {
+  webpush.setVapidDetails('mailto:chrishernandezponce@gmail.com', VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
+}
 
 type SessionRow = {
   id: string;
@@ -60,18 +72,51 @@ async function sendPushes(pushes: PushMessage[]) {
   return pushes.length - dead.length;
 }
 
-/** Tokens de todos los miembros de la mesa. */
-async function memberTokens(groupId: string): Promise<string[]> {
+/** Tokens Expo de todos los miembros de la mesa (y sus ids, para el web push). */
+async function memberTokens(groupId: string): Promise<{ tokens: string[]; userIds: string[] }> {
   const { data: members } = await supabase
     .from('group_members')
     .select('user_id')
     .eq('group_id', groupId);
-  if (!members || members.length === 0) return [];
+  if (!members || members.length === 0) return { tokens: [], userIds: [] };
+  const userIds = members.map((m) => m.user_id);
   const { data: tokens } = await supabase
     .from('push_tokens')
     .select('token')
-    .in('user_id', members.map((m) => m.user_id));
-  return (tokens ?? []).map((t) => t.token);
+    .in('user_id', userIds);
+  return { tokens: (tokens ?? []).map((t) => t.token), userIds };
+}
+
+/** Web Push del mismo aviso a los navegadores suscritos de esos usuarios. */
+async function sendWebPushes(
+  userIds: string[],
+  content: { title: string; body: string; url: string }
+): Promise<number> {
+  if (!VAPID_PRIVATE_KEY || userIds.length === 0) return 0;
+  const { data: subs } = await supabase
+    .from('web_push_subscriptions')
+    .select('id, endpoint, p256dh, auth')
+    .in('user_id', userIds);
+  let sent = 0;
+  const dead: string[] = [];
+  for (const sub of subs ?? []) {
+    try {
+      await webpush.sendNotification(
+        { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+        JSON.stringify(content)
+      );
+      sent++;
+    } catch (err) {
+      const status = (err as { statusCode?: number }).statusCode;
+      // 404/410 = suscripción caducada o revocada
+      if (status === 404 || status === 410) dead.push(sub.id);
+      else console.error(`web push falló (${status}): ${err}`);
+    }
+  }
+  if (dead.length > 0) {
+    await supabase.from('web_push_subscriptions').delete().in('id', dead);
+  }
+  return sent;
 }
 
 Deno.serve(async (request) => {
@@ -125,17 +170,19 @@ Deno.serve(async (request) => {
     if (!content || !update) continue;
 
     try {
-      const tokens = await memberTokens(row.group_id);
+      const url = `/groups/${row.group_id}`;
+      const { tokens, userIds } = await memberTokens(row.group_id);
       const pushes: PushMessage[] = tokens.map((token) => ({
         to: token,
         title: content!.title,
         body: content!.body,
-        data: { url: `/groups/${row.group_id}` },
+        data: { url },
         sound: 'default',
         channelId: 'default',
       }));
       if (pushes.length > 0) sent += await sendPushes(pushes);
-      // marcamos aunque no haya tokens: la ventana pasó, no reintentamos en bucle
+      sent += await sendWebPushes(userIds, { ...content!, url });
+      // marcamos aunque no haya destinatarios: la ventana pasó, no reintentamos en bucle
       await supabase.from('sessions').update(update).eq('id', row.id);
     } catch (err) {
       console.error(`fallo recordando sesión ${row.id}: ${err}`);
