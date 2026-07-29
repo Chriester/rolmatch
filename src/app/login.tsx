@@ -10,7 +10,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { RolderLogo, RolderWordmark } from '@/components/brand';
 import { ThemedView } from '@/components/themed-view';
 import { Rolder, RolderFonts } from '@/constants/theme';
-import { signInWithDiscord, signInWithEmail } from '@/lib/auth';
+import { signInWithDiscord, signInWithEmail, signInWithGoogle } from '@/lib/auth';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -21,6 +21,17 @@ export default function LoginScreen() {
     setBusy(true);
     try {
       await signInWithDiscord();
+    } catch (error) {
+      showAlert('Error al iniciar sesión', error instanceof Error ? error.message : String(error));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleGoogle = async () => {
+    setBusy(true);
+    try {
+      await signInWithGoogle();
     } catch (error) {
       showAlert('Error al iniciar sesión', error instanceof Error ? error.message : String(error));
     } finally {
@@ -61,6 +72,15 @@ export default function LoginScreen() {
           )}
         </Pressable>
 
+        <Pressable
+          style={[styles.googleButton, busy && styles.disabled]}
+          onPress={handleGoogle}
+          disabled={busy}>
+          <Text style={styles.googleLabel}>
+            <Text style={styles.googleG}>G</Text>  Continuar con Google
+          </Text>
+        </Pressable>
+
         <View style={styles.dividerRow}>
           <View style={styles.dividerLine} />
           <Text style={styles.dividerText}>o con tu correo</Text>
@@ -89,7 +109,8 @@ export default function LoginScreen() {
         )}
 
         <Text style={styles.legal}>
-          Con Discord verificamos tu cuenta y el bot podrá abriros canal cuando hagas match.
+          Usamos tu cuenta solo para verificar que eres una persona real. Nunca publicamos nada
+          en tu nombre.
         </Text>
       </SafeAreaView>
     </ThemedView>
@@ -133,6 +154,23 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontFamily: RolderFonts.bold,
     fontWeight: '700',
+  },
+  googleButton: {
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    paddingVertical: 15,
+    alignItems: 'center',
+  },
+  googleLabel: {
+    color: '#1F1F1F',
+    fontSize: 15,
+    fontFamily: RolderFonts.bold,
+    fontWeight: '700',
+  },
+  googleG: {
+    color: '#4285F4',
+    fontFamily: RolderFonts.extrabold,
+    fontWeight: '800',
   },
   dividerRow: {
     flexDirection: 'row',
