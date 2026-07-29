@@ -104,11 +104,13 @@ export async function fetchMyChats(userId: string): Promise<ChatSummary[]> {
     });
 }
 
-/** Total de no-leídos entre todas mis mesas (para el punto del avatar). */
+/** Total de no-leídos entre mesas e hilos 1-a-1 (punto del avatar y tab). */
 export async function fetchUnreadTotal(userId: string): Promise<number> {
   try {
-    const chats = await fetchMyChats(userId);
-    return chats.reduce((total, chat) => total + chat.unread, 0);
+    // import perezoso: dm.ts importa de este módulo y el estático haría ciclo
+    const { fetchMyDmChats } = await import('@/lib/dm');
+    const [chats, dms] = await Promise.all([fetchMyChats(userId), fetchMyDmChats(userId)]);
+    return [...chats, ...dms].reduce((total, chat) => total + chat.unread, 0);
   } catch {
     return 0;
   }
