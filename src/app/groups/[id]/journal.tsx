@@ -54,6 +54,16 @@ export default function GroupJournalScreen() {
   const [pendingImage, setPendingImage] = useState<string | null>(null);
   const [pickingImage, setPickingImage] = useState(false);
   const [posting, setPosting] = useState(false);
+  const [expandedChapters, setExpandedChapters] = useState<Set<string | null>>(new Set());
+
+  const toggleChapter = (key: string | null) => {
+    setExpandedChapters((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
 
   useEffect(() => {
     if (!id) return;
@@ -205,16 +215,33 @@ export default function GroupJournalScreen() {
                   </ThemedText>
                 </View>
               ) : (
-                chapters.map((chapter) => (
-                  <View key={chapter.sessionId ?? 'sin-sesion'} style={styles.chapter}>
-                    <View style={styles.chapterHeader}>
-                      <Text style={styles.chapterHeaderLabel} numberOfLines={2}>
-                        {chapter.header?.body ?? 'Recuerdos sueltos'}
-                      </Text>
+                chapters.map((chapter) => {
+                  const isToday = todaySession != null && chapter.sessionId === todaySession.id;
+                  const isOpen = isToday || expandedChapters.has(chapter.sessionId);
+                  const count = chapter.entries.length;
+                  return (
+                    <View key={chapter.sessionId ?? 'sin-sesion'} style={styles.chapter}>
+                      <Pressable
+                        style={[styles.chapterHeader, isToday && styles.chapterHeaderToday]}
+                        onPress={() => !isToday && count > 0 && toggleChapter(chapter.sessionId)}
+                        disabled={isToday || count === 0}>
+                        <Text style={styles.chapterHeaderLabel} numberOfLines={2}>
+                          {chapter.header?.body ?? 'Recuerdos sueltos'}
+                        </Text>
+                        {!isToday && (
+                          <Text style={styles.chapterToggleHint}>
+                            {count === 0
+                              ? 'sin recuerdos'
+                              : isOpen
+                                ? '▲ ocultar'
+                                : `▼ ver ${count} ${count === 1 ? 'recuerdo' : 'recuerdos'}`}
+                          </Text>
+                        )}
+                      </Pressable>
+                      {isOpen && chapter.entries.map(renderEntry)}
                     </View>
-                    {chapter.entries.map(renderEntry)}
-                  </View>
-                ))
+                  );
+                })
               )}
             </ScrollView>
 
@@ -349,21 +376,36 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   chapterHeader: {
-    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: Spacing.two,
     backgroundColor: 'rgba(139,108,255,0.16)',
     borderWidth: 1,
     borderColor: 'rgba(139,108,255,0.4)',
-    borderRadius: 999,
+    borderRadius: 16,
     paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  chapterHeaderToday: {
+    alignSelf: 'center',
+    borderRadius: 999,
     paddingVertical: 6,
   },
   chapterHeaderLabel: {
+    flexShrink: 1,
     color: Rolder.violetSoft,
     fontSize: 12,
     fontFamily: RolderFonts.bold,
     fontWeight: '700',
     textAlign: 'center',
     textTransform: 'capitalize',
+  },
+  chapterToggleHint: {
+    color: Rolder.textSecondary,
+    fontSize: 11,
+    fontFamily: RolderFonts.semibold,
+    fontWeight: '600',
   },
   card: {
     backgroundColor: Rolder.surface,
