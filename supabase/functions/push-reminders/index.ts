@@ -238,6 +238,57 @@ Deno.serve(async (request) => {
     }
   }
 
+  // Aviso al GM: votaciones cuyo plazo de cierre venció (migr. 00030) —
+  // le toca entrar, ver el resultado y fijar la fecha ganadora.
+  const { data: duePolls, error: pollsError } = await supabase
+    .from('session_polls')
+    .select('id, group_id, title, groups(name, owner_id)')
+    .eq('status', 'open')
+    .eq('deadline_notified', false)
+    .not('closes_at', 'is', null)
+    .lte('closes_at', new Date(now).toISOString());
+  if (pollsError) {
+    // migración 00030 sin aplicar: sin deadlines que vigilar
+    console.log(`deadlines de votaciones no disponibles: ${pollsError.message}`);
+  } else {
+    for (const poll of (duePolls ?? []) as unknown as {
+      id: string;
+      group_id: string;
+      title: string | null;
+      groups: { name: string; owner_id: string } | null;
+    }[]) {
+      if (!poll.groups) continue;
+      const content = {
+        title: '🗳️ Votación lista para cerrar',
+        body: `«${poll.title ?? '¿Cuándo jugamos?'}» de ${poll.groups.name} llegó a su plazo. Entra y fija la fecha.`,
+      };
+      try {
+        const url = `/groups/${poll.group_id}/schedule`;
+        const ownerId = poll.groups.owner_id;
+        const { data: tokens } = await supabase
+          .from('push_tokens')
+          .select('token')
+          .eq('user_id', ownerId);
+        const pushes: PushMessage[] = (tokens ?? []).map((t) => ({
+          to: t.token,
+          title: content.title,
+          body: content.body,
+          data: { url },
+          sound: 'default',
+          channelId: 'default',
+        }));
+        if (pushes.length > 0) sent += await sendPushes(pushes);
+        sent += await sendWebPushes([ownerId], { ...content, url });
+        await supabase
+          .from('session_polls')
+          .update({ deadline_notified: true })
+          .eq('id', poll.id);
+      } catch (err) {
+        console.error(`fallo avisando deadline de votación ${poll.id}: ${err}`);
+      }
+    }
+  }
+
   console.log(`recordatorios push enviados: ${sent}`);
   return Response.json({ sent });
 });

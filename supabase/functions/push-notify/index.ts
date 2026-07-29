@@ -68,13 +68,28 @@ type SwipeRecord = {
 
 type CharacterLikeRecord = { character_id: string; liker_id: string };
 
+type ProposalRecord = { id: string; poll_id: string; proposer_id: string; starts_at: string };
+
+type PollVoteRecord = { option_id: string; user_id: string };
+
+type SessionRecord = {
+  id: string;
+  group_id: string;
+  starts_at: string;
+  title: string | null;
+  created_by: string;
+};
+
 type WebhookPayload =
   | { type: 'INSERT'; table: 'matches'; record: MatchRecord }
   | { type: 'INSERT'; table: 'messages'; record: MessageRecord }
   | { type: 'INSERT'; table: 'dm_messages'; record: DmMessageRecord }
   | { type: 'INSERT'; table: 'session_polls'; record: PollRecord }
   | { type: 'INSERT'; table: 'swipes'; record: SwipeRecord }
-  | { type: 'INSERT'; table: 'character_likes'; record: CharacterLikeRecord };
+  | { type: 'INSERT'; table: 'character_likes'; record: CharacterLikeRecord }
+  | { type: 'INSERT'; table: 'session_poll_proposals'; record: ProposalRecord }
+  | { type: 'INSERT'; table: 'session_poll_votes'; record: PollVoteRecord }
+  | { type: 'INSERT'; table: 'sessions'; record: SessionRecord };
 
 type PushMessage = {
   to: string;
@@ -239,6 +254,103 @@ async function buildForCharacterLike(record: CharacterLikeRecord): Promise<Map<s
   return out;
 }
 
+function formatDateEs(iso: string): string {
+  return new Date(iso).toLocaleString('es-ES', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'Europe/Madrid',
+  });
+}
+
+/** Fecha extra propuesta por un jugador: a la bandeja del GM. */
+async function buildForProposal(record: ProposalRecord): Promise<Map<string, { title: string; body: string; url: string }>> {
+  const [{ data: poll }, { data: proposer }] = await Promise.all([
+    supabase
+      .from('session_polls')
+      .select('group_id, title, groups(name, owner_id)')
+      .eq('id', record.poll_id)
+      .single(),
+    supabase.from('profiles').select('alias').eq('id', record.proposer_id).single(),
+  ]);
+  const groups = (poll as { groups?: { name: string; owner_id: string } | null } | null)?.groups;
+  if (!poll || !groups) return new Map();
+
+  const out = new Map<string, { title: string; body: string; url: string }>();
+  out.set(groups.owner_id, {
+    title: `🙋 Fecha propuesta en «${groups.name}»`,
+    body: `${proposer?.alias ?? 'Alguien'} propone ${formatDateEs(record.starts_at)}. Añádela o recházala.`,
+    url: `/groups/${poll.group_id}/schedule`,
+  });
+  return out;
+}
+
+/** Voto nuevo: si con este ya ha votado TODA la mesa, aviso al GM. */
+async function buildForPollVote(record: PollVoteRecord): Promise<Map<string, { title: string; body: string; url: string }>> {
+  const { data: option } = await supabase
+    .from('session_poll_options')
+    .select('poll_id, session_polls(group_id, title, status, groups(name, owner_id))')
+    .eq('id', record.option_id)
+    .single();
+  const poll = (option as {
+    poll_id: string;
+    session_polls: {
+      group_id: string;
+      title: string | null;
+      status: string;
+      groups: { name: string; owner_id: string } | null;
+    } | null;
+  } | null)?.session_polls;
+  if (!option || !poll || !poll.groups || poll.status !== 'open') return new Map();
+
+  const [{ data: members }, { data: options }] = await Promise.all([
+    supabase.from('group_members').select('user_id').eq('group_id', poll.group_id),
+    supabase
+      .from('session_poll_options')
+      .select('id, session_poll_votes(user_id)')
+      .eq('poll_id', (option as { poll_id: string }).poll_id),
+  ]);
+  if (!members || !options) return new Map();
+
+  const voters = new Set<string>();
+  for (const opt of options as { session_poll_votes: { user_id: string }[] }[]) {
+    for (const vote of opt.session_poll_votes) voters.add(vote.user_id);
+  }
+  // ¿han votado todos los miembros (el GM incluido si vota)? menos el GM,
+  // que es quien decide: con jugadores al completo ya puede cerrar
+  const players = members.map((m) => m.user_id).filter((uid) => uid !== poll.groups!.owner_id);
+  const everyoneVoted = players.length > 0 && players.every((uid) => voters.has(uid));
+  if (!everyoneVoted) return new Map();
+
+  const out = new Map<string, { title: string; body: string; url: string }>();
+  out.set(poll.groups.owner_id, {
+    title: '🗳️ ¡Todos han votado!',
+    body: `La mesa al completo votó en «${poll.title ?? '¿Cuándo jugamos?'}» de ${poll.groups.name}. Entra y fija la fecha.`,
+    url: `/groups/${poll.group_id}/schedule`,
+  });
+  return out;
+}
+
+/** Partida fijada: a toda la mesa menos quien la fijó. */
+async function buildForSession(record: SessionRecord): Promise<Map<string, { title: string; body: string; url: string }>> {
+  const [{ data: group }, { data: members }] = await Promise.all([
+    supabase.from('groups').select('name').eq('id', record.group_id).single(),
+    supabase.from('group_members').select('user_id').eq('group_id', record.group_id),
+  ]);
+  if (!group || !members) return new Map();
+
+  const url = `/groups/${record.group_id}/schedule`;
+  const title = `📅 Partida fijada en «${group.name}»`;
+  const body = `${formatDateEs(record.starts_at)}${record.title ? ` — ${record.title}` : ''}`;
+  const out = new Map<string, { title: string; body: string; url: string }>();
+  for (const member of members) {
+    if (member.user_id !== record.created_by) out.set(member.user_id, { title, body, url });
+  }
+  return out;
+}
+
 async function sendAll(byUser: Map<string, { title: string; body: string; url: string }>) {
   if (byUser.size === 0) return { sent: 0 };
 
@@ -340,7 +452,13 @@ Deno.serve(async (request) => {
                 ? await buildForSwipe(payload.record)
                 : payload.table === 'character_likes'
                   ? await buildForCharacterLike(payload.record)
-                  : new Map<string, { title: string; body: string; url: string }>();
+                  : payload.table === 'session_poll_proposals'
+                    ? await buildForProposal(payload.record)
+                    : payload.table === 'session_poll_votes'
+                      ? await buildForPollVote(payload.record)
+                      : payload.table === 'sessions'
+                        ? await buildForSession(payload.record)
+                        : new Map<string, { title: string; body: string; url: string }>();
 
     const result = await sendAll(byUser);
     const webResult = await sendAllWeb(byUser);
