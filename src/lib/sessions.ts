@@ -7,6 +7,27 @@ export type GameSession = {
   title: string | null;
 };
 
+/**
+ * Sesion de esta mesa cuya fecha (en la timezone de la mesa) es hoy, si hay
+ * alguna — calculado en el servidor (rpc journal_today_session, migr.
+ * 00028) para no duplicar aritmetica de timezone en el cliente. La usa el
+ * historico para saber si hoy esta "abierto" para escribir.
+ */
+export async function fetchTodaySession(groupId: string): Promise<GameSession | null> {
+  const { data: sessionId, error } = await supabase.rpc('journal_today_session', {
+    p_group_id: groupId,
+  });
+  if (error) throw error;
+  if (!sessionId) return null;
+  const { data, error: sessionError } = await supabase
+    .from('sessions')
+    .select('id, group_id, starts_at, title')
+    .eq('id', sessionId)
+    .single();
+  if (sessionError) throw sessionError;
+  return data;
+}
+
 export async function fetchUpcomingSessions(groupId: string): Promise<GameSession[]> {
   const { data, error } = await supabase
     .from('sessions')
@@ -130,6 +151,15 @@ export function formatSessionDate(iso: string): string {
     month: 'short',
     hour: '2-digit',
     minute: '2-digit',
+  });
+}
+
+/** «viernes, 1 de agosto» — sin hora, para el capitulo del historico */
+export function formatSessionDay(iso: string): string {
+  return new Date(iso).toLocaleDateString('es-ES', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
   });
 }
 
