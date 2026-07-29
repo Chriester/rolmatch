@@ -85,6 +85,9 @@ export default function OnboardingScreen() {
   // Paso 2 — cuándo juegas
   const [timezone, setTimezone] = useState(detectTimezone());
   const [availability, setAvailability] = useState<Set<string>>(new Set());
+  // feedback del botón de detectar: sin esto, si ya estabas en la zona
+  // detectada el botón parecía roto (no cambiaba nada visible)
+  const [detectedTz, setDetectedTz] = useState<string | null>(null);
 
   // Paso 3 — a qué juegas
   const [systems, setSystems] = useState<System[]>([]);
@@ -159,10 +162,16 @@ export default function OnboardingScreen() {
     setExperienceBySystem((prev) => new Map(prev).set(systemId, experience));
   };
 
+  // Edad obligatoria desde la alpha: mínimo 16 (mesas con desconocidos)
+  const parsedAge = (() => {
+    const n = Number.parseInt(ageText.trim(), 10);
+    return Number.isInteger(n) && n >= 16 && n <= 99 ? n : null;
+  })();
+
   const stepValid = () => {
     switch (step) {
       case 0:
-        return alias.trim().length > 0;
+        return alias.trim().length > 0 && avatarUrl !== null && parsedAge !== null;
       case 1:
         return availability.size > 0;
       case 2:
@@ -171,12 +180,6 @@ export default function OnboardingScreen() {
         return true;
     }
   };
-
-  // Edad opcional: solo se guarda si es un número razonable
-  const parsedAge = (() => {
-    const n = Number.parseInt(ageText.trim(), 10);
-    return Number.isInteger(n) && n >= 14 && n <= 99 ? n : null;
-  })();
 
   const handleFinish = async () => {
     if (!session) return;
@@ -243,8 +246,14 @@ export default function OnboardingScreen() {
                   prefix="avatar"
                   url={avatarUrl}
                   onPicked={setAvatarUrl}
-                  label="Tu foto"
+                  label="Tu foto o avatar *"
                 />
+              )}
+              {!avatarUrl && (
+                <Text style={styles.helper}>
+                  Una imagen es obligatoria: puede ser tu foto o un avatar/ilustración que te
+                  represente. Los perfiles con cara consiguen muchos más matches.
+                </Text>
               )}
               <SectionLabel>Alias *</SectionLabel>
               <TextInput
@@ -269,12 +278,12 @@ export default function OnboardingScreen() {
                   </View>
                 </View>
                 <View style={styles.ageColumn}>
-                  <SectionLabel>Edad</SectionLabel>
+                  <SectionLabel>Edad *</SectionLabel>
                   <TextInput
                     style={styles.input}
                     value={ageText}
                     onChangeText={setAgeText}
-                    placeholder="—"
+                    placeholder="16+"
                     placeholderTextColor="rgba(255,255,255,0.35)"
                     keyboardType="number-pad"
                     maxLength={2}
@@ -321,9 +330,19 @@ export default function OnboardingScreen() {
               </Text>
               <SectionLabel>Zona horaria</SectionLabel>
               <OutlineButton
-                label="📍 Usar la de mi dispositivo"
-                onPress={() => setTimezone(detectTimezone())}
+                label="📍 Detectar mi zona horaria"
+                onPress={() => {
+                  const tz = detectTimezone();
+                  setTimezone(tz);
+                  setDetectedTz(tz);
+                }}
               />
+              {detectedTz && (
+                <Text style={styles.counter}>
+                  ✓ Detectada:{' '}
+                  {TIMEZONES.find((tz) => tz.value === detectedTz)?.label ?? detectedTz}
+                </Text>
+              )}
               <View style={styles.chipRow}>
                 {TIMEZONES.map((tz) => (
                   <Chip
@@ -342,6 +361,14 @@ export default function OnboardingScreen() {
 
           {step === 2 && (
             <View style={styles.section}>
+              <View style={styles.switchRow}>
+                <Text style={styles.switchLabel}>🎲 Abierto/a a cualquier sistema</Text>
+                <Switch
+                  value={openToAny}
+                  onValueChange={setOpenToAny}
+                  trackColor={{ true: Rolder.like, false: 'rgba(255,255,255,0.15)' }}
+                />
+              </View>
               <SectionLabel>Tus sistemas</SectionLabel>
               {systems.map((system) => {
                 const experience = experienceBySystem.get(system.id);
@@ -367,14 +394,6 @@ export default function OnboardingScreen() {
                   </View>
                 );
               })}
-              <View style={styles.switchRow}>
-                <Text style={styles.switchLabel}>Abierto/a a cualquier sistema</Text>
-                <Switch
-                  value={openToAny}
-                  onValueChange={setOpenToAny}
-                  trackColor={{ true: Rolder.like, false: 'rgba(255,255,255,0.15)' }}
-                />
-              </View>
             </View>
           )}
 
@@ -424,6 +443,8 @@ export default function OnboardingScreen() {
                     onPress={() => setVtt(option.value)}
                   />
                 ))}
+                {/* placeholder del modo presencial (fase 4, geolocalización) */}
+                <Chip label="📍 Presencial · pronto" selected={false} disabled onPress={() => {}} />
               </View>
               <SectionLabel>🛡 Seguridad en mesa</SectionLabel>
               <Text style={styles.helper}>
