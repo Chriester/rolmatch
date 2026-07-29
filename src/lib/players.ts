@@ -3,6 +3,7 @@
 // públicos (el RLS ya recorta los privados).
 
 import { fetchMyCharacters, type Character } from '@/lib/characters';
+import { fetchMyGroups, type GroupSummary } from '@/lib/groups';
 import { fetchProfileData, type ProfileData } from '@/lib/profile';
 import { fetchReliability, type ReliabilitySummary } from '@/lib/ratings';
 import { supabase } from '@/lib/supabase';
@@ -14,6 +15,7 @@ export type PlayerProfile = ProfileData & {
   reliability: ReliabilitySummary | null;
   systemsNamed: PlayerSystem[];
   characters: Character[];
+  groups: GroupSummary[];
   xpTotal: number;
 };
 
@@ -25,12 +27,13 @@ const EXPERIENCE_NAMES: Record<string, string> = {
 };
 
 export async function fetchPlayerProfile(userId: string): Promise<PlayerProfile> {
-  const [profile, reliabilityMap, systemsRes, characters, xpMap] = await Promise.all([
+  const [profile, reliabilityMap, systemsRes, characters, groups, xpMap] = await Promise.all([
     fetchProfileData(userId),
     fetchReliability([userId]),
     supabase.from('user_systems').select('experience, systems(name)').eq('user_id', userId),
     // el RLS recorta a personajes públicos cuando el perfil no es el propio
     fetchMyCharacters(userId),
+    fetchMyGroups(userId).catch(() => []),
     fetchXpTotals([userId]).catch(() => new Map<string, number>()),
   ]);
   if (systemsRes.error) throw systemsRes.error;
@@ -48,6 +51,7 @@ export async function fetchPlayerProfile(userId: string): Promise<PlayerProfile>
     reliability: reliabilityMap.get(userId) ?? null,
     systemsNamed,
     characters,
+    groups: groups.filter((g) => g.is_active),
     xpTotal: xpMap.get(userId) ?? 0,
   };
 }

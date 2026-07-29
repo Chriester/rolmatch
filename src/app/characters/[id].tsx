@@ -147,7 +147,8 @@ export default function EditCharacterScreen() {
               ? setEditing(false)
               : router.canGoBack()
                 ? router.back()
-                : router.replace('/characters')
+                // un visitante sin historial no tiene nada que ver en /characters
+                : router.replace(isOwner ? '/characters' : '/')
           }
           right={
             isOwner ? (
