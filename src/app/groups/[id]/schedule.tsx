@@ -1,25 +1,42 @@
-// Organizar partida: el hub de agenda de la mesa, accesible desde el chat
-// y el perfil de mesa. Próximas sesiones, creación directa con calendario
-// (GM) y votaciones de días/franjas (cualquier miembro propone, todos
-// multivotan, el GM programa la ganadora).
+// Organizar partida v2: el GM propone fechas concretas desde UN calendario
+// (hora global + ajuste individual), les pone nombre y elige entre abrir
+// votación (con cierre opcional) o fijarlas directamente. Los jugadores
+// votan y pueden proponer una fecha extra que cae en la bandeja del GM.
 
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppHeader } from '@/components/app-header';
 import { CalendarPicker } from '@/components/calendar-picker';
 import { Chip } from '@/components/chip';
+import { TimeField, type TimeValue } from '@/components/time-field';
 import { ThemedView } from '@/components/themed-view';
 import { OutlineButton, PrimaryButton, ScreenBlurb, ScreenTitle, SectionLabel } from '@/components/ui';
 import { MaxContentWidth, Rolder, RolderFonts, Spacing } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
 import { showAlert } from '@/lib/alert';
-import { SLOT_LABELS, fetchGroup, type GroupDetail } from '@/lib/groups';
-import { closePoll, createPoll, fetchPolls, setVote, type SessionPoll } from '@/lib/polls';
+import { fetchGroup, type GroupDetail } from '@/lib/groups';
 import {
-  SLOT_START_HOUR,
+  closePoll,
+  createPoll,
+  fetchPolls,
+  proposeDate,
+  resolveProposal,
+  setVote,
+  type PollProposal,
+  type SessionPoll,
+} from '@/lib/polls';
+import {
   createSession,
   deleteSession,
   fetchUpcomingSessions,
@@ -27,10 +44,29 @@ import {
   type GameSession,
 } from '@/lib/sessions';
 
-/** clave AAAA-MM-DD + franja → Date local a la hora de inicio de la franja */
-function slotDate(key: string, slot: number): Date {
+const DEFAULT_TIME: TimeValue = { hour: 21, minute: 0 };
+
+const DEADLINES: { label: string; hours: number | null }[] = [
+  { label: 'Sin cierre', hours: null },
+  { label: '24 h', hours: 24 },
+  { label: '48 h', hours: 48 },
+  { label: '72 h', hours: 72 },
+  { label: '1 semana', hours: 168 },
+];
+
+/** clave AAAA-MM-DD + hora elegida → Date local */
+function dateAt(key: string, time: TimeValue): Date {
   const [year, month, day] = key.split('-').map(Number);
-  return new Date(year, month - 1, day, SLOT_START_HOUR[slot], 0, 0, 0);
+  return new Date(year, month - 1, day, time.hour, time.minute, 0, 0);
+}
+
+function shortDate(key: string): string {
+  const [year, month, day] = key.split('-').map(Number);
+  return new Date(year, month - 1, day).toLocaleDateString('es-ES', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+  });
 }
 
 export default function ScheduleScreen() {
@@ -41,14 +77,18 @@ export default function ScheduleScreen() {
   const [polls, setPolls] = useState<SessionPoll[] | undefined>(undefined);
   const [busy, setBusy] = useState(false);
 
-  // creación directa (GM)
-  const [createDays, setCreateDays] = useState<Set<string>>(new Set());
-  const [createSlot, setCreateSlot] = useState(2);
+  // composer del GM
+  const [composing, setComposing] = useState(false);
+  const [days, setDays] = useState<Set<string>>(new Set());
+  const [globalTime, setGlobalTime] = useState<TimeValue>(DEFAULT_TIME);
+  const [timeByDay, setTimeByDay] = useState<Map<string, TimeValue>>(new Map());
+  const [pollName, setPollName] = useState('');
+  const [deadlineHours, setDeadlineHours] = useState<number | null>(48);
 
-  // nueva votación (cualquier miembro)
-  const [pollMode, setPollMode] = useState(false);
-  const [pollDays, setPollDays] = useState<Set<string>>(new Set());
-  const [pollSlots, setPollSlots] = useState<Set<number>>(new Set([2]));
+  // propuesta extra de un jugador
+  const [proposingFor, setProposingFor] = useState<string | null>(null);
+  const [proposalDay, setProposalDay] = useState<string | null>(null);
+  const [proposalTime, setProposalTime] = useState<TimeValue>(DEFAULT_TIME);
 
   const load = useCallback(() => {
     if (!id || !session) return;
@@ -61,43 +101,45 @@ export default function ScheduleScreen() {
 
   const isOwner = group !== null && session?.user.id === group.owner_id;
 
-  const handleCreateSession = async () => {
-    if (!id || !session || createDays.size === 0) return;
+  const timeFor = (key: string): TimeValue => timeByDay.get(key) ?? globalTime;
+  const composerDates = () => [...days].sort().map((key) => dateAt(key, timeFor(key)));
+
+  const resetComposer = () => {
+    setComposing(false);
+    setDays(new Set());
+    setTimeByDay(new Map());
+    setPollName('');
+    setDeadlineHours(48);
+  };
+
+  const handleStartPoll = async () => {
+    if (!id || !session || days.size === 0) return;
     setBusy(true);
     try {
-      for (const key of [...createDays].sort()) {
-        await createSession(id, session.user.id, slotDate(key, createSlot), null);
-      }
-      setCreateDays(new Set());
+      const closesAt =
+        deadlineHours === null ? null : new Date(Date.now() + deadlineHours * 3600_000);
+      await createPoll(id, session.user.id, pollName.trim() || null, composerDates(), closesAt);
+      resetComposer();
       load();
     } catch (error) {
-      showAlert('No se pudo programar', error instanceof Error ? error.message : String(error));
+      showAlert('No se pudo crear', error instanceof Error ? error.message : String(error));
     } finally {
       setBusy(false);
     }
   };
 
-  const handleCreatePoll = async () => {
-    if (!id || !session || pollDays.size === 0 || pollSlots.size === 0) return;
-    const options: Date[] = [];
-    for (const key of [...pollDays].sort()) {
-      for (const slot of [...pollSlots].sort()) {
-        options.push(slotDate(key, slot));
-      }
-    }
-    if (options.length > 12) {
-      showAlert('Demasiadas opciones', 'Máximo 12 combinaciones de día y franja por votación.');
-      return;
-    }
+  const handleFixDirect = async () => {
+    if (!id || !session || days.size === 0) return;
     setBusy(true);
     try {
-      await createPoll(id, session.user.id, null, options);
-      setPollMode(false);
-      setPollDays(new Set());
-      setPollSlots(new Set([2]));
+      for (const date of composerDates()) {
+        await createSession(id, session.user.id, date, pollName.trim() || null);
+      }
+      resetComposer();
       load();
+      showAlert('📅 Fechas fijadas', 'Ya están en el calendario de la mesa.');
     } catch (error) {
-      showAlert('No se pudo crear', error instanceof Error ? error.message : String(error));
+      showAlert('No se pudo fijar', error instanceof Error ? error.message : String(error));
     } finally {
       setBusy(false);
     }
@@ -127,16 +169,44 @@ export default function ScheduleScreen() {
     }
   };
 
-  const handleSchedule = async (option: { starts_at: string }, poll: SessionPoll) => {
+  const handlePickWinner = async (option: { starts_at: string }, poll: SessionPoll) => {
     if (!id || !session) return;
     setBusy(true);
     try {
-      await createSession(id, session.user.id, new Date(option.starts_at), null);
+      await createSession(id, session.user.id, new Date(option.starts_at), poll.title);
       await closePoll(poll.id);
       load();
-      showAlert('📅 Sesión programada', 'La ganadora ya está en el calendario de la mesa.');
+      showAlert('📅 Partida fijada', 'La votación queda cerrada y la fecha, en el calendario.');
     } catch (error) {
-      showAlert('No se pudo programar', error instanceof Error ? error.message : String(error));
+      showAlert('No se pudo fijar', error instanceof Error ? error.message : String(error));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleSendProposal = async (poll: SessionPoll) => {
+    if (!session || !proposalDay) return;
+    setBusy(true);
+    try {
+      await proposeDate(poll.id, session.user.id, dateAt(proposalDay, proposalTime));
+      setProposingFor(null);
+      setProposalDay(null);
+      load();
+      showAlert('🙋 Propuesta enviada', 'El GM decidirá si la añade a la votación.');
+    } catch (error) {
+      showAlert('No se pudo proponer', error instanceof Error ? error.message : String(error));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleResolveProposal = async (proposal: PollProposal, accept: boolean) => {
+    setBusy(true);
+    try {
+      await resolveProposal(proposal, accept);
+      load();
+    } catch (error) {
+      showAlert('No se pudo resolver', error instanceof Error ? error.message : String(error));
     } finally {
       setBusy(false);
     }
@@ -166,13 +236,16 @@ export default function ScheduleScreen() {
           <ScreenTitle>📅 Organizar partida</ScreenTitle>
           <ScreenBlurb>«{group.name}»</ScreenBlurb>
 
-          <SectionLabel>Próximas sesiones</SectionLabel>
+          <SectionLabel>Próximas partidas</SectionLabel>
           {sessions.length === 0 ? (
-            <Text style={styles.soft}>Ninguna programada todavía.</Text>
+            <Text style={styles.soft}>Ninguna fijada todavía.</Text>
           ) : (
             sessions.map((s) => (
               <View key={s.id} style={styles.sessionRow}>
-                <Text style={styles.sessionDate}>{formatSessionDate(s.starts_at)}</Text>
+                <View style={styles.sessionBody}>
+                  <Text style={styles.sessionDate}>{formatSessionDate(s.starts_at)}</Text>
+                  {s.title && <Text style={styles.sessionTitle}>{s.title}</Text>}
+                </View>
                 {isOwner && (
                   <Pressable
                     onPress={async () => {
@@ -196,11 +269,21 @@ export default function ScheduleScreen() {
           {openPolls.length > 0 && <SectionLabel>Votaciones abiertas</SectionLabel>}
           {openPolls.map((poll) => {
             const top = Math.max(...poll.options.map((o) => o.votes), 1);
+            const pending = poll.proposals.filter((p) => p.status === 'pending');
+            const mineProposals = poll.proposals.filter(
+              (p) => p.proposer_id === session?.user.id
+            );
             return (
               <View key={poll.id} style={styles.pollBox}>
                 <Text style={styles.pollTitle}>
-                  🗳️ ¿Cuándo jugamos? · {poll.options.length} opciones
+                  🗳️ {poll.title ?? '¿Cuándo jugamos?'} · {poll.options.length} opciones
                 </Text>
+                {poll.closes_at && (
+                  <Text style={styles.pollDeadline}>
+                    ⏳ Cierra el {formatSessionDate(poll.closes_at)}
+                  </Text>
+                )}
+
                 {poll.options.map((option) => (
                   <Pressable
                     key={option.id}
@@ -218,110 +301,201 @@ export default function ScheduleScreen() {
                         style={[styles.voteFill, { width: `${(option.votes / top) * 100}%` }]}
                       />
                     </View>
-                    {isOwner && option.votes > 0 && (
-                      <Pressable onPress={() => handleSchedule(option, poll)} disabled={busy}>
-                        <Text style={styles.scheduleLink}>📌 Programar esta</Text>
+                    {isOwner && (
+                      <Pressable onPress={() => handlePickWinner(option, poll)} disabled={busy}>
+                        <Text style={styles.scheduleLink}>📌 Elegir esta y cerrar</Text>
                       </Pressable>
                     )}
                   </Pressable>
                 ))}
-                {(isOwner || poll.created_by === session?.user.id) && (
+
+                {/* bandeja del GM: fechas extra propuestas por jugadores */}
+                {isOwner && pending.length > 0 && (
+                  <View style={styles.proposalBox}>
+                    <Text style={styles.proposalTitle}>🙋 Fechas propuestas por la mesa</Text>
+                    {pending.map((proposal) => (
+                      <View key={proposal.id} style={styles.proposalRow}>
+                        <Text style={styles.proposalLabel} numberOfLines={2}>
+                          {proposal.proposer_alias}: {formatSessionDate(proposal.starts_at)}
+                        </Text>
+                        <Pressable
+                          onPress={() => handleResolveProposal(proposal, true)}
+                          disabled={busy}>
+                          <Text style={styles.acceptLink}>➕ Añadir</Text>
+                        </Pressable>
+                        <Pressable
+                          onPress={() => handleResolveProposal(proposal, false)}
+                          disabled={busy}>
+                          <Text style={styles.deleteLink}>Rechazar</Text>
+                        </Pressable>
+                      </View>
+                    ))}
+                  </View>
+                )}
+
+                {/* jugador: proponer una fecha extra */}
+                {!isOwner && (
+                  <>
+                    {mineProposals.map((proposal) => (
+                      <Text key={proposal.id} style={styles.soft}>
+                        {proposal.status === 'pending'
+                          ? `🙋 Tu propuesta (${formatSessionDate(proposal.starts_at)}) espera al GM.`
+                          : proposal.status === 'accepted'
+                            ? `✅ Tu propuesta (${formatSessionDate(proposal.starts_at)}) está en la votación.`
+                            : `Tu propuesta (${formatSessionDate(proposal.starts_at)}) no entró esta vez.`}
+                      </Text>
+                    ))}
+                    {proposingFor === poll.id ? (
+                      <View style={styles.formBlock}>
+                        <SectionLabel>Tu fecha propuesta</SectionLabel>
+                        <CalendarPicker
+                          selected={proposalDay ? new Set([proposalDay]) : new Set()}
+                          onToggle={(key) =>
+                            setProposalDay((prev) => (prev === key ? null : key))
+                          }
+                        />
+                        <View style={styles.timeRow}>
+                          <Text style={styles.timeLabel}>Hora</Text>
+                          <TimeField value={proposalTime} onChange={setProposalTime} />
+                        </View>
+                        <View style={styles.nav}>
+                          <OutlineButton
+                            label="Cancelar"
+                            tone="white"
+                            onPress={() => setProposingFor(null)}
+                            style={styles.navSmall}
+                          />
+                          <PrimaryButton
+                            label={busy ? 'Enviando…' : 'Enviar al GM'}
+                            onPress={() => handleSendProposal(poll)}
+                            disabled={busy || !proposalDay}
+                            style={styles.navBig}
+                          />
+                        </View>
+                      </View>
+                    ) : (
+                      <OutlineButton
+                        label="➕ Proponer otra fecha"
+                        onPress={() => {
+                          setProposingFor(poll.id);
+                          setProposalDay(null);
+                        }}
+                      />
+                    )}
+                  </>
+                )}
+
+                {isOwner && (
                   <Pressable onPress={() => closePoll(poll.id).then(load)}>
-                    <Text style={styles.deleteLink}>Cerrar votación</Text>
+                    <Text style={styles.deleteLink}>Cerrar sin fijar fecha</Text>
                   </Pressable>
                 )}
               </View>
             );
           })}
 
-          {!pollMode ? (
-            <OutlineButton
-              label="🗳️ Proponer días a votación"
-              onPress={() => setPollMode(true)}
-            />
-          ) : (
-            <View style={styles.formBlock}>
-              <SectionLabel>Días propuestos</SectionLabel>
-              <CalendarPicker
-                selected={pollDays}
-                onToggle={(key) =>
-                  setPollDays((prev) => {
-                    const next = new Set(prev);
-                    if (next.has(key)) next.delete(key);
-                    else next.add(key);
-                    return next;
-                  })
-                }
-              />
-              <SectionLabel>Franjas</SectionLabel>
-              <View style={styles.chipRow}>
-                {SLOT_LABELS.map((label, slot) => (
-                  <Chip
-                    key={label}
-                    label={label}
-                    selected={pollSlots.has(slot)}
-                    onPress={() =>
-                      setPollSlots((prev) => {
-                        const next = new Set(prev);
-                        if (next.has(slot)) next.delete(slot);
-                        else next.add(slot);
-                        return next;
-                      })
-                    }
-                  />
-                ))}
-              </View>
-              <View style={styles.nav}>
-                <OutlineButton
-                  label="Cancelar"
-                  tone="white"
-                  onPress={() => setPollMode(false)}
-                  style={styles.navSmall}
-                />
-                <PrimaryButton
-                  label={busy ? 'Creando…' : 'Abrir votación'}
-                  onPress={handleCreatePoll}
-                  disabled={busy || pollDays.size === 0 || pollSlots.size === 0}
-                  style={styles.navBig}
-                />
-              </View>
-            </View>
-          )}
-
-          {isOwner && (
-            <View style={styles.formBlock}>
-              <SectionLabel>Programar directamente (GM)</SectionLabel>
-              <CalendarPicker
-                selected={createDays}
-                onToggle={(key) =>
-                  setCreateDays((prev) => {
-                    const next = new Set(prev);
-                    if (next.has(key)) next.delete(key);
-                    else next.add(key);
-                    return next;
-                  })
-                }
-              />
-              <View style={styles.chipRow}>
-                {SLOT_LABELS.map((label, slot) => (
-                  <Chip
-                    key={label}
-                    label={label}
-                    selected={createSlot === slot}
-                    onPress={() => setCreateSlot(slot)}
-                  />
-                ))}
-              </View>
+          {/* composer del GM: un solo calendario para votación o fijado directo */}
+          {isOwner &&
+            (!composing ? (
               <PrimaryButton
-                label={
-                  busy
-                    ? 'Programando…'
-                    : `📅 Programar ${createDays.size > 1 ? `${createDays.size} sesiones` : 'sesión'}`
-                }
-                onPress={handleCreateSession}
-                disabled={busy || createDays.size === 0}
+                label="📅 Proponer fechas de partida"
+                onPress={() => setComposing(true)}
               />
-            </View>
+            ) : (
+              <View style={styles.formBlock}>
+                <SectionLabel>Fechas propuestas</SectionLabel>
+                <CalendarPicker
+                  selected={days}
+                  onToggle={(key) =>
+                    setDays((prev) => {
+                      const next = new Set(prev);
+                      if (next.has(key)) next.delete(key);
+                      else next.add(key);
+                      return next;
+                    })
+                  }
+                />
+
+                {days.size > 0 && (
+                  <>
+                    <View style={styles.timeRow}>
+                      <Text style={styles.timeLabel}>Hora para todas</Text>
+                      <TimeField
+                        value={globalTime}
+                        onChange={(t) => {
+                          setGlobalTime(t);
+                          setTimeByDay(new Map()); // la global resetea los ajustes
+                        }}
+                      />
+                    </View>
+                    {[...days].sort().map((key) => (
+                      <View key={key} style={styles.dayRow}>
+                        <Text style={styles.dayLabel}>{shortDate(key)}</Text>
+                        <TimeField
+                          compact
+                          value={timeFor(key)}
+                          onChange={(t) =>
+                            setTimeByDay((prev) => new Map(prev).set(key, t))
+                          }
+                        />
+                      </View>
+                    ))}
+
+                    <SectionLabel>Nombre (opcional)</SectionLabel>
+                    <TextInput
+                      style={styles.nameInput}
+                      value={pollName}
+                      onChangeText={setPollName}
+                      placeholder="Sesión 12, one-shot de Halloween…"
+                      placeholderTextColor="rgba(255,255,255,0.35)"
+                      maxLength={120}
+                    />
+
+                    <SectionLabel>La votación cierra en</SectionLabel>
+                    <View style={styles.chipRow}>
+                      {DEADLINES.map((d) => (
+                        <Chip
+                          key={d.label}
+                          label={d.label}
+                          selected={deadlineHours === d.hours}
+                          onPress={() => setDeadlineHours(d.hours)}
+                        />
+                      ))}
+                    </View>
+                  </>
+                )}
+
+                <View style={styles.nav}>
+                  <OutlineButton
+                    label="Cancelar"
+                    tone="white"
+                    onPress={resetComposer}
+                    style={styles.navSmall}
+                  />
+                  <PrimaryButton
+                    label={busy ? 'Creando…' : '🗳️ Empezar votación'}
+                    onPress={handleStartPoll}
+                    disabled={busy || days.size === 0}
+                    style={styles.navBig}
+                  />
+                </View>
+                <OutlineButton
+                  label={
+                    days.size > 1
+                      ? `📌 Fijar las ${days.size} sin votación`
+                      : '📌 Fijar sin votación'
+                  }
+                  onPress={handleFixDirect}
+                  disabled={busy || days.size === 0}
+                />
+              </View>
+            ))}
+
+          {!isOwner && openPolls.length === 0 && (
+            <Text style={styles.soft}>
+              El GM aún no ha propuesto fechas. Cuando abra una votación aparecerá aquí y en el
+              chat.
+            </Text>
           )}
         </ScrollView>
       </SafeAreaView>
@@ -363,6 +537,11 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     paddingHorizontal: 14,
     paddingVertical: 11,
+    gap: 10,
+  },
+  sessionBody: {
+    flex: 1,
+    gap: 2,
   },
   sessionDate: {
     color: '#fff',
@@ -371,10 +550,21 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textTransform: 'capitalize',
   },
+  sessionTitle: {
+    color: Rolder.violetSoft,
+    fontSize: 12,
+    fontFamily: RolderFonts.regular,
+  },
   deleteLink: {
     color: Rolder.pass,
     fontSize: 12.5,
     fontFamily: RolderFonts.semibold,
+  },
+  acceptLink: {
+    color: Rolder.likeChipText,
+    fontSize: 12.5,
+    fontFamily: RolderFonts.bold,
+    fontWeight: '700',
   },
   pollBox: {
     backgroundColor: Rolder.surface,
@@ -389,6 +579,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: RolderFonts.bold,
     fontWeight: '700',
+  },
+  pollDeadline: {
+    color: Rolder.textSecondary,
+    fontSize: 12,
+    fontFamily: RolderFonts.regular,
   },
   option: {
     borderWidth: 1,
@@ -437,8 +632,72 @@ const styles = StyleSheet.create({
     fontFamily: RolderFonts.bold,
     fontWeight: '700',
   },
+  proposalBox: {
+    backgroundColor: 'rgba(139,108,255,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(139,108,255,0.3)',
+    borderRadius: 12,
+    padding: 10,
+    gap: 8,
+  },
+  proposalTitle: {
+    color: Rolder.violetSofter,
+    fontSize: 12.5,
+    fontFamily: RolderFonts.bold,
+    fontWeight: '700',
+  },
+  proposalRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  proposalLabel: {
+    flex: 1,
+    color: 'rgba(255,255,255,0.9)',
+    fontSize: 12.5,
+    fontFamily: RolderFonts.regular,
+  },
   formBlock: {
     gap: Spacing.two,
+  },
+  timeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  timeLabel: {
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 13.5,
+    fontFamily: RolderFonts.semibold,
+    fontWeight: '600',
+  },
+  dayRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    gap: 10,
+  },
+  dayLabel: {
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 13,
+    fontFamily: RolderFonts.semibold,
+    textTransform: 'capitalize',
+  },
+  nameInput: {
+    backgroundColor: Rolder.input,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 12,
+    paddingHorizontal: 13,
+    paddingVertical: 10,
+    color: '#fff',
+    fontSize: 14,
+    fontFamily: RolderFonts.regular,
   },
   chipRow: {
     flexDirection: 'row',

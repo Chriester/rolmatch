@@ -1,5 +1,8 @@
-// Votaciones de sesión: proponer días/franjas y que la mesa vote cuáles
-// le van bien (multivoto). La ganadora la programa el GM como sesión real.
+// Votaciones de sesión v2: el GM propone fechas concretas (con hora) y la
+// mesa multivota; los jugadores pueden proponer una fecha extra que cae en
+// la bandeja del GM (añadir/rechazar). La ganadora la fija el GM como
+// sesión real. Los extras de la migración 00030 (closes_at, propuestas)
+// degradan con gracia si aún no está aplicada.
 
 import { supabase } from '@/lib/supabase';
 
@@ -10,6 +13,15 @@ export type PollOption = {
   mine: boolean;
 };
 
+export type PollProposal = {
+  id: string;
+  poll_id: string;
+  proposer_id: string;
+  proposer_alias: string;
+  starts_at: string;
+  status: 'pending' | 'accepted' | 'rejected';
+};
+
 export type SessionPoll = {
   id: string;
   group_id: string;
@@ -17,7 +29,10 @@ export type SessionPoll = {
   title: string | null;
   status: 'open' | 'closed';
   created_at: string;
+  closes_at: string | null;
   options: PollOption[];
+  /** GM: todas las pendientes · jugador: solo las suyas */
+  proposals: PollProposal[];
 };
 
 export async function fetchPolls(groupId: string, viewerId: string): Promise<SessionPoll[]> {
@@ -29,7 +44,7 @@ export async function fetchPolls(groupId: string, viewerId: string): Promise<Ses
     .limit(10);
   if (error) throw error;
 
-  return (data ?? []).map((row) => {
+  const polls = (data ?? []).map((row) => {
     const raw = row as unknown as {
       id: string;
       group_id: string;
@@ -41,6 +56,8 @@ export async function fetchPolls(groupId: string, viewerId: string): Promise<Ses
     };
     return {
       ...raw,
+      closes_at: null as string | null,
+      proposals: [] as PollProposal[],
       options: raw.session_poll_options
         .map((option) => ({
           id: option.id,
@@ -51,23 +68,84 @@ export async function fetchPolls(groupId: string, viewerId: string): Promise<Ses
         .sort((a, b) => a.starts_at.localeCompare(b.starts_at)),
     };
   });
+
+  // extras de la migración 00030 — en dos consultas aparte para que la
+  // pantalla siga funcionando aunque no esté aplicada
+  try {
+    const ids = polls.map((p) => p.id);
+    if (ids.length > 0) {
+      const [{ data: extras }, { data: proposals }] = await Promise.all([
+        supabase.from('session_polls').select('id, closes_at').in('id', ids),
+        supabase
+          .from('session_poll_proposals')
+          .select('id, poll_id, proposer_id, starts_at, status, profiles(alias)')
+          .in('poll_id', ids)
+          .order('created_at', { ascending: true }),
+      ]);
+      const closesById = new Map((extras ?? []).map((e) => [e.id, e.closes_at]));
+      for (const poll of polls) {
+        poll.closes_at = closesById.get(poll.id) ?? null;
+        poll.proposals = (proposals ?? [])
+          .filter((p) => p.poll_id === poll.id)
+          .map((p) => {
+            const raw = p as unknown as { profiles: { alias: string } | null } & typeof p;
+            return {
+              id: p.id,
+              poll_id: p.poll_id,
+              proposer_id: p.proposer_id,
+              starts_at: p.starts_at,
+              status: p.status as PollProposal['status'],
+              proposer_alias: raw.profiles?.alias ?? 'Alguien',
+            };
+          });
+      }
+    }
+  } catch {
+    // migración 00030 sin aplicar: sin deadlines ni propuestas
+  }
+
+  return polls;
 }
 
 export async function createPoll(
   groupId: string,
   createdBy: string,
   title: string | null,
-  optionDates: Date[]
+  optionDates: Date[],
+  closesAt: Date | null
 ): Promise<void> {
-  const { data, error } = await supabase
-    .from('session_polls')
-    .insert({ group_id: groupId, created_by: createdBy, title })
-    .select('id')
-    .single();
-  if (error) throw error;
+  const base = { group_id: groupId, created_by: createdBy, title };
+  // closes_at solo si la migración 00030 está aplicada; si falla, sin deadline
+  let pollId: string;
+  if (closesAt) {
+    const { data, error } = await supabase
+      .from('session_polls')
+      .insert({ ...base, closes_at: closesAt.toISOString() })
+      .select('id')
+      .single();
+    if (error) {
+      const { data: retry, error: retryError } = await supabase
+        .from('session_polls')
+        .insert(base)
+        .select('id')
+        .single();
+      if (retryError) throw retryError;
+      pollId = retry.id;
+    } else {
+      pollId = data.id;
+    }
+  } else {
+    const { data, error } = await supabase
+      .from('session_polls')
+      .insert(base)
+      .select('id')
+      .single();
+    if (error) throw error;
+    pollId = data.id;
+  }
 
   const { error: optionsError } = await supabase.from('session_poll_options').insert(
-    optionDates.map((date) => ({ poll_id: data.id, starts_at: date.toISOString() }))
+    optionDates.map((date) => ({ poll_id: pollId, starts_at: date.toISOString() }))
   );
   if (optionsError) throw optionsError;
 }
@@ -93,5 +171,28 @@ export async function closePoll(pollId: string) {
     .from('session_polls')
     .update({ status: 'closed' })
     .eq('id', pollId);
+  if (error) throw error;
+}
+
+/** Un jugador propone una fecha extra: cae en la bandeja del GM. */
+export async function proposeDate(pollId: string, proposerId: string, date: Date) {
+  const { error } = await supabase
+    .from('session_poll_proposals')
+    .insert({ poll_id: pollId, proposer_id: proposerId, starts_at: date.toISOString() });
+  if (error) throw error;
+}
+
+/** El GM añade la propuesta como opción de la votación, o la rechaza. */
+export async function resolveProposal(proposal: PollProposal, accept: boolean) {
+  if (accept) {
+    const { error } = await supabase
+      .from('session_poll_options')
+      .insert({ poll_id: proposal.poll_id, starts_at: proposal.starts_at });
+    if (error) throw error;
+  }
+  const { error } = await supabase
+    .from('session_poll_proposals')
+    .update({ status: accept ? 'accepted' : 'rejected' })
+    .eq('id', proposal.id);
   if (error) throw error;
 }
