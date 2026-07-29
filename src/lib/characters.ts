@@ -11,6 +11,7 @@ export const CHARACTER_STATUS_LABELS: Record<CharacterStatus, string> = {
 
 export type Character = {
   id: string;
+  user_id: string;
   is_public: boolean;
   name: string;
   system_id: number | null;
@@ -50,7 +51,7 @@ export function characterAgeLabel(age: string | null): string | null {
   return /^\d+$/.test(trimmed) ? `${trimmed} años` : trimmed;
 }
 
-const CHARACTER_FIELDS = `id, name, is_public, system_id, archetype, level, gender, age, concept,
+const CHARACTER_FIELDS = `id, user_id, name, is_public, system_id, archetype, level, gender, age, concept,
   backstory, status, portrait_url, traits, sheet_theme, systems(name, slug)`;
 
 export async function fetchMyCharacters(userId: string): Promise<Character[]> {
