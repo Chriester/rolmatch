@@ -3,7 +3,7 @@
 // lleva al perfil del otro.
 
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -21,8 +21,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 import { Image } from 'expo-image';
 
-import { showAlert } from '@/lib/alert';
+import { confirmAction, showAlert } from '@/lib/alert';
 import { AppHeader } from '@/components/app-header';
+import { MessageActions } from '@/components/message-actions';
 import {
   ChatMediaPickers,
   gifSearchAvailable,
@@ -33,6 +34,8 @@ import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Rolder, RolderFonts, Spacing } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
 import {
+  deleteDmMessage,
+  editDmMessage,
   fetchDmMessages,
   fetchDmThread,
   markDmRead,
@@ -43,6 +46,7 @@ import {
   type DmMessage,
   type DmThread,
 } from '@/lib/dm';
+import { joinTypingChannel, leaveTypingChannel, type TypingHandle } from '@/lib/typing';
 
 export default function DmChatScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -52,6 +56,11 @@ export default function DmChatScreen() {
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
   const [pickerTab, setPickerTab] = useState<PickerTab | null>(null);
+  const [actionsFor, setActionsFor] = useState<DmMessage | null>(null);
+  const [editing, setEditing] = useState<DmMessage | null>(null);
+  const [otherTyping, setOtherTyping] = useState(false);
+  const typingRef = useRef<TypingHandle | null>(null);
+  const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!id || !session) return;
@@ -68,15 +77,37 @@ export default function DmChatScreen() {
 
   useEffect(() => {
     if (!id) return;
-    const channel = subscribeToDmMessages(id, (row) => {
-      setMessages((list) => {
-        if (list?.some((m) => m.id === row.id)) return list;
-        return [row, ...(list ?? [])];
-      });
-      // Lo estoy viendo llegar: no debe contar como no-leído
-      if (session) markDmRead(id, session.user.id);
+    const channel = subscribeToDmMessages(id, {
+      onInsert: (row) => {
+        setMessages((list) => {
+          if (list?.some((m) => m.id === row.id)) return list;
+          return [row, ...(list ?? [])];
+        });
+        // Lo estoy viendo llegar: no debe contar como no-leído
+        if (session) markDmRead(id, session.user.id);
+      },
+      onUpdate: (row) =>
+        setMessages((list) => list?.map((m) => (m.id === row.id ? { ...m, ...row } : m))),
+      onDelete: (deletedId) =>
+        setMessages((list) => list?.filter((m) => m.id !== deletedId)),
     });
     return () => unsubscribeFromDmMessages(channel);
+  }, [id, session]);
+
+  // Canal efímero de «escribiendo…»
+  useEffect(() => {
+    if (!id || !session) return;
+    const handle = joinTypingChannel(`dm:${id}`, session.user.id, () => {
+      setOtherTyping(true);
+      if (typingTimer.current) clearTimeout(typingTimer.current);
+      typingTimer.current = setTimeout(() => setOtherTyping(false), 3500);
+    });
+    typingRef.current = handle;
+    return () => {
+      if (typingTimer.current) clearTimeout(typingTimer.current);
+      typingRef.current = null;
+      leaveTypingChannel(handle);
+    };
   }, [id, session]);
 
   // Entrar al chat marca todo como leído (badge de «Mis chats»)
@@ -88,12 +119,41 @@ export default function DmChatScreen() {
     if (!id || !session || !draft.trim() || sending) return;
     setSending(true);
     try {
-      await sendDmMessage(id, session.user.id, draft);
+      if (editing) {
+        const body = draft.trim();
+        await editDmMessage(editing.id, body);
+        const editedId = editing.id;
+        setMessages((list) =>
+          list?.map((m) =>
+            m.id === editedId ? { ...m, body, edited_at: new Date().toISOString() } : m
+          )
+        );
+        setEditing(null);
+      } else {
+        await sendDmMessage(id, session.user.id, draft);
+      }
       setDraft('');
     } catch (error) {
       showAlert('No se pudo enviar', error instanceof Error ? error.message : String(error));
     } finally {
       setSending(false);
+    }
+  };
+
+  const handleDraftChange = (text: string) => {
+    setDraft(text);
+    if (text.trim()) typingRef.current?.sendTyping('typing');
+  };
+
+  const handleDeleteMessage = async (message: DmMessage) => {
+    setActionsFor(null);
+    const ok = await confirmAction('¿Borrar mensaje?', 'Desaparecerá para ambos.', 'Borrar');
+    if (!ok) return;
+    try {
+      await deleteDmMessage(message.id);
+      setMessages((list) => list?.filter((m) => m.id !== message.id));
+    } catch (error) {
+      showAlert('No se pudo borrar', error instanceof Error ? error.message : String(error));
     }
   };
 
@@ -143,15 +203,19 @@ export default function DmChatScreen() {
       ) : null;
 
     return (
-      <View style={[styles.messageRow, isMine && styles.messageRowMine]}>
+      <Pressable
+        style={[styles.messageRow, isMine && styles.messageRowMine]}
+        onLongPress={isMine ? () => setActionsFor(item) : undefined}
+        delayLongPress={350}>
         {media ? (
           <View style={styles.mediaWrap}>{media}</View>
         ) : (
           <View style={[styles.bubble, isMine ? styles.bubbleMine : styles.bubbleTheirs]}>
             <Text style={isMine ? styles.bubbleTextMine : styles.bubbleText}>{item.body}</Text>
+            {item.edited_at && <Text style={styles.editedTag}>editado</Text>}
           </View>
         )}
-      </View>
+      </Pressable>
     );
   };
 
@@ -198,6 +262,24 @@ export default function DmChatScreen() {
               </View>
             }
           />
+          {otherTyping && (
+            <Text style={styles.typingText}>✍️ {thread.otherAlias} está escribiendo…</Text>
+          )}
+          {editing && (
+            <View style={styles.editingBanner}>
+              <Text style={styles.editingLabel} numberOfLines={1}>
+                ✏️ Editando mensaje
+              </Text>
+              <Pressable
+                onPress={() => {
+                  setEditing(null);
+                  setDraft('');
+                }}
+                accessibilityLabel="Cancelar edición">
+                <Text style={styles.editingCancel}>✕</Text>
+              </Pressable>
+            </View>
+          )}
           {pickerTab !== null && (
             <ChatMediaPickers
               tab={pickerTab}
@@ -232,7 +314,7 @@ export default function DmChatScreen() {
             <TextInput
               style={[styles.input, styles.composerInput]}
               value={draft}
-              onChangeText={setDraft}
+              onChangeText={handleDraftChange}
               placeholder="Escribe un mensaje…"
               placeholderTextColor="rgba(255,255,255,0.35)"
               multiline
@@ -264,6 +346,19 @@ export default function DmChatScreen() {
           </View>
         </KeyboardAvoidingView>
       </SafeAreaView>
+
+      <MessageActions
+        visible={actionsFor !== null}
+        canEdit={actionsFor?.kind === 'text'}
+        onEdit={() => {
+          if (!actionsFor) return;
+          setEditing(actionsFor);
+          setDraft(actionsFor.body ?? '');
+          setActionsFor(null);
+        }}
+        onDelete={() => actionsFor && handleDeleteMessage(actionsFor)}
+        onClose={() => setActionsFor(null)}
+      />
     </ThemedView>
   );
 }
@@ -373,6 +468,40 @@ const styles = StyleSheet.create({
   },
   mediaWrap: {
     gap: 2,
+  },
+  editedTag: {
+    color: 'rgba(255,255,255,0.45)',
+    fontSize: 10,
+    fontFamily: RolderFonts.regular,
+    alignSelf: 'flex-end',
+  },
+  typingText: {
+    color: Rolder.textSecondary,
+    fontSize: 12,
+    fontFamily: RolderFonts.regular,
+    fontStyle: 'italic',
+    paddingTop: 4,
+  },
+  editingBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(139,108,255,0.15)',
+    borderRadius: 10,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    marginTop: Spacing.one,
+  },
+  editingLabel: {
+    color: Rolder.violetSofter,
+    fontSize: 12.5,
+    fontFamily: RolderFonts.semibold,
+    flexShrink: 1,
+  },
+  editingCancel: {
+    color: Rolder.textSecondary,
+    fontSize: 14,
+    paddingHorizontal: 6,
   },
   gifMessage: {
     width: 200,

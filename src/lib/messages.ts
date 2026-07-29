@@ -12,11 +12,12 @@ export type ChatMessage = {
   kind: MessageKind;
   media_url: string | null;
   created_at: string;
+  edited_at: string | null;
   profiles: { alias: string; avatar_url: string | null } | null;
 };
 
 const MESSAGE_SELECT =
-  'id, group_id, sender_id, body, kind, media_url, created_at, profiles(alias, avatar_url)';
+  'id, group_id, sender_id, body, kind, media_url, created_at, edited_at, profiles(alias, avatar_url)';
 
 /** Preview de un mensaje para listas (los media no tienen body legible) */
 export function messagePreview(message: { body: string | null; kind: MessageKind }): string {
@@ -175,19 +176,45 @@ export async function sendMediaMessage(
   return data as unknown as ChatMessage;
 }
 
+/** Edita un mensaje propio (la RLS rechaza los ajenos). */
+export async function editMessage(messageId: string, body: string) {
+  const { error } = await supabase
+    .from('messages')
+    .update({ body: body.trim(), edited_at: new Date().toISOString() })
+    .eq('id', messageId);
+  if (error) throw error;
+}
+
+/** Borra un mensaje propio (la RLS rechaza los ajenos). */
+export async function deleteMessage(messageId: string) {
+  const { error } = await supabase.from('messages').delete().eq('id', messageId);
+  if (error) throw error;
+}
+
 // El payload INSERT de Realtime trae la fila cruda, sin el embed de
 // profiles: el caller resuelve alias/avatar contra group.group_members.
+// UPDATE/DELETE requieren replica identity full (migr. 00027) para filtrar.
 export function subscribeToMessages(
   groupId: string,
-  onInsert: (row: Omit<ChatMessage, 'profiles'>) => void
+  handlers: {
+    onInsert: (row: Omit<ChatMessage, 'profiles'>) => void;
+    onUpdate?: (row: Omit<ChatMessage, 'profiles'>) => void;
+    onDelete?: (id: string) => void;
+  }
 ): RealtimeChannel {
+  const filter = { schema: 'public', table: 'messages', filter: `group_id=eq.${groupId}` };
   return supabase
     .channel(`messages:group:${groupId}`)
-    .on(
-      'postgres_changes',
-      { event: 'INSERT', schema: 'public', table: 'messages', filter: `group_id=eq.${groupId}` },
-      (payload) => onInsert(payload.new as Omit<ChatMessage, 'profiles'>)
+    .on('postgres_changes', { ...filter, event: 'INSERT' }, (payload) =>
+      handlers.onInsert(payload.new as Omit<ChatMessage, 'profiles'>)
     )
+    .on('postgres_changes', { ...filter, event: 'UPDATE' }, (payload) =>
+      handlers.onUpdate?.(payload.new as Omit<ChatMessage, 'profiles'>)
+    )
+    .on('postgres_changes', { ...filter, event: 'DELETE' }, (payload) => {
+      const old = payload.old as { id?: string };
+      if (old.id) handlers.onDelete?.(old.id);
+    })
     .subscribe();
 }
 

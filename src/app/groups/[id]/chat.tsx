@@ -21,10 +21,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 import { Image } from 'expo-image';
 
-import { showAlert } from '@/lib/alert';
+import { confirmAction, showAlert } from '@/lib/alert';
 import { AppHeader } from '@/components/app-header';
 import { ChatInfoPanel } from '@/components/chat-info-panel';
 import { ChatPollBanner } from '@/components/chat-poll-banner';
+import { MessageActions } from '@/components/message-actions';
 import { fetchPolls, type SessionPoll } from '@/lib/polls';
 import {
   ChatMediaPickers,
@@ -37,6 +38,8 @@ import { MaxContentWidth, Rolder, RolderFonts, Spacing } from '@/constants/theme
 import { useSession } from '@/hooks/use-session';
 import { fetchGroup, type GroupDetail } from '@/lib/groups';
 import {
+  deleteMessage,
+  editMessage,
   fetchMessages,
   sendMediaMessage,
   sendMessage,
@@ -45,6 +48,7 @@ import {
   unsubscribeFromMessages,
   type ChatMessage,
 } from '@/lib/messages';
+import { joinTypingChannel, leaveTypingChannel, type TypingHandle } from '@/lib/typing';
 
 export default function GroupChatScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -56,7 +60,12 @@ export default function GroupChatScreen() {
   const [infoOpen, setInfoOpen] = useState(false);
   const [activePoll, setActivePoll] = useState<SessionPoll | null>(null);
   const [pickerTab, setPickerTab] = useState<PickerTab | null>(null);
+  const [actionsFor, setActionsFor] = useState<ChatMessage | null>(null);
+  const [editing, setEditing] = useState<ChatMessage | null>(null);
+  const [typingAlias, setTypingAlias] = useState<string | null>(null);
   const groupRef = useRef<GroupDetail | null | undefined>(undefined);
+  const typingRef = useRef<TypingHandle | null>(null);
+  const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     groupRef.current = group;
@@ -87,17 +96,41 @@ export default function GroupChatScreen() {
     if (!id) return;
     // El payload INSERT de Realtime no trae el embed de profiles: resolvemos
     // el alias/avatar contra el roster ya cargado en groupRef.
-    const channel = subscribeToMessages(id, (row) => {
-      setMessages((list) => {
-        if (list?.some((m) => m.id === row.id)) return list;
-        const sender = groupRef.current?.group_members.find((m) => m.user_id === row.sender_id);
-        const message: ChatMessage = { ...row, profiles: sender?.profiles ?? null };
-        return [message, ...(list ?? [])];
-      });
-      // Lo estoy viendo llegar: no debe contar como no-leído
-      if (session) markChatRead(id, session.user.id);
+    const channel = subscribeToMessages(id, {
+      onInsert: (row) => {
+        setMessages((list) => {
+          if (list?.some((m) => m.id === row.id)) return list;
+          const sender = groupRef.current?.group_members.find((m) => m.user_id === row.sender_id);
+          const message: ChatMessage = { ...row, profiles: sender?.profiles ?? null };
+          return [message, ...(list ?? [])];
+        });
+        // Lo estoy viendo llegar: no debe contar como no-leído
+        if (session) markChatRead(id, session.user.id);
+      },
+      onUpdate: (row) =>
+        setMessages((list) =>
+          list?.map((m) => (m.id === row.id ? { ...m, ...row, profiles: m.profiles } : m))
+        ),
+      onDelete: (deletedId) =>
+        setMessages((list) => list?.filter((m) => m.id !== deletedId)),
     });
     return () => unsubscribeFromMessages(channel);
+  }, [id, session]);
+
+  // Canal efímero de «escribiendo…»
+  useEffect(() => {
+    if (!id || !session) return;
+    const handle = joinTypingChannel(`group:${id}`, session.user.id, (alias) => {
+      setTypingAlias(alias);
+      if (typingTimer.current) clearTimeout(typingTimer.current);
+      typingTimer.current = setTimeout(() => setTypingAlias(null), 3500);
+    });
+    typingRef.current = handle;
+    return () => {
+      if (typingTimer.current) clearTimeout(typingTimer.current);
+      typingRef.current = null;
+      leaveTypingChannel(handle);
+    };
   }, [id, session]);
 
   // Entrar al chat marca todo como leído (badge de «Mis chats»)
@@ -109,12 +142,44 @@ export default function GroupChatScreen() {
     if (!id || !session || !draft.trim() || sending) return;
     setSending(true);
     try {
-      await sendMessage(id, session.user.id, draft);
+      if (editing) {
+        const body = draft.trim();
+        await editMessage(editing.id, body);
+        const editedId = editing.id;
+        setMessages((list) =>
+          list?.map((m) =>
+            m.id === editedId ? { ...m, body, edited_at: new Date().toISOString() } : m
+          )
+        );
+        setEditing(null);
+      } else {
+        await sendMessage(id, session.user.id, draft);
+      }
       setDraft('');
     } catch (error) {
       showAlert('No se pudo enviar', error instanceof Error ? error.message : String(error));
     } finally {
       setSending(false);
+    }
+  };
+
+  const handleDraftChange = (text: string) => {
+    setDraft(text);
+    if (text.trim() && session) {
+      const me = groupRef.current?.group_members.find((m) => m.user_id === session.user.id);
+      typingRef.current?.sendTyping(me?.profiles?.alias ?? 'Alguien');
+    }
+  };
+
+  const handleDeleteMessage = async (message: ChatMessage) => {
+    setActionsFor(null);
+    const ok = await confirmAction('¿Borrar mensaje?', 'Desaparecerá para toda la mesa.', 'Borrar');
+    if (!ok) return;
+    try {
+      await deleteMessage(message.id);
+      setMessages((list) => list?.filter((m) => m.id !== message.id));
+    } catch (error) {
+      showAlert('No se pudo borrar', error instanceof Error ? error.message : String(error));
     }
   };
 
@@ -152,7 +217,10 @@ export default function GroupChatScreen() {
   const renderItem = ({ item }: { item: ChatMessage }) => {
     const isMine = item.sender_id === session?.user.id;
     return (
-      <View style={[styles.messageRow, isMine && styles.messageRowMine]}>
+      <Pressable
+        style={[styles.messageRow, isMine && styles.messageRowMine]}
+        onLongPress={isMine ? () => setActionsFor(item) : undefined}
+        delayLongPress={350}>
         {(() => {
           const media =
             item.kind === 'gif' && item.media_url ? (
@@ -165,12 +233,17 @@ export default function GroupChatScreen() {
               )
             ) : null;
 
+          const editedTag = item.edited_at ? (
+            <Text style={styles.editedTag}>editado</Text>
+          ) : null;
+
           if (isMine) {
             return media ? (
               <View style={styles.mediaWrap}>{media}</View>
             ) : (
               <View style={[styles.bubble, styles.bubbleMine]}>
                 <Text style={styles.bubbleTextMine}>{item.body}</Text>
+                {editedTag}
               </View>
             );
           }
@@ -183,10 +256,11 @@ export default function GroupChatScreen() {
             <View style={[styles.bubble, styles.bubbleTheirs]}>
               <Text style={styles.senderName}>{item.profiles?.alias ?? 'Jugador/a'}</Text>
               <Text style={styles.bubbleText}>{item.body}</Text>
+              {editedTag}
             </View>
           );
         })()}
-      </View>
+      </Pressable>
     );
   };
 
@@ -252,6 +326,24 @@ export default function GroupChatScreen() {
                 </View>
               }
             />
+            {typingAlias && (
+              <Text style={styles.typingText}>✍️ {typingAlias} está escribiendo…</Text>
+            )}
+            {editing && (
+              <View style={styles.editingBanner}>
+                <Text style={styles.editingLabel} numberOfLines={1}>
+                  ✏️ Editando mensaje
+                </Text>
+                <Pressable
+                  onPress={() => {
+                    setEditing(null);
+                    setDraft('');
+                  }}
+                  accessibilityLabel="Cancelar edición">
+                  <Text style={styles.editingCancel}>✕</Text>
+                </Pressable>
+              </View>
+            )}
             {pickerTab !== null && (
               <ChatMediaPickers
                 tab={pickerTab}
@@ -286,7 +378,7 @@ export default function GroupChatScreen() {
               <TextInput
                 style={[styles.input, styles.composerInput]}
                 value={draft}
-                onChangeText={setDraft}
+                onChangeText={handleDraftChange}
                 placeholder="Escribe un mensaje…"
                 placeholderTextColor="rgba(255,255,255,0.35)"
                 multiline
@@ -320,6 +412,19 @@ export default function GroupChatScreen() {
           </KeyboardAvoidingView>
         )}
       </SafeAreaView>
+
+      <MessageActions
+        visible={actionsFor !== null}
+        canEdit={actionsFor?.kind === 'text'}
+        onEdit={() => {
+          if (!actionsFor) return;
+          setEditing(actionsFor);
+          setDraft(actionsFor.body ?? '');
+          setActionsFor(null);
+        }}
+        onDelete={() => actionsFor && handleDeleteMessage(actionsFor)}
+        onClose={() => setActionsFor(null)}
+      />
 
       <ChatInfoPanel visible={infoOpen} group={group} onClose={() => setInfoOpen(false)} />
     </ThemedView>
@@ -434,6 +539,40 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontFamily: RolderFonts.semibold,
     fontWeight: '600',
+  },
+  editedTag: {
+    color: 'rgba(255,255,255,0.45)',
+    fontSize: 10,
+    fontFamily: RolderFonts.regular,
+    alignSelf: 'flex-end',
+  },
+  typingText: {
+    color: Rolder.textSecondary,
+    fontSize: 12,
+    fontFamily: RolderFonts.regular,
+    fontStyle: 'italic',
+    paddingTop: 4,
+  },
+  editingBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(139,108,255,0.15)',
+    borderRadius: 10,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    marginTop: Spacing.one,
+  },
+  editingLabel: {
+    color: Rolder.violetSofter,
+    fontSize: 12.5,
+    fontFamily: RolderFonts.semibold,
+    flexShrink: 1,
+  },
+  editingCancel: {
+    color: Rolder.textSecondary,
+    fontSize: 14,
+    paddingHorizontal: 6,
   },
   mediaWrap: {
     gap: 2,
