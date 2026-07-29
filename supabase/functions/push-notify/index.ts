@@ -1,11 +1,17 @@
 // Edge Function: push-notify
 // Envía notificaciones push (Expo Push API) a los móviles.
-// Disparada por Database Webhooks en INSERT sobre `matches`, `messages`
-// y `dm_messages` (una sola función: distingue por payload.table).
+// Disparada por Database Webhooks en INSERT sobre `matches`, `messages`,
+// `dm_messages`, `session_polls`, `swipes` y `character_likes`
+// (una sola función: distingue por payload.table).
 //
 // - Match → avisa al jugador y al GM de la mesa.
 // - Mensaje → avisa a los miembros de la mesa menos quien lo envía.
 // - DM → avisa al otro participante del hilo (migr. 00025).
+// - Votación nueva → avisa a la mesa menos quien la creó.
+// - Like de jugador a mesa → avisa al GM (nuevo candidato); like de mesa a
+//   jugador → teaser sin nombre (la pestaña Likes es el gancho premium).
+//   Si el like cierra un match, se calla: ya avisa el push de match.
+// - Like a personaje → avisa a su dueño.
 //
 // Los tokens los registra la app en push_tokens (migr. 00003). El envío va a
 // https://exp.host/--/api/v2/push/send (gratis); Expo lo entrega vía FCM, así
@@ -50,10 +56,25 @@ type DmMessageRecord = {
   kind: 'text' | 'gif' | 'sticker' | null;
 };
 
+type PollRecord = { id: string; group_id: string; created_by: string; title: string | null };
+
+type SwipeRecord = {
+  id: number;
+  user_id: string;
+  group_id: string;
+  origin: 'user' | 'group';
+  direction: 'like' | 'pass';
+};
+
+type CharacterLikeRecord = { character_id: string; liker_id: string };
+
 type WebhookPayload =
   | { type: 'INSERT'; table: 'matches'; record: MatchRecord }
   | { type: 'INSERT'; table: 'messages'; record: MessageRecord }
-  | { type: 'INSERT'; table: 'dm_messages'; record: DmMessageRecord };
+  | { type: 'INSERT'; table: 'dm_messages'; record: DmMessageRecord }
+  | { type: 'INSERT'; table: 'session_polls'; record: PollRecord }
+  | { type: 'INSERT'; table: 'swipes'; record: SwipeRecord }
+  | { type: 'INSERT'; table: 'character_likes'; record: CharacterLikeRecord };
 
 type PushMessage = {
   to: string;
@@ -135,6 +156,85 @@ async function buildForDm(record: DmMessageRecord): Promise<Map<string, { title:
     title: `💬 ${sender?.alias ?? 'Alguien'}`,
     body: messagePreview(record),
     url: `/dm/${record.thread_id}`,
+  });
+  return out;
+}
+
+/** Votación nueva: a toda la mesa menos quien la creó. */
+async function buildForPoll(record: PollRecord): Promise<Map<string, { title: string; body: string; url: string }>> {
+  const [{ data: group }, { data: creator }, { data: members }] = await Promise.all([
+    supabase.from('groups').select('name').eq('id', record.group_id).single(),
+    supabase.from('profiles').select('alias').eq('id', record.created_by).single(),
+    supabase.from('group_members').select('user_id').eq('group_id', record.group_id),
+  ]);
+  if (!group || !members) return new Map();
+
+  const url = `/groups/${record.group_id}/schedule`;
+  const title = `🗳️ Votación en «${group.name}»`;
+  const body = `${creator?.alias ?? 'Alguien'} propone fechas${record.title ? ` — ${record.title}` : ''}. Vota cuándo puedes jugar.`;
+  const out = new Map<string, { title: string; body: string; url: string }>();
+  for (const member of members) {
+    if (member.user_id !== record.created_by) out.set(member.user_id, { title, body, url });
+  }
+  return out;
+}
+
+/**
+ * Like en el feed. Si el like cierra un match (ya existe el del otro lado),
+ * no avisa: el push de match llega solo. El like de mesa a jugador no revela
+ * qué mesa es — descubrirlo es la pestaña Likes (gancho premium).
+ */
+async function buildForSwipe(record: SwipeRecord): Promise<Map<string, { title: string; body: string; url: string }>> {
+  if (record.direction !== 'like') return new Map();
+
+  const { data: reciprocal } = await supabase
+    .from('swipes')
+    .select('id')
+    .eq('user_id', record.user_id)
+    .eq('group_id', record.group_id)
+    .eq('origin', record.origin === 'user' ? 'group' : 'user')
+    .eq('direction', 'like')
+    .maybeSingle();
+  if (reciprocal) return new Map();
+
+  const out = new Map<string, { title: string; body: string; url: string }>();
+  if (record.origin === 'user') {
+    // jugador → mesa: el GM tiene candidato nuevo
+    const [{ data: group }, { data: player }] = await Promise.all([
+      supabase.from('groups').select('name, owner_id').eq('id', record.group_id).single(),
+      supabase.from('profiles').select('alias').eq('id', record.user_id).single(),
+    ]);
+    if (!group) return out;
+    out.set(group.owner_id, {
+      title: `⚔️ Candidato para «${group.name}»`,
+      body: `${player?.alias ?? 'Alguien'} quiere unirse a tu mesa.`,
+      url: `/groups/${record.group_id}/candidates`,
+    });
+  } else {
+    // mesa → jugador: teaser sin nombre
+    out.set(record.user_id, {
+      title: '💜 ¡Le gustas a una mesa!',
+      body: 'Descubre cuál en tu pestaña de Likes.',
+      url: '/likes',
+    });
+  }
+  return out;
+}
+
+/** Like a un personaje: a su dueño (sin nombrar al fan). */
+async function buildForCharacterLike(record: CharacterLikeRecord): Promise<Map<string, { title: string; body: string; url: string }>> {
+  const { data: character } = await supabase
+    .from('characters')
+    .select('name, user_id')
+    .eq('id', record.character_id)
+    .single();
+  if (!character || character.user_id === record.liker_id) return new Map();
+
+  const out = new Map<string, { title: string; body: string; url: string }>();
+  out.set(character.user_id, {
+    title: `💜 A alguien le gusta ${character.name}`,
+    body: 'Tu vitrina está haciendo su trabajo.',
+    url: `/characters/${record.character_id}`,
   });
   return out;
 }
@@ -234,7 +334,13 @@ Deno.serve(async (request) => {
           ? await buildForMessage(payload.record)
           : payload.table === 'dm_messages'
             ? await buildForDm(payload.record)
-            : new Map<string, { title: string; body: string; url: string }>();
+            : payload.table === 'session_polls'
+              ? await buildForPoll(payload.record)
+              : payload.table === 'swipes'
+                ? await buildForSwipe(payload.record)
+                : payload.table === 'character_likes'
+                  ? await buildForCharacterLike(payload.record)
+                  : new Map<string, { title: string; body: string; url: string }>();
 
     const result = await sendAll(byUser);
     const webResult = await sendAllWeb(byUser);
