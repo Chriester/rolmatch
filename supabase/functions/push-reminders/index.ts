@@ -5,6 +5,10 @@
 // discord-reminders mientras Discord está apagado (y conviven si se reactiva:
 // cada canal marca sus propios flags push_reminded_*).
 //
+// Además, un tercer aviso "hoy toca partida" cuando empieza el día
+// calendario de la sesión en la timezone de la mesa (migr. 00029) — el
+// mismo momento en que el histórico de la mesa se abre para escribir.
+//
 // Además de Expo (APK), envía Web Push a los navegadores suscritos en
 // web_push_subscriptions (migr. 00024) — el canal de los usuarios de iOS.
 //
@@ -32,6 +36,14 @@ type SessionRow = {
   push_reminded_24h: boolean;
   push_reminded_1h: boolean;
   groups: { name: string } | null;
+};
+
+type DayStartRow = {
+  id: string;
+  group_id: string;
+  starts_at: string;
+  title: string | null;
+  group_name: string | null;
 };
 
 type PushMessage = {
@@ -186,6 +198,43 @@ Deno.serve(async (request) => {
       await supabase.from('sessions').update(update).eq('id', row.id);
     } catch (err) {
       console.error(`fallo recordando sesión ${row.id}: ${err}`);
+    }
+  }
+
+  // Aviso "hoy toca partida": dia calendario de la sesion (timezone de la
+  // mesa) distinto de las horas absolutas de arriba, por eso es una
+  // consulta y un flag aparte (sessions_starting_today, migr. 00029).
+  const { data: startingToday, error: dayStartError } = await supabase.rpc(
+    'sessions_starting_today'
+  );
+  if (dayStartError) {
+    console.error(`error consultando sessions_starting_today: ${JSON.stringify(dayStartError)}`);
+  } else {
+    for (const row of (startingToday ?? []) as DayStartRow[]) {
+      const groupName = row.group_name ?? 'tu mesa';
+      const sessionTitle = row.title ? ` — ${row.title}` : '';
+      const content = {
+        title: `🎲 ¡Hoy toca «${groupName}»!`,
+        body: `El histórico de la mesa se abre para escribir${sessionTitle}.`,
+      };
+      try {
+        const url = `/groups/${row.group_id}/journal`;
+        const { tokens, userIds } = await memberTokens(row.group_id);
+        const pushes: PushMessage[] = tokens.map((token) => ({
+          to: token,
+          title: content.title,
+          body: content.body,
+          data: { url },
+          sound: 'default',
+          channelId: 'default',
+        }));
+        if (pushes.length > 0) sent += await sendPushes(pushes);
+        sent += await sendWebPushes(userIds, { ...content, url });
+        // marcamos aunque no haya destinatarios: el dia ya empezo, no reintentamos en bucle
+        await supabase.from('sessions').update({ push_reminded_day_start: true }).eq('id', row.id);
+      } catch (err) {
+        console.error(`fallo avisando inicio de dia de sesión ${row.id}: ${err}`);
+      }
     }
   }
 
