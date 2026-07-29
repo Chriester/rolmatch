@@ -22,7 +22,7 @@ import { useSession } from '@/hooks/use-session';
 import { VTT_LABELS } from '@/lib/groups';
 import { characterAgeLabel } from '@/lib/characters';
 import { fetchPlayerProfile, type PlayerProfile } from '@/lib/players';
-import { GENDER_LABELS, ageFromBirthYear } from '@/lib/profile';
+import { GENDER_LABELS, SAFETY_TOOL_LABELS, ageFromBirthYear } from '@/lib/profile';
 import { levelInfoFromXp } from '@/lib/xp';
 
 const ROLE_LABELS: Record<string, string> = {
@@ -144,6 +144,19 @@ export default function PlayerProfileScreen() {
                 .join(' · ')}
             </Text>
           </View>
+
+          {profile.safety_tools.length > 0 && (
+            <View style={styles.block}>
+              <SectionLabel>🛡 Seguridad en mesa</SectionLabel>
+              <CardChipRow>
+                {profile.safety_tools
+                  .filter((tool) => SAFETY_TOOL_LABELS[tool])
+                  .map((tool) => (
+                    <CardChip key={tool} label={SAFETY_TOOL_LABELS[tool]} />
+                  ))}
+              </CardChipRow>
+            </View>
+          )}
 
           <View style={styles.block}>
             <SectionLabel>A qué juega</SectionLabel>
