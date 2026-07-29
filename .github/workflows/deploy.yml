@@ -30,6 +30,9 @@ jobs:
       EXPO_PUBLIC_DISCORD_GUILD_ID: ${{ secrets.EXPO_PUBLIC_DISCORD_GUILD_ID }}
       # opcional: sin ella la pestaña GIF del chat no aparece
       EXPO_PUBLIC_KLIPY_API_KEY: ${{ secrets.EXPO_PUBLIC_KLIPY_API_KEY }}
+      # el bundle conoce su propio commit: el aviso de "versión nueva" de la
+      # web compara esto contra /version.json (escrito más abajo)
+      EXPO_PUBLIC_BUILD_SHA: ${{ github.sha }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -41,6 +44,8 @@ jobs:
         run: npx vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
       - name: Build
         run: npx vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+      - name: Version marker (aviso de recarga en clientes web)
+        run: echo "{\"sha\":\"${{ github.sha }}\"}" > .vercel/output/static/version.json
       - name: Deploy
         run: npx vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
 
