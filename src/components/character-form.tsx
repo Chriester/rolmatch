@@ -1,6 +1,8 @@
-// Creación/edición de personaje: eliges sistema → aparece LA HOJA del
-// diseño, vacía, y se rellena tocando cada campo (CharacterSheetEditor).
-// El selector de diseño cosmético va al final, como pidió Chris.
+// Creación/edición de personaje. Al CREAR hay dos modos: «Ficha rápida»
+// (nombre, clase y concepto — lo justo para la vitrina) y «Hoja completa»
+// (eliges sistema → aparece LA HOJA del diseño vacía y se rellena tocando,
+// CharacterSheetEditor). La hoja siempre puede completarse después desde
+// Editar personaje. El selector de diseño cosmético va al final.
 
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useState } from 'react';
@@ -45,6 +47,8 @@ export function CharacterForm({
   themeStatus = { isPremium: false, level: 1 },
 }: CharacterFormProps) {
   const [systems, setSystems] = useState<System[]>([]);
+  // al crear se arranca en ficha rápida; al editar, siempre hoja completa
+  const [mode, setMode] = useState<'quick' | 'full'>(initial ? 'full' : 'quick');
   const [name, setName] = useState(initial?.name ?? '');
   const [portraitUrl, setPortraitUrl] = useState<string | null>(initial?.portrait_url ?? null);
   const [systemId, setSystemId] = useState<number | null>(initial?.system_id ?? null);
@@ -104,6 +108,25 @@ export function CharacterForm({
 
   return (
     <ScrollView contentContainerStyle={styles.scroll}>
+      {!initial && (
+        <View style={styles.modeRow}>
+          <Pressable
+            style={[styles.modeCard, mode === 'quick' && styles.modeCardActive]}
+            onPress={() => setMode('quick')}>
+            <Text style={styles.modeEmoji}>⚡</Text>
+            <Text style={styles.modeTitle}>Ficha rápida</Text>
+            <Text style={styles.modeDetail}>Nombre, clase y concepto. Listo en un minuto.</Text>
+          </Pressable>
+          <Pressable
+            style={[styles.modeCard, mode === 'full' && styles.modeCardActive]}
+            onPress={() => setMode('full')}>
+            <Text style={styles.modeEmoji}>📜</Text>
+            <Text style={styles.modeTitle}>Hoja completa</Text>
+            <Text style={styles.modeDetail}>La hoja del sistema entera, campo a campo.</Text>
+          </Pressable>
+        </View>
+      )}
+
       <View style={styles.center}>
         <PhotoPicker
           userId={userId}
@@ -131,7 +154,7 @@ export function CharacterForm({
         ))}
       </View>
 
-      <SectionLabel>Sistema — genera su hoja</SectionLabel>
+      <SectionLabel>{mode === 'full' ? 'Sistema — genera su hoja' : 'Sistema'}</SectionLabel>
       <View style={styles.chipRow}>
         {systems.map((system) => (
           <Chip
@@ -143,7 +166,28 @@ export function CharacterForm({
         ))}
       </View>
 
-      {systemId === null ? (
+      {mode === 'quick' ? (
+        <>
+          <TextInput
+            style={styles.quickInput}
+            value={meta.archetype}
+            onChangeText={(v) => setMeta('archetype', v)}
+            placeholder="Clase o arquetipo (bárbara, cara, investigador…)"
+            placeholderTextColor="rgba(255,255,255,0.35)"
+          />
+          <TextInput
+            style={[styles.quickInput, styles.quickMultiline]}
+            value={meta.concept}
+            onChangeText={(v) => setMeta('concept', v)}
+            placeholder="Concepto o descripción en un par de frases…"
+            placeholderTextColor="rgba(255,255,255,0.35)"
+            multiline
+          />
+          <Text style={styles.hint}>
+            📜 Su hoja completa podrás rellenarla cuando quieras desde «Editar personaje».
+          </Text>
+        </>
+      ) : systemId === null ? (
         <Text style={styles.hint}>
           🎲 Elige un sistema y su hoja aparecerá aquí, vacía y lista para tocar y rellenar.
         </Text>
@@ -317,5 +361,52 @@ const styles = StyleSheet.create({
   switchLabel: {
     flex: 1,
     gap: 2,
+  },
+  modeRow: {
+    flexDirection: 'row',
+    gap: Spacing.two,
+  },
+  modeCard: {
+    flex: 1,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.14)',
+    borderRadius: 14,
+    padding: 12,
+    gap: 3,
+  },
+  modeCardActive: {
+    backgroundColor: 'rgba(139,108,255,0.14)',
+    borderColor: 'rgba(139,108,255,0.8)',
+  },
+  modeEmoji: {
+    fontSize: 20,
+  },
+  modeTitle: {
+    color: '#fff',
+    fontSize: 14,
+    fontFamily: RolderFonts.bold,
+    fontWeight: '700',
+  },
+  modeDetail: {
+    color: Rolder.textSecondary,
+    fontSize: 11.5,
+    fontFamily: RolderFonts.regular,
+    lineHeight: 15,
+  },
+  quickInput: {
+    backgroundColor: Rolder.input,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 12,
+    paddingHorizontal: 13,
+    paddingVertical: 11,
+    color: '#fff',
+    fontSize: 14,
+    fontFamily: RolderFonts.regular,
+  },
+  quickMultiline: {
+    minHeight: 72,
+    textAlignVertical: 'top',
   },
 });
