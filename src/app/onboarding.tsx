@@ -319,8 +319,8 @@ export default function OnboardingScreen() {
                 <Text style={styles.tzBannerText}>🌍 {timezone || 'Zona horaria'}</Text>
               </View>
               <Text style={styles.helper}>
-                Marca tus franjas libres (en tu hora local). Es lo que usamos para no emparejarte
-                nunca con mesas imposibles.
+                Toca una franja o deja pulsado y arrastra para pintar varias (en tu hora local).
+                Es lo que usamos para no emparejarte nunca con mesas imposibles.
               </Text>
               <AvailabilityGrid selected={availability} onToggle={toggleAvailability} />
               <Text style={styles.counter}>
