@@ -17,7 +17,10 @@ export type DmMessage = {
   kind: MessageKind;
   media_url: string | null;
   created_at: string;
+  edited_at: string | null;
 };
+
+const DM_MESSAGE_SELECT = 'id, thread_id, sender_id, body, kind, media_url, created_at, edited_at';
 
 export type DmThread = {
   id: string;
@@ -103,7 +106,7 @@ export async function fetchDmThread(threadId: string, myId: string): Promise<DmT
 export async function fetchDmMessages(threadId: string, limit = 100): Promise<DmMessage[]> {
   const { data, error } = await supabase
     .from('dm_messages')
-    .select('id, thread_id, sender_id, body, kind, media_url, created_at')
+    .select(DM_MESSAGE_SELECT)
     .eq('thread_id', threadId)
     .order('created_at', { ascending: false })
     .limit(limit);
@@ -119,7 +122,7 @@ export async function sendDmMessage(
   const { data, error } = await supabase
     .from('dm_messages')
     .insert({ thread_id: threadId, sender_id: senderId, body: body.trim(), kind: 'text' })
-    .select('id, thread_id, sender_id, body, kind, media_url, created_at')
+    .select(DM_MESSAGE_SELECT)
     .single();
   if (error) throw error;
   return data as DmMessage;
@@ -140,23 +143,49 @@ export async function sendDmMediaMessage(
       media_url: content.mediaUrl ?? null,
       body: content.body ?? null,
     })
-    .select('id, thread_id, sender_id, body, kind, media_url, created_at')
+    .select(DM_MESSAGE_SELECT)
     .single();
   if (error) throw error;
   return data as DmMessage;
 }
 
+/** Edita un mensaje propio (la RLS rechaza los ajenos). */
+export async function editDmMessage(messageId: string, body: string) {
+  const { error } = await supabase
+    .from('dm_messages')
+    .update({ body: body.trim(), edited_at: new Date().toISOString() })
+    .eq('id', messageId);
+  if (error) throw error;
+}
+
+/** Borra un mensaje propio (la RLS rechaza los ajenos). */
+export async function deleteDmMessage(messageId: string) {
+  const { error } = await supabase.from('dm_messages').delete().eq('id', messageId);
+  if (error) throw error;
+}
+
+// UPDATE/DELETE requieren replica identity full (migr. 00027) para filtrar.
 export function subscribeToDmMessages(
   threadId: string,
-  onInsert: (row: DmMessage) => void
+  handlers: {
+    onInsert: (row: DmMessage) => void;
+    onUpdate?: (row: DmMessage) => void;
+    onDelete?: (id: string) => void;
+  }
 ): RealtimeChannel {
+  const filter = { schema: 'public', table: 'dm_messages', filter: `thread_id=eq.${threadId}` };
   return supabase
     .channel(`dm:${threadId}`)
-    .on(
-      'postgres_changes',
-      { event: 'INSERT', schema: 'public', table: 'dm_messages', filter: `thread_id=eq.${threadId}` },
-      (payload) => onInsert(payload.new as DmMessage)
+    .on('postgres_changes', { ...filter, event: 'INSERT' }, (payload) =>
+      handlers.onInsert(payload.new as DmMessage)
     )
+    .on('postgres_changes', { ...filter, event: 'UPDATE' }, (payload) =>
+      handlers.onUpdate?.(payload.new as DmMessage)
+    )
+    .on('postgres_changes', { ...filter, event: 'DELETE' }, (payload) => {
+      const old = payload.old as { id?: string };
+      if (old.id) handlers.onDelete?.(old.id);
+    })
     .subscribe();
 }
 
