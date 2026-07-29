@@ -6,6 +6,7 @@
 import type { RealtimeChannel } from '@supabase/supabase-js';
 
 import { messagePreview, type ChatSummary, type MessageKind } from '@/lib/messages';
+import { fetchBlockRelations } from '@/lib/moderation';
 import { supabase } from '@/lib/supabase';
 
 export type DmMessage = {
@@ -177,12 +178,19 @@ export async function markDmRead(threadId: string, userId: string) {
 /** Mis hilos 1-a-1 con último mensaje y no-leídos. [] si la migración falta. */
 export async function fetchMyDmChats(userId: string): Promise<DmSummary[]> {
   try {
-    const { data: threads, error } = await supabase
-      .from('dm_threads')
-      .select('id, user_lo, user_hi')
-      .or(`user_lo.eq.${userId},user_hi.eq.${userId}`);
+    const [{ data: allThreads, error }, blocked] = await Promise.all([
+      supabase
+        .from('dm_threads')
+        .select('id, user_lo, user_hi')
+        .or(`user_lo.eq.${userId},user_hi.eq.${userId}`),
+      fetchBlockRelations(userId).catch(() => new Set<string>()),
+    ]);
     if (error) throw error;
-    if (!threads || threads.length === 0) return [];
+    // hilos con gente bloqueada (en cualquier dirección): fuera de la lista
+    const threads = (allThreads ?? []).filter(
+      (t) => !blocked.has(t.user_lo === userId ? t.user_hi : t.user_lo)
+    );
+    if (threads.length === 0) return [];
 
     const threadIds = threads.map((t) => t.id);
     const otherIds = threads.map((t) => (t.user_lo === userId ? t.user_hi : t.user_lo));

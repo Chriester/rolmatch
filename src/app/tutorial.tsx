@@ -69,20 +69,20 @@ const SLIDES: { emoji: string; title: string; body: Part[] }[] = [
     body: [
       'Si os gustáis los dos, ',
       { b: 'match' },
-      ': entras en la mesa y el bot os abre un ',
-      { b: 'canal privado de Discord' },
-      '. Sigue ahí… o en el chat de la app.',
+      ': entras directamente en la ',
+      { b: 'mesa' },
+      ', con su chat, sus sesiones y su histórico.',
     ],
   },
   {
     emoji: '💬',
-    title: 'Chats de mesa',
+    title: 'Chats',
     body: [
       'Cada mesa tiene su ',
       { b: 'chat' },
-      ' con emojis, GIFs y stickers. El botón ',
-      { b: 'ⓘ' },
-      ' enseña horario, próxima sesión y miembros.',
+      ' con emojis, GIFs y stickers, y puedes escribir ',
+      { b: '1 a 1' },
+      ' a cualquier compañero desde su perfil.',
     ],
   },
   {
