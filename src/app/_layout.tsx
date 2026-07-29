@@ -80,6 +80,7 @@ export default function RootLayout() {
           <Stack.Screen name="rate" />
           <Stack.Screen name="settings" />
           <Stack.Screen name="players/[id]" />
+          <Stack.Screen name="dm/[id]" />
           <Stack.Screen name="characters/index" />
           <Stack.Screen name="characters/new" />
           <Stack.Screen name="characters/[id]" />

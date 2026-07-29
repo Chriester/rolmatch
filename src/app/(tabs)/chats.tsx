@@ -12,8 +12,22 @@ import { ThemedView } from '@/components/themed-view';
 import { ListRow, OutlineButton, ScreenTitle } from '@/components/ui';
 import { MaxContentWidth, Rolder, RolderFonts, Spacing } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
+import { fetchMyDmChats, type DmSummary } from '@/lib/dm';
 import { fetchMyChats, type ChatSummary } from '@/lib/messages';
 import { webPushState } from '@/lib/web-push';
+
+// Mesas e hilos 1-a-1 conviven en la misma lista, ordenados por actividad
+type ChatRow =
+  | ({ kind: 'group' } & ChatSummary)
+  | ({ kind: 'dm' } & DmSummary);
+
+function sortByActivity(a: ChatRow, b: ChatRow) {
+  if (a.lastMessage && b.lastMessage)
+    return b.lastMessage.created_at.localeCompare(a.lastMessage.created_at);
+  if (a.lastMessage) return -1;
+  if (b.lastMessage) return 1;
+  return a.name.localeCompare(b.name);
+}
 
 function timeLabel(iso: string) {
   const date = new Date(iso);
@@ -26,15 +40,26 @@ function timeLabel(iso: string) {
 
 export default function ChatsScreen() {
   const session = useSession();
-  const [chats, setChats] = useState<ChatSummary[] | undefined>(undefined);
+  const [chats, setChats] = useState<ChatRow[] | undefined>(undefined);
   const [loadError, setLoadError] = useState(false);
 
   const load = useCallback(() => {
     if (!session) return;
     setLoadError(false);
     setChats(undefined);
-    fetchMyChats(session.user.id)
-      .then(setChats)
+    Promise.all([
+      fetchMyChats(session.user.id),
+      // degrada a [] por sí sola si la migración 00025 no está aplicada
+      fetchMyDmChats(session.user.id),
+    ])
+      .then(([groups, dms]) =>
+        setChats(
+          [
+            ...groups.map((g) => ({ kind: 'group' as const, ...g })),
+            ...dms.map((d) => ({ kind: 'dm' as const, ...d })),
+          ].sort(sortByActivity)
+        )
+      )
       .catch(() => setLoadError(true));
   }, [session]);
 
@@ -72,18 +97,31 @@ export default function ChatsScreen() {
         ) : (
           <FlatList
             data={chats}
-            keyExtractor={(c) => c.groupId}
+            keyExtractor={(c) => (c.kind === 'group' ? `g-${c.groupId}` : `d-${c.threadId}`)}
             contentContainerStyle={styles.list}
             renderItem={({ item }) => (
               <ListRow
                 onPress={() =>
-                  router.push({ pathname: '/groups/[id]/chat', params: { id: item.groupId } })
+                  item.kind === 'group'
+                    ? router.push({
+                        pathname: '/groups/[id]/chat',
+                        params: { id: item.groupId },
+                      })
+                    : router.push({ pathname: '/dm/[id]', params: { id: item.threadId } })
                 }>
                 {item.imageUrl ? (
-                  <Image source={{ uri: item.imageUrl }} style={styles.thumb} />
+                  <Image
+                    source={{ uri: item.imageUrl }}
+                    style={[styles.thumb, item.kind === 'dm' && styles.thumbDm]}
+                  />
                 ) : (
-                  <View style={[styles.thumb, styles.thumbFallback]}>
-                    <Text style={styles.thumbEmoji}>🎲</Text>
+                  <View
+                    style={[
+                      styles.thumb,
+                      item.kind === 'dm' && styles.thumbDm,
+                      styles.thumbFallback,
+                    ]}>
+                    <Text style={styles.thumbEmoji}>{item.kind === 'dm' ? '🧙' : '🎲'}</Text>
                   </View>
                 )}
                 <View style={styles.body}>
@@ -99,7 +137,9 @@ export default function ChatsScreen() {
                     style={[styles.preview, item.unread > 0 && styles.previewUnread]}
                     numberOfLines={1}>
                     {item.lastMessage
-                      ? `${item.lastMessage.sender ?? 'Alguien'}: ${item.lastMessage.body}`
+                      ? item.kind === 'group'
+                        ? `${item.lastMessage.sender ?? 'Alguien'}: ${item.lastMessage.body}`
+                        : item.lastMessage.body
                       : 'Sin mensajes todavía — rompe el hielo.'}
                   </Text>
                 </View>
@@ -173,6 +213,9 @@ const styles = StyleSheet.create({
     width: 54,
     height: 54,
     borderRadius: 12,
+  },
+  thumbDm: {
+    borderRadius: 27,
   },
   thumbFallback: {
     backgroundColor: 'rgba(139,108,255,0.2)',

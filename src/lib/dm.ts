@@ -1,0 +1,237 @@
+// Chat 1-a-1 (issue #42): hilos privados entre usuarios que comparten mesa.
+// Mismo contrato de mensajes que el chat de mesa (text/gif/sticker) para
+// reutilizar la UI. Todas las lecturas degradan con gracia si la migración
+// 00025 no está aplicada (patrón fetchMyChats/chat_reads).
+
+import type { RealtimeChannel } from '@supabase/supabase-js';
+
+import { messagePreview, type ChatSummary, type MessageKind } from '@/lib/messages';
+import { supabase } from '@/lib/supabase';
+
+export type DmMessage = {
+  id: string;
+  thread_id: string;
+  sender_id: string;
+  body: string | null;
+  kind: MessageKind;
+  media_url: string | null;
+  created_at: string;
+};
+
+export type DmThread = {
+  id: string;
+  otherId: string;
+  otherAlias: string;
+  otherAvatarUrl: string | null;
+};
+
+/** Resumen para «Mis chats» — misma forma que ChatSummary pero con hilo. */
+export type DmSummary = Omit<ChatSummary, 'groupId'> & {
+  threadId: string;
+  otherId: string;
+};
+
+function normalizePair(a: string, b: string): { user_lo: string; user_hi: string } {
+  return a < b ? { user_lo: a, user_hi: b } : { user_lo: b, user_hi: a };
+}
+
+/**
+ * Devuelve el hilo con ese usuario, creándolo si no existe. La RLS solo
+ * permite crear hilos entre gente que comparte mesa: si no es el caso,
+ * lanza con un mensaje entendible.
+ */
+export async function getOrCreateDmThread(myId: string, otherId: string): Promise<string> {
+  const pair = normalizePair(myId, otherId);
+  const { data: existing, error: selectError } = await supabase
+    .from('dm_threads')
+    .select('id')
+    .eq('user_lo', pair.user_lo)
+    .eq('user_hi', pair.user_hi)
+    .maybeSingle();
+  if (selectError) throw selectError;
+  if (existing) return existing.id;
+
+  const { data: created, error: insertError } = await supabase
+    .from('dm_threads')
+    .insert(pair)
+    .select('id')
+    .single();
+  if (insertError) {
+    // 23505 = otro dispositivo lo creó a la vez; 42501 = la RLS lo prohíbe
+    if (insertError.code === '23505') {
+      const { data: raced } = await supabase
+        .from('dm_threads')
+        .select('id')
+        .eq('user_lo', pair.user_lo)
+        .eq('user_hi', pair.user_hi)
+        .single();
+      if (raced) return raced.id;
+    }
+    if (insertError.code === '42501') {
+      throw new Error('Solo puedes escribir a jugadores con los que compartes mesa.');
+    }
+    throw insertError;
+  }
+  return created.id;
+}
+
+/** Hilo + identidad del otro participante (para la cabecera del chat). */
+export async function fetchDmThread(threadId: string, myId: string): Promise<DmThread | null> {
+  const { data: thread, error } = await supabase
+    .from('dm_threads')
+    .select('id, user_lo, user_hi')
+    .eq('id', threadId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!thread) return null;
+  const otherId = thread.user_lo === myId ? thread.user_hi : thread.user_lo;
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('alias, avatar_url')
+    .eq('id', otherId)
+    .maybeSingle();
+  return {
+    id: thread.id,
+    otherId,
+    otherAlias: profile?.alias ?? 'Jugador/a',
+    otherAvatarUrl: profile?.avatar_url ?? null,
+  };
+}
+
+/** Últimos `limit` mensajes del hilo, más reciente primero (FlatList invertido). */
+export async function fetchDmMessages(threadId: string, limit = 100): Promise<DmMessage[]> {
+  const { data, error } = await supabase
+    .from('dm_messages')
+    .select('id, thread_id, sender_id, body, kind, media_url, created_at')
+    .eq('thread_id', threadId)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return (data ?? []) as DmMessage[];
+}
+
+export async function sendDmMessage(
+  threadId: string,
+  senderId: string,
+  body: string
+): Promise<DmMessage> {
+  const { data, error } = await supabase
+    .from('dm_messages')
+    .insert({ thread_id: threadId, sender_id: senderId, body: body.trim(), kind: 'text' })
+    .select('id, thread_id, sender_id, body, kind, media_url, created_at')
+    .single();
+  if (error) throw error;
+  return data as DmMessage;
+}
+
+export async function sendDmMediaMessage(
+  threadId: string,
+  senderId: string,
+  kind: 'gif' | 'sticker',
+  content: { mediaUrl?: string; body?: string }
+): Promise<DmMessage> {
+  const { data, error } = await supabase
+    .from('dm_messages')
+    .insert({
+      thread_id: threadId,
+      sender_id: senderId,
+      kind,
+      media_url: content.mediaUrl ?? null,
+      body: content.body ?? null,
+    })
+    .select('id, thread_id, sender_id, body, kind, media_url, created_at')
+    .single();
+  if (error) throw error;
+  return data as DmMessage;
+}
+
+export function subscribeToDmMessages(
+  threadId: string,
+  onInsert: (row: DmMessage) => void
+): RealtimeChannel {
+  return supabase
+    .channel(`dm:${threadId}`)
+    .on(
+      'postgres_changes',
+      { event: 'INSERT', schema: 'public', table: 'dm_messages', filter: `thread_id=eq.${threadId}` },
+      (payload) => onInsert(payload.new as DmMessage)
+    )
+    .subscribe();
+}
+
+export function unsubscribeFromDmMessages(channel: RealtimeChannel) {
+  supabase.removeChannel(channel);
+}
+
+/** Marca el hilo como leído hasta ahora (best effort). */
+export async function markDmRead(threadId: string, userId: string) {
+  try {
+    await supabase
+      .from('dm_reads')
+      .upsert({ thread_id: threadId, user_id: userId, last_read_at: new Date().toISOString() });
+  } catch {
+    // sin migración o sin red: el badge simplemente no se actualiza
+  }
+}
+
+/** Mis hilos 1-a-1 con último mensaje y no-leídos. [] si la migración falta. */
+export async function fetchMyDmChats(userId: string): Promise<DmSummary[]> {
+  try {
+    const { data: threads, error } = await supabase
+      .from('dm_threads')
+      .select('id, user_lo, user_hi')
+      .or(`user_lo.eq.${userId},user_hi.eq.${userId}`);
+    if (error) throw error;
+    if (!threads || threads.length === 0) return [];
+
+    const threadIds = threads.map((t) => t.id);
+    const otherIds = threads.map((t) => (t.user_lo === userId ? t.user_hi : t.user_lo));
+
+    const [{ data: profiles }, { data: recent, error: msgError }, { data: reads }] =
+      await Promise.all([
+        supabase.from('profiles').select('id, alias, avatar_url').in('id', otherIds),
+        supabase
+          .from('dm_messages')
+          .select('thread_id, sender_id, body, kind, created_at')
+          .in('thread_id', threadIds)
+          .order('created_at', { ascending: false })
+          .limit(200),
+        supabase.from('dm_reads').select('thread_id, last_read_at').eq('user_id', userId),
+      ]);
+    if (msgError) throw msgError;
+
+    const profileById = new Map((profiles ?? []).map((p) => [p.id, p]));
+    const readByThread = new Map((reads ?? []).map((r) => [r.thread_id, r.last_read_at]));
+
+    const lastByThread = new Map<string, DmSummary['lastMessage']>();
+    const unreadByThread = new Map<string, number>();
+    for (const row of recent ?? []) {
+      if (!lastByThread.has(row.thread_id)) {
+        lastByThread.set(row.thread_id, {
+          body: messagePreview(row as { body: string | null; kind: MessageKind }),
+          sender: null, // en un 1-a-1 el nombre del emisor sobra
+          created_at: row.created_at,
+        });
+      }
+      const lastRead = readByThread.get(row.thread_id);
+      if (row.sender_id !== userId && (!lastRead || row.created_at > lastRead)) {
+        unreadByThread.set(row.thread_id, (unreadByThread.get(row.thread_id) ?? 0) + 1);
+      }
+    }
+
+    return threads.map((t) => {
+      const otherId = t.user_lo === userId ? t.user_hi : t.user_lo;
+      const profile = profileById.get(otherId);
+      return {
+        threadId: t.id,
+        otherId,
+        name: profile?.alias ?? 'Jugador/a',
+        imageUrl: profile?.avatar_url ?? null,
+        lastMessage: lastByThread.get(t.id) ?? null,
+        unread: Math.min(unreadByThread.get(t.id) ?? 0, 99),
+      };
+    });
+  } catch {
+    return [];
+  }
+}

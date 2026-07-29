@@ -1,10 +1,11 @@
 // Edge Function: push-notify
 // Envía notificaciones push (Expo Push API) a los móviles.
-// Disparada por Database Webhooks en INSERT sobre `matches` y `messages`
-// (una sola función para ambos: distingue por payload.table).
+// Disparada por Database Webhooks en INSERT sobre `matches`, `messages`
+// y `dm_messages` (una sola función: distingue por payload.table).
 //
 // - Match → avisa al jugador y al GM de la mesa.
 // - Mensaje → avisa a los miembros de la mesa menos quien lo envía.
+// - DM → avisa al otro participante del hilo (migr. 00025).
 //
 // Los tokens los registra la app en push_tokens (migr. 00003). El envío va a
 // https://exp.host/--/api/v2/push/send (gratis); Expo lo entrega vía FCM, así
@@ -41,9 +42,18 @@ type MessageRecord = {
   kind: 'text' | 'gif' | 'sticker' | null;
 };
 
+type DmMessageRecord = {
+  id: string;
+  thread_id: string;
+  sender_id: string;
+  body: string | null;
+  kind: 'text' | 'gif' | 'sticker' | null;
+};
+
 type WebhookPayload =
   | { type: 'INSERT'; table: 'matches'; record: MatchRecord }
-  | { type: 'INSERT'; table: 'messages'; record: MessageRecord };
+  | { type: 'INSERT'; table: 'messages'; record: MessageRecord }
+  | { type: 'INSERT'; table: 'dm_messages'; record: DmMessageRecord };
 
 type PushMessage = {
   to: string;
@@ -56,7 +66,7 @@ type PushMessage = {
 
 const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SB_SECRET_KEY')!);
 
-function messagePreview(record: MessageRecord): string {
+function messagePreview(record: { body: string | null; kind: MessageRecord['kind'] }): string {
   if (record.kind === 'gif') return 'ha enviado un GIF 🎞️';
   if (record.kind === 'sticker') return `ha enviado ${record.body ?? 'un sticker'}`;
   const body = (record.body ?? '').trim();
@@ -108,6 +118,24 @@ async function buildForMessage(record: MessageRecord): Promise<Map<string, { tit
   for (const member of members) {
     if (member.user_id !== record.sender_id) out.set(member.user_id, { title, body, url });
   }
+  return out;
+}
+
+/** Mensaje directo: solo al otro participante del hilo. */
+async function buildForDm(record: DmMessageRecord): Promise<Map<string, { title: string; body: string; url: string }>> {
+  const [{ data: thread }, { data: sender }] = await Promise.all([
+    supabase.from('dm_threads').select('user_lo, user_hi').eq('id', record.thread_id).single(),
+    supabase.from('profiles').select('alias').eq('id', record.sender_id).single(),
+  ]);
+  if (!thread) return new Map();
+
+  const recipient = thread.user_lo === record.sender_id ? thread.user_hi : thread.user_lo;
+  const out = new Map<string, { title: string; body: string; url: string }>();
+  out.set(recipient, {
+    title: `💬 ${sender?.alias ?? 'Alguien'}`,
+    body: messagePreview(record),
+    url: `/dm/${record.thread_id}`,
+  });
   return out;
 }
 
@@ -204,7 +232,9 @@ Deno.serve(async (request) => {
         ? await buildForMatch(payload.record)
         : payload.table === 'messages'
           ? await buildForMessage(payload.record)
-          : new Map<string, { title: string; body: string; url: string }>();
+          : payload.table === 'dm_messages'
+            ? await buildForDm(payload.record)
+            : new Map<string, { title: string; body: string; url: string }>();
 
     const result = await sendAll(byUser);
     const webResult = await sendAllWeb(byUser);

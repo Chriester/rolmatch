@@ -8,6 +8,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { showAlert } from '@/lib/alert';
 import { AppHeader } from '@/components/app-header';
 import {
   AvailabilityMiniGrid,
@@ -16,11 +17,12 @@ import {
 import { CardChip, CardChipRow } from '@/components/swipe/card-shell';
 import { CharacterLikeButton } from '@/components/swipe/character-like-button';
 import { ThemedView } from '@/components/themed-view';
-import { ListRow, SectionLabel, StatusPill, StyleBar, XpBar } from '@/components/ui';
+import { ListRow, OutlineButton, SectionLabel, StatusPill, StyleBar, XpBar } from '@/components/ui';
 import { MaxContentWidth, Rolder, RolderFonts, Spacing } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
 import { FORMAT_LABELS, VTT_LABELS } from '@/lib/groups';
 import { characterAgeLabel } from '@/lib/characters';
+import { getOrCreateDmThread } from '@/lib/dm';
 import { fetchPlayerProfile, type PlayerProfile } from '@/lib/players';
 import { GENDER_LABELS, SAFETY_TOOL_LABELS, ageFromBirthYear } from '@/lib/profile';
 import { levelInfoFromXp } from '@/lib/xp';
@@ -41,6 +43,23 @@ export default function PlayerProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const session = useSession();
   const [profile, setProfile] = useState<PlayerProfile | null | undefined>(undefined);
+  const [dmBusy, setDmBusy] = useState(false);
+
+  const handleOpenDm = async () => {
+    if (!session || !id || dmBusy) return;
+    setDmBusy(true);
+    try {
+      const threadId = await getOrCreateDmThread(session.user.id, id);
+      router.push({ pathname: '/dm/[id]', params: { id: threadId } });
+    } catch (error) {
+      showAlert(
+        'No se pudo abrir el chat',
+        error instanceof Error ? error.message : String(error)
+      );
+    } finally {
+      setDmBusy(false);
+    }
+  };
 
   useEffect(() => {
     if (!id) return;
@@ -101,6 +120,14 @@ export default function PlayerProfileScreen() {
               )}
             </CardChipRow>
           </View>
+
+          {session && !isMe && (
+            <OutlineButton
+              label={dmBusy ? 'Abriendo…' : '💬 Enviar mensaje'}
+              onPress={handleOpenDm}
+              disabled={dmBusy}
+            />
+          )}
 
           {isMe && (
             <View style={styles.block}>
