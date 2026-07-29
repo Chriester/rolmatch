@@ -165,7 +165,11 @@ export default function PlayerProfileScreen() {
               {publicCharacters.map((ch) => {
                 const pill = STATUS_PILL[ch.status];
                 return (
-                  <ListRow key={ch.id}>
+                  <ListRow
+                    key={ch.id}
+                    onPress={() =>
+                      router.push({ pathname: '/characters/[id]', params: { id: ch.id } })
+                    }>
                     {ch.portrait_url ? (
                       <Image source={{ uri: ch.portrait_url }} style={styles.portrait} />
                     ) : (

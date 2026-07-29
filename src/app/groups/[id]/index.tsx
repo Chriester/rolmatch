@@ -9,7 +9,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -20,7 +19,7 @@ import { AppHeader } from '@/components/app-header';
 import { CardChip, CardChipRow } from '@/components/swipe/card-shell';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { DiscordButton, OutlineButton, PrimaryButton, SectionLabel, StyleBar } from '@/components/ui';
+import { DiscordButton, OutlineButton, SectionLabel, StyleBar } from '@/components/ui';
 import { MaxContentWidth, Rolder, RolderFonts, Spacing } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
 import {
@@ -39,13 +38,10 @@ import {
   SESSION_CONFIRM_QUORUM,
   SESSION_XP,
   confirmSession,
-  createSession,
   deleteSession,
   fetchRecentSessions,
   fetchSessionConfirmations,
   fetchUpcomingSessions,
-  nextRegularSession,
-  parseSessionDateTime,
   type GameSession,
   type SessionConfirmState,
 } from '@/lib/sessions';
@@ -60,14 +56,6 @@ function formatSessionDate(iso: string) {
   });
 }
 
-function toInputs(date: Date): { date: string; time: string } {
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return {
-    date: `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`,
-    time: `${pad(date.getHours())}:${pad(date.getMinutes())}`,
-  };
-}
-
 
 export default function GroupDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -77,9 +65,6 @@ export default function GroupDetailScreen() {
   const [sessions, setSessions] = useState<GameSession[]>([]);
   const [recentSessions, setRecentSessions] = useState<GameSession[]>([]);
   const [confirmations, setConfirmations] = useState<Map<string, SessionConfirmState>>(new Map());
-  const [dateText, setDateText] = useState('');
-  const [timeText, setTimeText] = useState('');
-  const [sessionBusy, setSessionBusy] = useState(false);
   const [boostedUntil, setBoostedUntil] = useState<string | null>(null);
   const [boostBusy, setBoostBusy] = useState(false);
 
@@ -158,28 +143,6 @@ export default function GroupDetailScreen() {
     }
   };
 
-  const handleCreateSession = async () => {
-    if (!id || !session || !group) return;
-    const startsAt = parseSessionDateTime(dateText, timeText);
-    if (!startsAt) {
-      showAlert('Fecha no válida', 'Usa el formato AAAA-MM-DD y HH:MM, con fecha futura.');
-      return;
-    }
-    setSessionBusy(true);
-    try {
-      const created = await createSession(id, session.user.id, startsAt, null);
-      setSessions((list) =>
-        [...list, created].sort((a, b) => a.starts_at.localeCompare(b.starts_at))
-      );
-      setDateText('');
-      setTimeText('');
-    } catch (error) {
-      showAlert('No se pudo programar', error instanceof Error ? error.message : String(error));
-    } finally {
-      setSessionBusy(false);
-    }
-  };
-
   if (group === undefined) {
     return (
       <ThemedView style={[styles.container, styles.loading]}>
@@ -199,6 +162,9 @@ export default function GroupDetailScreen() {
   const openSeats = group.group_openings
     .filter((o) => o.is_open)
     .reduce((total, o) => total + o.seats, 0);
+
+  const isOwner = session?.user.id === group.owner_id;
+  const isMember = group.group_members.some((m) => m.user_id === session?.user.id);
 
   const schedule =
     group.session_weekday !== null && group.session_slot !== null
@@ -245,7 +211,62 @@ export default function GroupDetailScreen() {
                 )}
               </CardChipRow>
             </View>
+            {isOwner && (
+              <Pressable
+                style={styles.editFab}
+                accessibilityLabel="Editar mesa"
+                onPress={() =>
+                  router.push({ pathname: '/groups/[id]/edit', params: { id: group.id } })
+                }>
+                <Text style={styles.editFabIcon}>✏️</Text>
+              </Pressable>
+            )}
           </View>
+
+          {isMember && (
+            <View style={styles.actionsRow}>
+              <Pressable
+                accessibilityLabel="Chat de la mesa"
+                style={({ pressed }) => pressed && styles.actionPressed}
+                onPress={() =>
+                  router.push({ pathname: '/groups/[id]/chat', params: { id: group.id } })
+                }>
+                <LinearGradient
+                  colors={[Rolder.violet, Rolder.discord]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.actionButton}>
+                  <Text style={styles.actionIcon}>💬</Text>
+                </LinearGradient>
+              </Pressable>
+              <Pressable
+                accessibilityLabel="Organizar partida"
+                style={({ pressed }) => [styles.actionButton, styles.actionOutline, pressed && styles.actionPressed]}
+                onPress={() =>
+                  router.push({ pathname: '/groups/[id]/schedule', params: { id: group.id } })
+                }>
+                <Text style={styles.actionIcon}>📅</Text>
+              </Pressable>
+              <Pressable
+                accessibilityLabel="Histórico de la mesa"
+                style={({ pressed }) => [styles.actionButton, styles.actionOutline, pressed && styles.actionPressed]}
+                onPress={() =>
+                  router.push({ pathname: '/groups/[id]/journal', params: { id: group.id } })
+                }>
+                <Text style={styles.actionIcon}>📖</Text>
+              </Pressable>
+              {isOwner && (
+                <Pressable
+                  accessibilityLabel="Ver candidatos"
+                  style={({ pressed }) => [styles.actionButton, styles.actionOutline, pressed && styles.actionPressed]}
+                  onPress={() =>
+                    router.push({ pathname: '/groups/[id]/candidates', params: { id: group.id } })
+                  }>
+                  <Text style={styles.actionIcon}>⚔️</Text>
+                </Pressable>
+              )}
+            </View>
+          )}
 
           {group.description && (
             <View style={styles.block}>
@@ -479,100 +500,7 @@ export default function GroupDetailScreen() {
                 </View>
               )}
 
-              <OutlineButton
-                label="📅 Organizar partida — calendario y votaciones"
-                onPress={() =>
-                  router.push({ pathname: '/groups/[id]/schedule', params: { id: group.id } })
-                }
-              />
-
-              {session?.user.id === group.owner_id && (
-                <View style={styles.sessionForm}>
-                  <TextInput
-                    style={[styles.sessionInput, styles.sessionDate]}
-                    value={dateText}
-                    onChangeText={setDateText}
-                    placeholder="AAAA-MM-DD"
-                    placeholderTextColor="#888"
-                    autoCapitalize="none"
-                  />
-                  <TextInput
-                    style={[styles.sessionInput, styles.sessionTime]}
-                    value={timeText}
-                    onChangeText={setTimeText}
-                    placeholder="HH:MM"
-                    placeholderTextColor="#888"
-                    autoCapitalize="none"
-                  />
-                  <Pressable
-                    style={[styles.smallButton, sessionBusy && styles.disabled]}
-                    onPress={handleCreateSession}
-                    disabled={sessionBusy}>
-                    <ThemedText type="small" style={styles.primaryLabel}>
-                      Programar
-                    </ThemedText>
-                  </Pressable>
-                  {nextRegularSession(group.session_weekday, group.session_slot) && (
-                    <Pressable
-                      onPress={() => {
-                        const next = nextRegularSession(
-                          group.session_weekday,
-                          group.session_slot
-                        )!;
-                        const inputs = toInputs(next);
-                        setDateText(inputs.date);
-                        setTimeText(inputs.time);
-                      }}>
-                      <ThemedText type="small" style={styles.rateLink}>
-                        Usar horario habitual
-                      </ThemedText>
-                    </Pressable>
-                  )}
-                </View>
-              )}
             </View>
-          )}
-
-          {session?.user.id === group.owner_id && (
-            <>
-              <PrimaryButton
-                label="⚔ Ver candidatos"
-                onPress={() =>
-                  router.push({ pathname: '/groups/[id]/candidates', params: { id: group.id } })
-                }
-              />
-              <OutlineButton
-                label="✏️ Editar mesa"
-                onPress={() =>
-                  router.push({ pathname: '/groups/[id]/edit', params: { id: group.id } })
-                }
-              />
-            </>
-          )}
-
-          {group.group_members.some((m) => m.user_id === session?.user.id) && (
-            <Pressable
-              style={({ pressed }) => pressed && styles.chatPressed}
-              onPress={() =>
-                router.push({ pathname: '/groups/[id]/chat', params: { id: group.id } })
-              }>
-              <LinearGradient
-                colors={[Rolder.violet, Rolder.discord]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.chatButton}>
-                <Text style={styles.chatLabel}>💬 Chat de la mesa</Text>
-              </LinearGradient>
-            </Pressable>
-          )}
-
-          {group.group_members.some((m) => m.user_id === session?.user.id) && (
-            <OutlineButton
-              label="📖 Histórico de la mesa"
-              onPress={() =>
-                router.push({ pathname: '/groups/[id]/journal', params: { id: group.id } })
-              }
-            />
           )}
 
           {session?.user.id === group.owner_id &&
@@ -779,60 +707,42 @@ const styles = StyleSheet.create({
   deleteLink: {
     color: '#d9534f',
   },
-  sessionForm: {
+  actionsRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: Spacing.two,
-    marginTop: Spacing.one,
+    justifyContent: 'center',
+    gap: Spacing.three,
   },
-  sessionInput: {
+  actionButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  actionOutline: {
+    backgroundColor: 'rgba(139,108,255,0.14)',
     borderWidth: 1,
-    borderColor: '#666',
-    borderRadius: Spacing.two,
-    paddingHorizontal: Spacing.two,
-    paddingVertical: Spacing.one,
-    color: '#888',
+    borderColor: 'rgba(139,108,255,0.45)',
   },
-  sessionDate: {
-    width: 118,
+  actionIcon: {
+    fontSize: 20,
   },
-  sessionTime: {
-    width: 70,
+  actionPressed: {
+    opacity: 0.7,
   },
-  smallButton: {
-    backgroundColor: '#5865F2',
-    borderRadius: Spacing.two,
-    paddingVertical: Spacing.one,
-    paddingHorizontal: Spacing.three,
-  },
-  disabled: {
-    opacity: 0.5,
-  },
-  primaryButton: {
-    backgroundColor: '#5865F2',
-    borderRadius: Spacing.two,
-    paddingVertical: Spacing.two,
-    paddingHorizontal: Spacing.four,
-    alignSelf: 'flex-start',
-  },
-  primaryLabel: {
-    color: '#fff',
-    fontWeight: '600',
-  },
-  chatButton: {
-    borderRadius: 14,
-    paddingVertical: 14,
+  editFab: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: 'rgba(10,10,18,0.6)',
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  chatLabel: {
-    color: '#fff',
+  editFabIcon: {
     fontSize: 15,
-    fontFamily: RolderFonts.bold,
-    fontWeight: '700',
-  },
-  chatPressed: {
-    opacity: 0.85,
   },
   matchRow: {
     flexDirection: 'row',

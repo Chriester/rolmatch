@@ -51,6 +51,8 @@ export default function EditCharacterScreen() {
   const [busy, setBusy] = useState(false);
   const [sheetBusy, setSheetBusy] = useState(false);
   const [themeStatus, setThemeStatus] = useState({ isPremium: false, level: 1 });
+  // Un personaje público puede verlo cualquiera; solo el dueño lo gestiona.
+  const isOwner = character != null && session?.user.id === character.user_id;
 
   useEffect(() => {
     if (!session) return;
@@ -148,11 +150,13 @@ export default function EditCharacterScreen() {
                 : router.replace('/characters')
           }
           right={
-            <Pressable onPress={handleDelete} disabled={busy}>
-              <ThemedText type="small" style={styles.deleteLabel}>
-                Borrar
-              </ThemedText>
-            </Pressable>
+            isOwner ? (
+              <Pressable onPress={handleDelete} disabled={busy}>
+                <ThemedText type="small" style={styles.deleteLabel}>
+                  Borrar
+                </ThemedText>
+              </Pressable>
+            ) : undefined
           }
         />
 
@@ -160,7 +164,7 @@ export default function EditCharacterScreen() {
           <ActivityIndicator style={styles.loading} />
         ) : character === null ? (
           <ThemedText style={styles.empty}>No se pudo cargar el personaje.</ThemedText>
-        ) : editing ? (
+        ) : editing && isOwner ? (
           <>
             <ThemedText type="title">{character.name}</ThemedText>
             {session && (
@@ -189,53 +193,66 @@ export default function EditCharacterScreen() {
 
             <CharacterSheetView character={character} />
 
-            <PrimaryButton label="✏️ Editar personaje" onPress={() => setEditing(true)} />
+            {isOwner && (
+              <PrimaryButton label="✏️ Editar personaje" onPress={() => setEditing(true)} />
+            )}
 
-            <View style={styles.sheetBox}>
-              <ThemedText type="subtitle">Hoja en PDF / imagen</ThemedText>
-              {sheetBusy ? (
-                <ActivityIndicator />
-              ) : sheet ? (
-                <View style={styles.sheetActions}>
+            {isOwner ? (
+              <View style={styles.sheetBox}>
+                <ThemedText type="subtitle">Hoja en PDF / imagen</ThemedText>
+                {sheetBusy ? (
+                  <ActivityIndicator />
+                ) : sheet ? (
+                  <View style={styles.sheetActions}>
+                    <Pressable style={styles.sheetButton} onPress={handleViewSheet}>
+                      <ThemedText type="small">📄 Ver hoja</ThemedText>
+                    </Pressable>
+                    <Pressable style={styles.sheetButton} onPress={handleUploadSheet}>
+                      <ThemedText type="small">Reemplazar</ThemedText>
+                    </Pressable>
+                    <Pressable style={styles.sheetButton} onPress={handleRemoveSheet}>
+                      <ThemedText type="small" style={styles.sheetRemove}>
+                        Quitar
+                      </ThemedText>
+                    </Pressable>
+                  </View>
+                ) : (
+                  <Pressable style={styles.sheetButton} onPress={handleUploadSheet}>
+                    <ThemedText type="small">⬆️ Subir hoja (PDF o imagen, máx. 5 MB)</ThemedText>
+                  </Pressable>
+                )}
+                {sheet && (
+                  <View style={styles.sheetVisibilityRow}>
+                    <ThemedText type="small">
+                      Hoja pública (visible para otros usuarios)
+                    </ThemedText>
+                    <Switch
+                      value={sheet.is_public}
+                      onValueChange={async (value) => {
+                        try {
+                          await setSheetPublic(sheet.id, value);
+                          setSheet({ ...sheet, is_public: value });
+                        } catch (error) {
+                          showAlert(
+                            'No se pudo cambiar la visibilidad',
+                            error instanceof Error ? error.message : String(error)
+                          );
+                        }
+                      }}
+                    />
+                  </View>
+                )}
+              </View>
+            ) : (
+              sheet && (
+                <View style={styles.sheetBox}>
+                  <ThemedText type="subtitle">Hoja en PDF / imagen</ThemedText>
                   <Pressable style={styles.sheetButton} onPress={handleViewSheet}>
                     <ThemedText type="small">📄 Ver hoja</ThemedText>
                   </Pressable>
-                  <Pressable style={styles.sheetButton} onPress={handleUploadSheet}>
-                    <ThemedText type="small">Reemplazar</ThemedText>
-                  </Pressable>
-                  <Pressable style={styles.sheetButton} onPress={handleRemoveSheet}>
-                    <ThemedText type="small" style={styles.sheetRemove}>
-                      Quitar
-                    </ThemedText>
-                  </Pressable>
                 </View>
-              ) : (
-                <Pressable style={styles.sheetButton} onPress={handleUploadSheet}>
-                  <ThemedText type="small">⬆️ Subir hoja (PDF o imagen, máx. 5 MB)</ThemedText>
-                </Pressable>
-              )}
-              {sheet && (
-                <View style={styles.sheetVisibilityRow}>
-                  <ThemedText type="small">
-                    Hoja pública (visible para otros usuarios)
-                  </ThemedText>
-                  <Switch
-                    value={sheet.is_public}
-                    onValueChange={async (value) => {
-                      try {
-                        await setSheetPublic(sheet.id, value);
-                        setSheet({ ...sheet, is_public: value });
-                      } catch (error) {
-                        showAlert(
-                          'No se pudo cambiar la visibilidad',
-                          error instanceof Error ? error.message : String(error)
-                        );
-                      }
-                    }}
-                  />
-                </View>
-              )}
-            </View>
+              )
+            )}
           </ScrollView>
         )}
       </SafeAreaView>
