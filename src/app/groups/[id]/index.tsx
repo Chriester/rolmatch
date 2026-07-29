@@ -34,6 +34,7 @@ import {
 } from '@/lib/groups';
 import { fetchGroupMatches, matchChannelUrl, type GroupMatch } from '@/lib/matches';
 import { boostGroup, isBoostActive } from '@/lib/premium';
+import { cacheGet, cacheSet } from '@/lib/screen-cache';
 import {
   SESSION_CONFIRM_QUORUM,
   SESSION_XP,
@@ -60,7 +61,10 @@ function formatSessionDate(iso: string) {
 export default function GroupDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const session = useSession();
-  const [group, setGroup] = useState<GroupDetail | null | undefined>(undefined);
+  // arranca con lo último visto (comparte caché con el chat de la mesa)
+  const [group, setGroup] = useState<GroupDetail | null | undefined>(() =>
+    id ? cacheGet(`group:${id}`) : undefined
+  );
   const [matches, setMatches] = useState<GroupMatch[]>([]);
   const [sessions, setSessions] = useState<GameSession[]>([]);
   const [recentSessions, setRecentSessions] = useState<GameSession[]>([]);
@@ -94,10 +98,11 @@ export default function GroupDetailScreen() {
     if (!id) return;
     fetchGroup(id)
       .then((g) => {
+        cacheSet(`group:${id}`, g);
         setGroup(g);
         setBoostedUntil(g.boosted_until);
       })
-      .catch(() => setGroup(null));
+      .catch(() => setGroup((current) => current ?? null));
     fetchUpcomingSessions(id)
       .then(setSessions)
       .catch(() => {});

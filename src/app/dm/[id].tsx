@@ -46,13 +46,20 @@ import {
   type DmMessage,
   type DmThread,
 } from '@/lib/dm';
+import { cacheGet, cacheSet } from '@/lib/screen-cache';
 import { joinTypingChannel, leaveTypingChannel, type TypingHandle } from '@/lib/typing';
 
 export default function DmChatScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const session = useSession();
-  const [thread, setThread] = useState<DmThread | null | undefined>(undefined);
-  const [messages, setMessages] = useState<DmMessage[] | undefined>(undefined);
+  // arranca con lo último visto para no enseñar la rueda al volver a un
+  // hilo ya visitado; el fetch de abajo refresca en silencio
+  const [thread, setThread] = useState<DmThread | null | undefined>(() =>
+    id ? cacheGet(`dm-thread:${id}`) : undefined
+  );
+  const [messages, setMessages] = useState<DmMessage[] | undefined>(() =>
+    id ? cacheGet(`dm-msgs:${id}`) : undefined
+  );
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
   const [pickerTab, setPickerTab] = useState<PickerTab | null>(null);
@@ -65,13 +72,20 @@ export default function DmChatScreen() {
   useEffect(() => {
     if (!id || !session) return;
     fetchDmThread(id, session.user.id)
-      .then(setThread)
-      .catch(() => setThread(null));
+      .then((t) => {
+        cacheSet(`dm-thread:${id}`, t);
+        setThread(t);
+      })
+      .catch(() => setThread((current) => current ?? null));
     fetchDmMessages(id)
-      .then(setMessages)
+      .then((list) => {
+        cacheSet(`dm-msgs:${id}`, list);
+        setMessages(list);
+      })
       .catch(() => {
-        setMessages([]);
-        showAlert('No se pudo cargar el chat', 'Vuelve a entrar en unos segundos.');
+        const cached = cacheGet<DmMessage[]>(`dm-msgs:${id}`);
+        if (!cached) showAlert('No se pudo cargar el chat', 'Vuelve a entrar en unos segundos.');
+        setMessages((current) => current ?? cached ?? []);
       });
   }, [id, session]);
 

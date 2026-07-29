@@ -48,13 +48,20 @@ import {
   unsubscribeFromMessages,
   type ChatMessage,
 } from '@/lib/messages';
+import { cacheGet, cacheSet } from '@/lib/screen-cache';
 import { joinTypingChannel, leaveTypingChannel, type TypingHandle } from '@/lib/typing';
 
 export default function GroupChatScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const session = useSession();
-  const [group, setGroup] = useState<GroupDetail | null | undefined>(undefined);
-  const [messages, setMessages] = useState<ChatMessage[] | undefined>(undefined);
+  // arranca con lo último visto (si lo hay) para no enseñar la rueda al
+  // volver a un chat ya visitado; el fetch de abajo refresca en silencio
+  const [group, setGroup] = useState<GroupDetail | null | undefined>(() =>
+    id ? cacheGet(`group:${id}`) : undefined
+  );
+  const [messages, setMessages] = useState<ChatMessage[] | undefined>(() =>
+    id ? cacheGet(`group-msgs:${id}`) : undefined
+  );
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
@@ -74,13 +81,20 @@ export default function GroupChatScreen() {
   useEffect(() => {
     if (!id) return;
     fetchGroup(id)
-      .then(setGroup)
-      .catch(() => setGroup(null));
+      .then((g) => {
+        cacheSet(`group:${id}`, g);
+        setGroup(g);
+      })
+      .catch(() => setGroup((current) => current ?? null));
     fetchMessages(id)
-      .then(setMessages)
+      .then((list) => {
+        cacheSet(`group-msgs:${id}`, list);
+        setMessages(list);
+      })
       .catch(() => {
-        setMessages([]);
-        showAlert('No se pudo cargar el chat', 'Vuelve a entrar en unos segundos.');
+        const cached = cacheGet<ChatMessage[]>(`group-msgs:${id}`);
+        if (!cached) showAlert('No se pudo cargar el chat', 'Vuelve a entrar en unos segundos.');
+        setMessages((current) => current ?? cached ?? []);
       });
   }, [id]);
 
