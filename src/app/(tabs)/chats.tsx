@@ -14,6 +14,7 @@ import { MaxContentWidth, Rolder, RolderFonts, Spacing } from '@/constants/theme
 import { useSession } from '@/hooks/use-session';
 import { fetchMyDmChats, type DmSummary } from '@/lib/dm';
 import { fetchMyChats, type ChatSummary } from '@/lib/messages';
+import { cacheGet, cacheSet } from '@/lib/screen-cache';
 import { webPushState } from '@/lib/web-push';
 
 // Mesas e hilos 1-a-1 conviven en la misma lista, ordenados por actividad
@@ -46,20 +47,24 @@ export default function ChatsScreen() {
   const load = useCallback(() => {
     if (!session) return;
     setLoadError(false);
-    setChats(undefined);
+    // stale-while-revalidate: enseña la última lista al instante (nada de
+    // rueda en cada visita al tab) y refresca en silencio por detrás
+    const cacheKey = `chats:${session.user.id}`;
+    const cached = cacheGet<ChatRow[]>(cacheKey);
+    if (cached) setChats((current) => current ?? cached);
     Promise.all([
       fetchMyChats(session.user.id),
       // degrada a [] por sí sola si la migración 00025 no está aplicada
       fetchMyDmChats(session.user.id),
     ])
-      .then(([groups, dms]) =>
-        setChats(
-          [
-            ...groups.map((g) => ({ kind: 'group' as const, ...g })),
-            ...dms.map((d) => ({ kind: 'dm' as const, ...d })),
-          ].sort(sortByActivity)
-        )
-      )
+      .then(([groups, dms]) => {
+        const merged = [
+          ...groups.map((g) => ({ kind: 'group' as const, ...g })),
+          ...dms.map((d) => ({ kind: 'dm' as const, ...d })),
+        ].sort(sortByActivity);
+        cacheSet(cacheKey, merged);
+        setChats(merged);
+      })
       .catch(() => setLoadError(true));
   }, [session]);
 
@@ -79,7 +84,7 @@ export default function ChatsScreen() {
           </Pressable>
         )}
 
-        {loadError ? (
+        {loadError && chats === undefined ? (
           <View style={styles.centerBox}>
             <Text style={styles.empty}>No se pudieron cargar tus chats.</Text>
             <OutlineButton label="Reintentar" onPress={load} />

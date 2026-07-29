@@ -25,6 +25,7 @@ import { characterAgeLabel } from '@/lib/characters';
 import { getOrCreateDmThread } from '@/lib/dm';
 import { fetchPlayerProfile, type PlayerProfile } from '@/lib/players';
 import { GENDER_LABELS, SAFETY_TOOL_LABELS, ageFromBirthYear } from '@/lib/profile';
+import { cacheGet, cacheSet } from '@/lib/screen-cache';
 import { levelInfoFromXp } from '@/lib/xp';
 
 const ROLE_LABELS: Record<string, string> = {
@@ -42,7 +43,10 @@ const STATUS_PILL = {
 export default function PlayerProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const session = useSession();
-  const [profile, setProfile] = useState<PlayerProfile | null | undefined>(undefined);
+  // arranca con lo último visto para no enseñar la rueda al revisitar
+  const [profile, setProfile] = useState<PlayerProfile | null | undefined>(() =>
+    id ? cacheGet(`player:${id}`) : undefined
+  );
   const [dmBusy, setDmBusy] = useState(false);
 
   const handleOpenDm = async () => {
@@ -64,8 +68,11 @@ export default function PlayerProfileScreen() {
   useEffect(() => {
     if (!id) return;
     fetchPlayerProfile(id)
-      .then(setProfile)
-      .catch(() => setProfile(null));
+      .then((p) => {
+        cacheSet(`player:${id}`, p);
+        setProfile(p);
+      })
+      .catch(() => setProfile((current) => current ?? null));
   }, [id]);
 
   if (profile === undefined) {
