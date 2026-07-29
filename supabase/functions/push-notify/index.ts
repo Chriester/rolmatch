@@ -69,7 +69,7 @@ async function buildForMatch(record: MatchRecord): Promise<Map<string, { title: 
   const out = new Map<string, { title: string; body: string; url: string }>();
   out.set(record.user_id, {
     title: '🤝 ¡Match!',
-    body: `Te has unido a «${group.name}». El bot os abre canal en Discord.`,
+    body: `Te has unido a «${group.name}». Ya tienes su chat de mesa en la app.`,
     url,
   });
   out.set(group.owner_id, {

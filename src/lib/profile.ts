@@ -16,6 +16,16 @@ export function ageFromBirthYear(birthYear: number | null): number | null {
   const age = new Date().getFullYear() - birthYear;
   return age >= 10 && age <= 120 ? age : null;
 }
+// Safety tools (§4.1 del PRD): claves estables en profiles.safety_tools text[].
+// Las etiquetas son los nombres con que la comunidad hispana las conoce.
+export const SAFETY_TOOL_LABELS: Record<string, string> = {
+  lines_veils: 'Líneas y velos',
+  x_card: 'Tarjeta X',
+  session_zero: 'Sesión 0',
+  open_door: 'Puerta abierta',
+  stars_wishes: 'Estrellas y deseos',
+};
+
 export type ExperienceLevel = 'none' | 'beginner' | 'intermediate' | 'veteran';
 export type VttType = 'roll20' | 'foundry' | 'discord_only' | 'other';
 
@@ -38,6 +48,7 @@ export type ProfileUpdate = {
   camera_ok: boolean;
   preferred_vtt: VttType;
   open_to_any_system: boolean;
+  safety_tools: string[];
 };
 
 export type UserSystemInput = { system_id: number; experience: ExperienceLevel };
@@ -54,7 +65,7 @@ export async function fetchProfileData(userId: string): Promise<ProfileData> {
     .select(
       `alias, bio, gender, birth_year, timezone, role, avatar_url, open_to_any_system,
        style_combat_narrative, style_serious_humor, style_roleplay_weight,
-       voice_chat, camera_ok, preferred_vtt,
+       voice_chat, camera_ok, preferred_vtt, safety_tools,
        availability_slots(weekday, slot), user_systems(system_id, experience)`
     )
     .eq('id', userId)
@@ -75,6 +86,7 @@ export async function fetchProfileData(userId: string): Promise<ProfileData> {
     voice_chat: data.voice_chat,
     camera_ok: data.camera_ok,
     preferred_vtt: data.preferred_vtt as VttType,
+    safety_tools: data.safety_tools ?? [],
     availability: data.availability_slots,
     systems: data.user_systems as UserSystemInput[],
   };

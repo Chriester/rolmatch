@@ -15,6 +15,7 @@ import { MaxContentWidth, Rolder, RolderFonts, Spacing } from '@/constants/theme
 import { useSession } from '@/hooks/use-session';
 import {
   GENDER_LABELS,
+  SAFETY_TOOL_LABELS,
   ageFromBirthYear,
   detectTimezone,
   fetchProfileData,
@@ -99,6 +100,7 @@ export default function OnboardingScreen() {
   const [voiceChat, setVoiceChat] = useState(true);
   const [cameraOk, setCameraOk] = useState(false);
   const [vtt, setVtt] = useState<VttType>('discord_only');
+  const [safetyTools, setSafetyTools] = useState<Set<string>>(new Set());
 
   // Precarga el perfil actual: la misma pantalla sirve de onboarding
   // inicial y de editor de perfil.
@@ -129,6 +131,7 @@ export default function OnboardingScreen() {
         setVoiceChat(profile.voice_chat);
         setCameraOk(profile.camera_ok);
         setVtt(profile.preferred_vtt);
+        setSafetyTools(new Set(profile.safety_tools));
       })
       .catch(() => {});
   }, [session]);
@@ -196,6 +199,7 @@ export default function OnboardingScreen() {
           camera_ok: cameraOk,
           preferred_vtt: vtt,
           open_to_any_system: openToAny,
+          safety_tools: [...safetyTools],
         },
         [...availability].map((key) => {
           const [weekday, slot] = key.split('-').map(Number);
@@ -418,6 +422,28 @@ export default function OnboardingScreen() {
                     label={option.label}
                     selected={vtt === option.value}
                     onPress={() => setVtt(option.value)}
+                  />
+                ))}
+              </View>
+              <SectionLabel>🛡 Seguridad en mesa</SectionLabel>
+              <Text style={styles.helper}>
+                Herramientas que usas o esperas en tus partidas. Se muestran en tu perfil para
+                que las mesas sepan cómo cuidas el juego.
+              </Text>
+              <View style={styles.chipRow}>
+                {Object.entries(SAFETY_TOOL_LABELS).map(([value, label]) => (
+                  <Chip
+                    key={value}
+                    label={label}
+                    selected={safetyTools.has(value)}
+                    onPress={() =>
+                      setSafetyTools((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(value)) next.delete(value);
+                        else next.add(value);
+                        return next;
+                      })
+                    }
                   />
                 ))}
               </View>
