@@ -553,6 +553,18 @@ export default function GroupDetailScreen() {
               onPress={() => Linking.openURL(group.discord_invite_url!)}
             />
           )}
+
+          {session && !isOwner && (
+            <Pressable
+              onPress={() =>
+                router.push({
+                  pathname: '/report',
+                  params: { kind: 'group', id: group.id, name: group.name },
+                })
+              }>
+              <Text style={styles.reportLink}>Reportar esta mesa</Text>
+            </Pressable>
+          )}
         </ScrollView>
       </SafeAreaView>
     </ThemedView>
@@ -780,6 +792,14 @@ const styles = StyleSheet.create({
   },
   boostActive: {
     color: '#F5A623',
+  },
+  reportLink: {
+    color: Rolder.pass,
+    fontSize: 13,
+    fontFamily: RolderFonts.semibold,
+    textAlign: 'center',
+    marginTop: Spacing.two,
+    marginBottom: Spacing.four,
   },
   boostDisabled: {
     opacity: 0.5,

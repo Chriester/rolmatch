@@ -19,7 +19,7 @@ import { ThemedView } from '@/components/themed-view';
 import { ListRow, SectionLabel, StatusPill, StyleBar, XpBar } from '@/components/ui';
 import { MaxContentWidth, Rolder, RolderFonts, Spacing } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
-import { VTT_LABELS } from '@/lib/groups';
+import { FORMAT_LABELS, VTT_LABELS } from '@/lib/groups';
 import { characterAgeLabel } from '@/lib/characters';
 import { fetchPlayerProfile, type PlayerProfile } from '@/lib/players';
 import { GENDER_LABELS, SAFETY_TOOL_LABELS, ageFromBirthYear } from '@/lib/profile';
@@ -223,6 +223,35 @@ export default function PlayerProfileScreen() {
             </View>
           )}
 
+          {profile.groups.length > 0 && (
+            <View style={styles.block}>
+              <SectionLabel>Sus mesas</SectionLabel>
+              {profile.groups.map((g) => (
+                <ListRow
+                  key={g.id}
+                  onPress={() =>
+                    router.push({ pathname: '/groups/[id]', params: { id: g.id } })
+                  }>
+                  {g.image_url ? (
+                    <Image source={{ uri: g.image_url }} style={styles.groupThumb} />
+                  ) : (
+                    <View style={[styles.groupThumb, styles.groupThumbFallback]}>
+                      <Text style={styles.portraitEmoji}>🎲</Text>
+                    </View>
+                  )}
+                  <View style={styles.characterBody}>
+                    <Text style={styles.characterName} numberOfLines={1}>
+                      {g.name}
+                    </Text>
+                    <Text style={styles.bodySoft} numberOfLines={1}>
+                      {[g.systems?.name, FORMAT_LABELS[g.format]].filter(Boolean).join(' · ')}
+                    </Text>
+                  </View>
+                </ListRow>
+              ))}
+            </View>
+          )}
+
           {!isMe && (
             <Pressable
               onPress={() =>
@@ -330,6 +359,16 @@ const styles = StyleSheet.create({
   characterFooter: {
     flexDirection: 'row',
     marginTop: 3,
+  },
+  groupThumb: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+  },
+  groupThumbFallback: {
+    backgroundColor: 'rgba(139,108,255,0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   reportLink: {
     color: Rolder.pass,
