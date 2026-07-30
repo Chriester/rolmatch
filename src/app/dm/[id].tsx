@@ -10,6 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
+  Share,
   StyleSheet,
   Text,
   TextInput,
@@ -72,6 +73,8 @@ export default function DmChatScreen() {
   const [otherTyping, setOtherTyping] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
+  const [showJump, setShowJump] = useState(false);
+  const listRef = useRef<FlatList<DmMessage>>(null);
   const typingRef = useRef<TypingHandle | null>(null);
   const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -198,6 +201,21 @@ export default function DmChatScreen() {
     }
   };
 
+  const handleCopyMessage = async (message: DmMessage) => {
+    setActionsFor(null);
+    const text = message.body ?? '';
+    if (!text) return;
+    if (Platform.OS === 'web') {
+      await (navigator as { clipboard?: { writeText: (t: string) => Promise<void> } }).clipboard
+        ?.writeText(text)
+        .catch(() => {});
+      showAlert('📋 Copiado', 'El mensaje está en tu portapapeles.');
+    } else {
+      // sin dependencia nativa de portapapeles: el share sheet incluye copiar
+      await Share.share({ message: text }).catch(() => {});
+    }
+  };
+
   const handleDeleteMessage = async (message: DmMessage) => {
     setActionsFor(null);
     const ok = await confirmAction('¿Borrar mensaje?', 'Desaparecerá para ambos.', 'Borrar');
@@ -260,7 +278,7 @@ export default function DmChatScreen() {
     return (
       <Pressable
         style={[styles.messageRow, isMine && styles.messageRowMine]}
-        onLongPress={isMine ? () => setActionsFor(item) : undefined}
+        onLongPress={() => setActionsFor(item)}
         delayLongPress={350}>
         {roll ? (
           <RollBubble roll={roll} />
@@ -305,6 +323,7 @@ export default function DmChatScreen() {
           style={styles.chatArea}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
           <FlatList
+            ref={listRef}
             style={styles.list}
             data={messages}
             inverted
@@ -313,6 +332,8 @@ export default function DmChatScreen() {
             renderItem={renderItem}
             onEndReached={handleLoadOlder}
             onEndReachedThreshold={0.3}
+            onScroll={(e) => setShowJump(e.nativeEvent.contentOffset.y > 600)}
+            scrollEventThrottle={120}
             ListFooterComponent={loadingMore ? <ActivityIndicator /> : null}
             ListEmptyComponent={
               <View style={styles.centerBox}>
@@ -322,6 +343,14 @@ export default function DmChatScreen() {
               </View>
             }
           />
+          {showJump && (
+            <Pressable
+              style={styles.jumpFab}
+              accessibilityLabel="Bajar al último mensaje"
+              onPress={() => listRef.current?.scrollToOffset({ offset: 0, animated: true })}>
+              <Text style={styles.jumpFabIcon}>⬇</Text>
+            </Pressable>
+          )}
           {otherTyping && (
             <Text style={styles.typingText}>✍️ {thread.otherAlias} está escribiendo…</Text>
           )}
@@ -416,7 +445,10 @@ export default function DmChatScreen() {
 
       <MessageActions
         visible={actionsFor !== null}
-        canEdit={actionsFor?.kind === 'text'}
+        canCopy={actionsFor?.kind === 'text' || actionsFor?.kind === 'roll'}
+        canEdit={actionsFor?.kind === 'text' && actionsFor?.sender_id === session?.user.id}
+        canDelete={actionsFor?.sender_id === session?.user.id}
+        onCopy={() => actionsFor && handleCopyMessage(actionsFor)}
         onEdit={() => {
           if (!actionsFor) return;
           setEditing(actionsFor);
@@ -569,6 +601,22 @@ const styles = StyleSheet.create({
     color: Rolder.textSecondary,
     fontSize: 14,
     paddingHorizontal: 6,
+  },
+  jumpFab: {
+    position: 'absolute',
+    right: 6,
+    bottom: 120,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(139,108,255,0.9)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 5,
+  },
+  jumpFabIcon: {
+    color: '#fff',
+    fontSize: 17,
   },
   gifMessage: {
     width: 200,

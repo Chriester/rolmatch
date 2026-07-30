@@ -7,14 +7,22 @@ import { Rolder, RolderFonts, Spacing } from '@/constants/theme';
 
 export function MessageActions({
   visible,
+  canCopy,
   canEdit,
+  canDelete,
+  onCopy,
   onEdit,
   onDelete,
   onClose,
 }: {
   visible: boolean;
-  /** los mensajes de texto se editan; GIFs y stickers solo se borran */
+  /** texto y tiradas se pueden copiar (también los ajenos) */
+  canCopy: boolean;
+  /** los mensajes de texto PROPIOS se editan; GIFs y stickers solo se borran */
   canEdit: boolean;
+  /** solo los propios se borran */
+  canDelete: boolean;
+  onCopy: () => void;
   onEdit: () => void;
   onDelete: () => void;
   onClose: () => void;
@@ -23,6 +31,13 @@ export function MessageActions({
     <Modal transparent visible={visible} animationType="fade" onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose}>
         <View style={styles.sheet}>
+          {canCopy && (
+            <Pressable
+              style={({ pressed }) => [styles.action, pressed && styles.pressed]}
+              onPress={onCopy}>
+              <Text style={styles.actionLabel}>📋 Copiar</Text>
+            </Pressable>
+          )}
           {canEdit && (
             <Pressable
               style={({ pressed }) => [styles.action, pressed && styles.pressed]}
@@ -30,11 +45,13 @@ export function MessageActions({
               <Text style={styles.actionLabel}>✏️ Editar</Text>
             </Pressable>
           )}
-          <Pressable
-            style={({ pressed }) => [styles.action, pressed && styles.pressed]}
-            onPress={onDelete}>
-            <Text style={[styles.actionLabel, styles.deleteLabel]}>🗑️ Borrar</Text>
-          </Pressable>
+          {canDelete && (
+            <Pressable
+              style={({ pressed }) => [styles.action, pressed && styles.pressed]}
+              onPress={onDelete}>
+              <Text style={[styles.actionLabel, styles.deleteLabel]}>🗑️ Borrar</Text>
+            </Pressable>
+          )}
           <Pressable
             style={({ pressed }) => [styles.action, pressed && styles.pressed]}
             onPress={onClose}>
