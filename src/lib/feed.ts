@@ -214,8 +214,13 @@ export async function fetchGroupCandidates(
     );
   if (error) throw error;
 
-  const eligible = (profiles ?? []).filter(
-    (p) => !excluded.has(p.id) && p.availability_slots.length > 0
+  // En modo solicitudes entran TODOS los que pidieron sitio, aunque su
+  // perfil esté incompleto o falle filtros (p. ej. un amigo que llegó por
+  // enlace compartido): esa decisión es del GM, no del algoritmo.
+  const eligible = (profiles ?? []).filter((p) =>
+    options.onlyApplicants
+      ? !excluded.has(p.id) && likesByUser.has(p.id)
+      : !excluded.has(p.id) && p.availability_slots.length > 0
   );
   // Fiabilidad real (fase 3): media de valoraciones para el 10 % del score.
   // XP solo para pintar nivel/título en la tarjeta; no puntúa en el matching.
@@ -248,8 +253,7 @@ export async function fetchGroupCandidates(
         result: matchPlayerToGroup(matchInput, group as unknown as MatchGroup),
       };
     })
-    .filter((c) => c.result.pass)
-    .filter((c) => !options.onlyApplicants || c.likedGroup)
+    .filter((c) => (options.onlyApplicants ? c.likedGroup : c.result.pass))
     // Los que ya han dado like a la mesa, primero; después por score
     .sort(
       (a, b) =>

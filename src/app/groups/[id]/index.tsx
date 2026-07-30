@@ -21,7 +21,7 @@ import { AppHeader } from '@/components/app-header';
 import { CardChip, CardChipRow } from '@/components/swipe/card-shell';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { DiscordButton, OutlineButton, SectionLabel, StyleBar } from '@/components/ui';
+import { DiscordButton, OutlineButton, PrimaryButton, SectionLabel, StyleBar } from '@/components/ui';
 import { MaxContentWidth, Rolder, RolderFonts, Spacing } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
 import {
@@ -36,7 +36,9 @@ import {
 } from '@/lib/groups';
 import { fetchGroupMatches, matchChannelUrl, type GroupMatch } from '@/lib/matches';
 import { boostGroup, isBoostActive } from '@/lib/premium';
+import { hasCompletedOnboarding } from '@/lib/profile';
 import { cacheGet, cacheSet } from '@/lib/screen-cache';
+import { fetchMySwipeOnGroup, swipeOnGroup, undoSwipeOnGroup } from '@/lib/swipes';
 import {
   SESSION_CONFIRM_QUORUM,
   SESSION_XP,
@@ -61,7 +63,7 @@ function formatSessionDate(iso: string) {
 
 
 export default function GroupDetailScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, invitacion } = useLocalSearchParams<{ id: string; invitacion?: string }>();
   const session = useSession();
   // arranca con lo último visto (comparte caché con el chat de la mesa)
   const [group, setGroup] = useState<GroupDetail | null | undefined>(() =>
@@ -73,10 +75,34 @@ export default function GroupDetailScreen() {
   const [confirmations, setConfirmations] = useState<Map<string, SessionConfirmState>>(new Map());
   const [boostedUntil, setBoostedUntil] = useState<string | null>(null);
   const [boostBusy, setBoostBusy] = useState(false);
+  // «pedir sitio» para quien llega sin ser miembro (p. ej. enlace compartido)
+  const [mySwipe, setMySwipe] = useState<'like' | 'pass' | null | undefined>(undefined);
+  const [applyBusy, setApplyBusy] = useState(false);
+
+  const handleApply = async () => {
+    if (!id || !session || applyBusy) return;
+    setApplyBusy(true);
+    try {
+      // si antes hizo pass (en el feed), lo deshacemos y pedimos sitio
+      if (mySwipe === 'pass') await undoSwipeOnGroup(session.user.id, id);
+      const matched = await swipeOnGroup(session.user.id, id, 'like');
+      setMySwipe('like');
+      if (matched) {
+        showAlert('🤝 ¡Estás dentro!', 'La mesa ya te había elegido: bienvenida a bordo.');
+        fetchGroup(id).then(setGroup).catch(() => {});
+      } else {
+        showAlert('🙋 Sitio pedido', 'El GM verá tu solicitud y decidirá. Te avisamos si entras.');
+      }
+    } catch (error) {
+      showAlert('No se pudo pedir sitio', error instanceof Error ? error.message : String(error));
+    } finally {
+      setApplyBusy(false);
+    }
+  };
 
   const handleShare = async (name: string) => {
     if (!id) return;
-    const url = `https://rolmatch.vercel.app/groups/${id}`;
+    const url = `https://rolmatch.vercel.app/groups/${id}?invitacion=1`;
     const text = `Únete a mi mesa «${name}» en rolder 🎲 ${url}`;
     try {
       if (Platform.OS === 'web') {
@@ -130,6 +156,31 @@ export default function GroupDetailScreen() {
       .then(setSessions)
       .catch(() => {});
   }, [id]);
+
+  useEffect(() => {
+    if (!id || !session) return;
+    fetchMySwipeOnGroup(session.user.id, id)
+      .then(setMySwipe)
+      .catch(() => setMySwipe(null));
+  }, [id, session]);
+
+  // Invitación por enlace con perfil sin completar: primero el onboarding;
+  // guardamos esta ruta para reanudar la solicitud al terminar el perfil.
+  useEffect(() => {
+    if (!session || !invitacion) return;
+    hasCompletedOnboarding(session.user.id)
+      .then((done) => {
+        if (done) return;
+        if (Platform.OS === 'web' && typeof window !== 'undefined') {
+          localStorage.setItem(
+            'rolder-ruta-pendiente',
+            window.location.pathname + window.location.search
+          );
+        }
+        router.replace('/onboarding');
+      })
+      .catch(() => {});
+  }, [session, invitacion]);
 
   useEffect(() => {
     if (!id || !session) return;
@@ -302,6 +353,29 @@ export default function GroupDetailScreen() {
                 </Pressable>
               )}
             </View>
+          )}
+
+          {/* visitante (p. ej. enlace compartido): pedir sitio desde aquí mismo */}
+          {invitacion && session && !isMember && !isOwner && (
+            <View style={styles.inviteBanner}>
+              <Text style={styles.inviteText}>
+                💌 Te han invitado a esta mesa. Échale un vistazo y, si te encaja,
+                pide sitio: el GM recibirá tu solicitud.
+              </Text>
+            </View>
+          )}
+          {session && !isMember && !isOwner && (
+            mySwipe === 'like' ? (
+              <Text style={styles.appliedNote}>
+                🙋 Ya has pedido sitio — el GM decidirá y te avisamos.
+              </Text>
+            ) : (
+              <PrimaryButton
+                label={applyBusy ? 'Enviando…' : '🙋 Pedir sitio en esta mesa'}
+                onPress={handleApply}
+                disabled={applyBusy || mySwipe === undefined}
+              />
+            )
           )}
 
           {group.description && (
@@ -840,6 +914,27 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: Spacing.two,
     marginBottom: Spacing.four,
+  },
+  inviteBanner: {
+    backgroundColor: Rolder.violetSofter,
+    borderWidth: 1,
+    borderColor: Rolder.violetSoft,
+    borderRadius: Spacing.two,
+    paddingVertical: Spacing.two,
+    paddingHorizontal: Spacing.three,
+  },
+  inviteText: {
+    color: Rolder.violet,
+    fontSize: 13.5,
+    fontFamily: RolderFonts.semibold,
+    textAlign: 'center',
+  },
+  appliedNote: {
+    color: Rolder.likeChipText,
+    fontSize: 13.5,
+    fontFamily: RolderFonts.semibold,
+    textAlign: 'center',
+    paddingVertical: 6,
   },
   boostDisabled: {
     opacity: 0.5,
