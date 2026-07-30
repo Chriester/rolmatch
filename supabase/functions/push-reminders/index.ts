@@ -35,8 +35,13 @@ type SessionRow = {
   title: string | null;
   push_reminded_24h: boolean;
   push_reminded_1h: boolean;
-  groups: { name: string } | null;
+  groups: { name: string; timezone: string | null } | null;
 };
+
+/** «Europe/Madrid» → «Madrid», «America/Mexico_City» → «Mexico City» */
+function tzLabel(tz: string): string {
+  return (tz.split('/').pop() ?? tz).replace(/_/g, ' ');
+}
 
 type DayStartRow = {
   id: string;
@@ -141,7 +146,7 @@ Deno.serve(async (request) => {
 
   const { data: sessions, error } = await supabase
     .from('sessions')
-    .select('id, group_id, starts_at, title, push_reminded_24h, push_reminded_1h, groups(name)')
+    .select('id, group_id, starts_at, title, push_reminded_24h, push_reminded_1h, groups(name, timezone)')
     .gte('starts_at', new Date(now).toISOString())
     .lte('starts_at', in24h)
     .or('push_reminded_24h.eq.false,push_reminded_1h.eq.false');
@@ -165,17 +170,19 @@ Deno.serve(async (request) => {
       };
       update = { push_reminded_1h: true, push_reminded_24h: true };
     } else if (!row.push_reminded_24h) {
+      // la hora se expresa en la timezone de la MESA, no en un Madrid fijo
+      const tz = row.groups?.timezone || 'Europe/Madrid';
       const when = new Date(row.starts_at).toLocaleString('es-ES', {
         weekday: 'long',
         day: 'numeric',
         month: 'long',
         hour: '2-digit',
         minute: '2-digit',
-        timeZone: 'Europe/Madrid',
+        timeZone: tz,
       });
       content = {
         title: `📅 Sesión de «${groupName}»`,
-        body: `${when} (hora de Madrid)${sessionTitle}. ¡Confirma tu asistencia!`,
+        body: `${when} (hora de ${tzLabel(tz)})${sessionTitle}. ¡Confirma tu asistencia!`,
       };
       update = { push_reminded_24h: true };
     }

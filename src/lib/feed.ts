@@ -2,7 +2,7 @@ import { matchPlayerToGroup, type MatchGroup, type MatchPlayer, type MatchResult
 import { fetchBlockRelations } from '@/lib/moderation';
 import { fetchReliability } from '@/lib/ratings';
 import { supabase } from '@/lib/supabase';
-import { fetchXpTotals } from '@/lib/xp';
+import { fetchXpTotals, levelFromXp } from '@/lib/xp';
 import type { GroupFormat } from '@/lib/groups';
 import type { VttType } from '@/lib/profile';
 
@@ -19,6 +19,13 @@ export type GroupCandidate = {
     systems: { name: string } | null;
     /** sin plazas abiertas: se puede pedir sitio igualmente (el GM decide) */
     full: boolean;
+    /** quién dirige: decide muchos likes (nivel y fiabilidad incluidos) */
+    owner: {
+      alias: string;
+      avatar_url: string | null;
+      level: number;
+      reliability: { average: number; count: number } | null;
+    };
   };
   result: MatchResult;
 };
@@ -114,13 +121,37 @@ export async function fetchPlayerFeed(userId: string): Promise<GroupCandidate[]>
     .eq('is_active', true);
   if (error) throw error;
 
-  return (groups ?? [])
-    .filter((g) => !excluded.has(g.id) && !blocked.has(g.owner_id))
+  const visible = (groups ?? []).filter((g) => !excluded.has(g.id) && !blocked.has(g.owner_id));
+
+  // Identidad del GM en la tarjeta: alias, nivel y fiabilidad
+  const ownerIds = [...new Set(visible.map((g) => g.owner_id))];
+  const [{ data: ownerProfiles }, ownerReliability, ownerXp] = await Promise.all([
+    supabase.from('profiles').select('id, alias, avatar_url').in('id', ownerIds),
+    fetchReliability(ownerIds).catch(
+      () => new Map<string, { average: number; count: number }>()
+    ),
+    fetchXpTotals(ownerIds).catch(() => new Map<string, number>()),
+  ]);
+  const ownersById = new Map(
+    (ownerProfiles ?? []).map((p) => [
+      p.id as string,
+      { alias: p.alias as string, avatar_url: p.avatar_url as string | null },
+    ])
+  );
+
+  return visible
     .map((g) => {
       const openings = (g.group_openings ?? []) as { seats: number; is_open: boolean }[];
       const full = !openings.some((o) => o.is_open && o.seats > 0);
+      const ownerProfile = ownersById.get(g.owner_id);
+      const owner = {
+        alias: ownerProfile?.alias ?? 'GM',
+        avatar_url: ownerProfile?.avatar_url ?? null,
+        level: levelFromXp(ownerXp.get(g.owner_id) ?? 0),
+        reliability: ownerReliability.get(g.owner_id) ?? null,
+      };
       return {
-        group: { ...g, full } as unknown as GroupCandidate['group'],
+        group: { ...g, full, owner } as unknown as GroupCandidate['group'],
         result: matchPlayerToGroup(me, g as unknown as MatchGroup),
       };
     })

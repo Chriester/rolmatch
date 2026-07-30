@@ -5,7 +5,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
-import { showAlert } from '@/lib/alert';
+import { confirmAction, showAlert } from '@/lib/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppHeader } from '@/components/app-header';
@@ -20,6 +20,7 @@ import {
   SLOT_LABELS,
   VTT_LABELS,
   WEEKDAY_LABELS,
+  deleteGroup,
   fetchGroup,
   updateGroup,
   type GroupFormat,
@@ -250,6 +251,37 @@ export default function EditGroupScreen() {
           <View style={styles.nav}>
             <OutlineButton label="Cancelar" tone="white" onPress={() => router.back()} disabled={busy} style={styles.cancelButton} />
             <PrimaryButton label={busy ? 'Guardando…' : '💾 Guardar cambios'} onPress={handleSave} disabled={!valid || busy} style={styles.saveButton} />
+
+            <OutlineButton
+              label="💥 Disolver la mesa"
+              tone="red"
+              disabled={busy}
+              onPress={async () => {
+                if (!id) return;
+                const ok = await confirmAction(
+                  '¿Disolver la mesa?',
+                  'Se borran su chat, sesiones, votaciones e histórico, y todos los miembros la pierden. No se puede deshacer.',
+                  'Sí, disolver'
+                );
+                if (!ok) return;
+                const sure = await confirmAction(
+                  'Última confirmación',
+                  'La mesa y todo lo suyo desaparecen para siempre.',
+                  'Disolver la mesa'
+                );
+                if (!sure) return;
+                try {
+                  await deleteGroup(id);
+                  showAlert('💥 Mesa disuelta', 'Gracias por las partidas.');
+                  router.replace('/groups');
+                } catch (error) {
+                  showAlert(
+                    'No se pudo disolver',
+                    error instanceof Error ? error.message : String(error)
+                  );
+                }
+              }}
+            />
           </View>
         </ScrollView>
       </SafeAreaView>

@@ -111,6 +111,15 @@ export async function updateGroup(groupId: string, group: GroupInput, seats: num
   }
 }
 
+/**
+ * Disuelve la mesa (solo el dueño — RLS). La cascada arrastra miembros,
+ * chat, sesiones, votaciones, histórico y matches.
+ */
+export async function deleteGroup(groupId: string) {
+  const { error } = await supabase.from('groups').delete().eq('id', groupId);
+  if (error) throw error;
+}
+
 /** Saca a un miembro de la mesa (uno mismo, o el dueño a cualquiera — RLS). */
 export async function removeGroupMember(groupId: string, userId: string) {
   const { error } = await supabase

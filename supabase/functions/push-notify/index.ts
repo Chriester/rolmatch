@@ -265,14 +265,14 @@ async function buildForCharacterLike(record: CharacterLikeRecord): Promise<Map<s
   return out;
 }
 
-function formatDateEs(iso: string): string {
+function formatDateEs(iso: string, timezone?: string | null): string {
   return new Date(iso).toLocaleString('es-ES', {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
     hour: '2-digit',
     minute: '2-digit',
-    timeZone: 'Europe/Madrid',
+    timeZone: timezone || 'Europe/Madrid',
   });
 }
 
@@ -281,18 +281,20 @@ async function buildForProposal(record: ProposalRecord): Promise<Map<string, { t
   const [{ data: poll }, { data: proposer }] = await Promise.all([
     supabase
       .from('session_polls')
-      .select('group_id, title, groups(name, owner_id)')
+      .select('group_id, title, groups(name, owner_id, timezone)')
       .eq('id', record.poll_id)
       .single(),
     supabase.from('profiles').select('alias').eq('id', record.proposer_id).single(),
   ]);
-  const groups = (poll as { groups?: { name: string; owner_id: string } | null } | null)?.groups;
+  const groups = (
+    poll as { groups?: { name: string; owner_id: string; timezone: string | null } | null } | null
+  )?.groups;
   if (!poll || !groups) return new Map();
 
   const out = new Map<string, { title: string; body: string; url: string }>();
   out.set(groups.owner_id, {
     title: `🙋 Fecha propuesta en «${groups.name}»`,
-    body: `${proposer?.alias ?? 'Alguien'} propone ${formatDateEs(record.starts_at)}. Añádela o recházala.`,
+    body: `${proposer?.alias ?? 'Alguien'} propone ${formatDateEs(record.starts_at, groups.timezone)}. Añádela o recházala.`,
     url: `/groups/${poll.group_id}/schedule`,
   });
   return out;
@@ -347,14 +349,14 @@ async function buildForPollVote(record: PollVoteRecord): Promise<Map<string, { t
 /** Partida fijada: a toda la mesa menos quien la fijó. */
 async function buildForSession(record: SessionRecord): Promise<Map<string, { title: string; body: string; url: string }>> {
   const [{ data: group }, { data: members }] = await Promise.all([
-    supabase.from('groups').select('name').eq('id', record.group_id).single(),
+    supabase.from('groups').select('name, timezone').eq('id', record.group_id).single(),
     supabase.from('group_members').select('user_id').eq('group_id', record.group_id),
   ]);
   if (!group || !members) return new Map();
 
   const url = `/groups/${record.group_id}/schedule`;
   const title = `📅 Partida fijada en «${group.name}»`;
-  const body = `${formatDateEs(record.starts_at)}${record.title ? ` — ${record.title}` : ''}`;
+  const body = `${formatDateEs(record.starts_at, group.timezone)}${record.title ? ` — ${record.title}` : ''}`;
   const out = new Map<string, { title: string; body: string; url: string }>();
   for (const member of members) {
     if (member.user_id !== record.created_by) out.set(member.user_id, { title, body, url });

@@ -427,6 +427,20 @@ export default function HomeScreen() {
           <Text style={sheetText.body}>
             {item.result.score}% — coincidís {item.result.overlapHours} h en horario
           </Text>
+          <Text style={sheetText.label}>Quién dirige</Text>
+          <Pressable
+            onPress={() =>
+              router.push({ pathname: '/players/[id]', params: { id: g.owner_id } })
+            }>
+            <Text style={sheetText.body}>
+              🧙 {g.owner.alias} · Nv. {g.owner.level}
+              {g.owner.reliability && g.owner.reliability.count > 0
+                ? ` · 🎲 ${g.owner.reliability.average.toFixed(1)}/5 (${g.owner.reliability.count})`
+                : ''}
+              {'  '}
+              <Text style={styles.profileLink}>ver perfil ›</Text>
+            </Text>
+          </Pressable>
           <Pressable
             onPress={() => router.push({ pathname: '/groups/[id]', params: { id: g.id } })}>
             <Text style={styles.profileLink}>Ver mesa completa ›</Text>
