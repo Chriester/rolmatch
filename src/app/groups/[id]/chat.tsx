@@ -45,6 +45,7 @@ import { fetchGroup, type GroupDetail } from '@/lib/groups';
 import {
   deleteMessage,
   editMessage,
+  fetchLastRead,
   fetchMessages,
   fetchMessageReactions,
   sendImageMessage,
@@ -88,6 +89,7 @@ export default function GroupChatScreen() {
   const [showJump, setShowJump] = useState(false);
   const [reactions, setReactions] = useState<Map<string, ReactionSummary[]>>(new Map());
   const [viewingImage, setViewingImage] = useState<string | null>(null);
+  const [firstUnreadId, setFirstUnreadId] = useState<string | null>(null);
   const groupRef = useRef<GroupDetail | null | undefined>(undefined);
   const listRef = useRef<FlatList<ChatMessage>>(null);
   const typingRef = useRef<TypingHandle | null>(null);
@@ -105,13 +107,25 @@ export default function GroupChatScreen() {
         setGroup(g);
       })
       .catch(() => setGroup((current) => current ?? null));
+    // la última lectura se consulta ANTES de marcar como leído: de ahí sale
+    // el separador «— nuevos —»
+    const lastReadPromise = session
+      ? fetchLastRead(id, session.user.id)
+      : Promise.resolve(null);
     fetchMessages(id)
-      .then((list) => {
+      .then(async (list) => {
         cacheSet(`group-msgs:${id}`, list);
         setMessages(list);
         setHasMore(list.length >= 100);
         if (session) {
           fetchMessageReactions(list.map((m) => m.id), session.user.id).then(setReactions);
+          const lastRead = await lastReadPromise;
+          const unread = list.filter(
+            (m) =>
+              m.sender_id !== session.user.id && (!lastRead || m.created_at > lastRead)
+          );
+          setFirstUnreadId(unread.length > 0 ? unread[unread.length - 1].id : null);
+          markChatRead(id, session.user.id);
         }
       })
       .catch(() => {
@@ -230,11 +244,6 @@ export default function GroupChatScreen() {
       typingRef.current = null;
       leaveTypingChannel(handle);
     };
-  }, [id, session]);
-
-  // Entrar al chat marca todo como leído (badge de «Mis chats»)
-  useEffect(() => {
-    if (id && session) markChatRead(id, session.user.id);
   }, [id, session]);
 
   const handleSend = async () => {
@@ -388,6 +397,14 @@ export default function GroupChatScreen() {
     const isMine = item.sender_id === session?.user.id;
     const itemReactions = reactions.get(item.id) ?? [];
     return (
+      <>
+      {item.id === firstUnreadId && (
+        <View style={styles.newSeparator}>
+          <View style={styles.newLine} />
+          <Text style={styles.newLabel}>nuevos</Text>
+          <View style={styles.newLine} />
+        </View>
+      )}
       <Pressable
         style={[styles.messageRow, isMine && styles.messageRowMine]}
         onLongPress={() => setActionsFor(item)}
@@ -469,6 +486,7 @@ export default function GroupChatScreen() {
         )}
         </View>
       </Pressable>
+      </>
     );
   };
 
@@ -869,6 +887,25 @@ const styles = StyleSheet.create({
   jumpFabIcon: {
     color: '#fff',
     fontSize: 17,
+  },
+  newSeparator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 4,
+  },
+  newLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: 'rgba(139,108,255,0.4)',
+  },
+  newLabel: {
+    color: Rolder.violetSoft,
+    fontSize: 11,
+    fontFamily: RolderFonts.bold,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
   },
   mediaWrap: {
     gap: 2,

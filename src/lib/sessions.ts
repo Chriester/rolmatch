@@ -70,6 +70,26 @@ export async function deleteSession(id: string) {
 // cuando 3 miembros distintos confirman, todos los confirmantes cobran.
 // ============================================================
 
+/**
+ * Edita fecha/hora/título de una sesión (solo el GM — RLS). Resetea TODOS
+ * los flags de recordatorio para que vuelvan a dispararse con la hora nueva.
+ */
+export async function updateSession(sessionId: string, startsAt: Date, title: string | null) {
+  const { error } = await supabase
+    .from('sessions')
+    .update({
+      starts_at: startsAt.toISOString(),
+      title,
+      reminded_24h: false,
+      reminded_1h: false,
+      push_reminded_24h: false,
+      push_reminded_1h: false,
+      push_reminded_day_start: false,
+    })
+    .eq('id', sessionId);
+  if (error) throw error;
+}
+
 // ---- Asistencia previa (✋ voy / 🙅 no voy, migr. 00036) ----
 
 export type RsvpStatus = 'yes' | 'no';

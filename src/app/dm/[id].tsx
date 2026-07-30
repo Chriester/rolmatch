@@ -41,6 +41,7 @@ import { useSession } from '@/hooks/use-session';
 import {
   deleteDmMessage,
   editDmMessage,
+  fetchDmLastRead,
   fetchDmMessages,
   fetchDmReactions,
   fetchDmThread,
@@ -83,6 +84,7 @@ export default function DmChatScreen() {
   const [showJump, setShowJump] = useState(false);
   const [reactions, setReactions] = useState<Map<string, ReactionSummary[]>>(new Map());
   const [viewingImage, setViewingImage] = useState<string | null>(null);
+  const [firstUnreadId, setFirstUnreadId] = useState<string | null>(null);
   const listRef = useRef<FlatList<DmMessage>>(null);
   const typingRef = useRef<TypingHandle | null>(null);
   const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -95,12 +97,20 @@ export default function DmChatScreen() {
         setThread(t);
       })
       .catch(() => setThread((current) => current ?? null));
+    // última lectura ANTES de marcar como leído → separador «— nuevos —»
+    const lastReadPromise = fetchDmLastRead(id, session.user.id);
     fetchDmMessages(id)
-      .then((list) => {
+      .then(async (list) => {
         cacheSet(`dm-msgs:${id}`, list);
         setMessages(list);
         setHasMore(list.length >= 100);
         fetchDmReactions(list.map((m) => m.id), session.user.id).then(setReactions);
+        const lastRead = await lastReadPromise;
+        const unread = list.filter(
+          (m) => m.sender_id !== session.user.id && (!lastRead || m.created_at > lastRead)
+        );
+        setFirstUnreadId(unread.length > 0 ? unread[unread.length - 1].id : null);
+        markDmRead(id, session.user.id);
       })
       .catch(() => {
         const cached = cacheGet<DmMessage[]>(`dm-msgs:${id}`);
@@ -202,11 +212,6 @@ export default function DmChatScreen() {
       typingRef.current = null;
       leaveTypingChannel(handle);
     };
-  }, [id, session]);
-
-  // Entrar al chat marca todo como leído (badge de «Mis chats»)
-  useEffect(() => {
-    if (id && session) markDmRead(id, session.user.id);
   }, [id, session]);
 
   const handleSend = async () => {
@@ -374,6 +379,14 @@ export default function DmChatScreen() {
     const itemReactions = reactions.get(item.id) ?? [];
 
     return (
+      <>
+      {item.id === firstUnreadId && (
+        <View style={styles.newSeparator}>
+          <View style={styles.newLine} />
+          <Text style={styles.newLabel}>nuevos</Text>
+          <View style={styles.newLine} />
+        </View>
+      )}
       <Pressable
         style={[styles.messageRow, isMine && styles.messageRowMine]}
         onLongPress={() => setActionsFor(item)}
@@ -406,6 +419,7 @@ export default function DmChatScreen() {
           )}
         </View>
       </Pressable>
+      </>
     );
   };
 
@@ -785,6 +799,25 @@ const styles = StyleSheet.create({
   jumpFabIcon: {
     color: '#fff',
     fontSize: 17,
+  },
+  newSeparator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 4,
+  },
+  newLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: 'rgba(139,108,255,0.4)',
+  },
+  newLabel: {
+    color: Rolder.violetSoft,
+    fontSize: 11,
+    fontFamily: RolderFonts.bold,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
   },
   gifMessage: {
     width: 200,

@@ -8,9 +8,10 @@ import {
   Sora_800ExtraBold,
   useFonts,
 } from '@expo-google-fonts/sora';
-import { DarkTheme, Stack, ThemeProvider } from 'expo-router';
+import { DarkTheme, Stack, ThemeProvider, router } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
+import { Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { Rolder } from '@/constants/theme';
@@ -64,6 +65,27 @@ export default function RootLayout() {
     // Web: manifest PWA + refresco silencioso de la suscripción push
     setupWebPwa(session?.user.id ?? null);
   }, [session, fontsLoaded]);
+
+  // Deep link tras login (web): quien llega a un enlace compartido sin
+  // sesión pasa por el login — guardamos su destino y lo restauramos al
+  // volver del OAuth (el callback aterriza en «/»).
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof window === 'undefined') return;
+    if (!session) {
+      const path = window.location.pathname + window.location.search;
+      if (path !== '/' && !path.startsWith('/login') && !path.startsWith('/auth')) {
+        localStorage.setItem('rolder-ruta-pendiente', path);
+      }
+      return;
+    }
+    const pending = localStorage.getItem('rolder-ruta-pendiente');
+    if (pending) {
+      localStorage.removeItem('rolder-ruta-pendiente');
+      if (pending !== window.location.pathname) {
+        router.replace(pending as never);
+      }
+    }
+  }, [session]);
 
   // Esperando a restaurar la sesión persistida y las fuentes
   if (session === undefined || !fontsLoaded) {

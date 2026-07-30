@@ -43,6 +43,7 @@ import {
   fetchUpcomingSessions,
   formatSessionDate,
   setRsvp,
+  updateSession,
   type GameSession,
   type SessionRsvps,
 } from '@/lib/sessions';
@@ -88,6 +89,12 @@ export default function ScheduleScreen() {
   const [timeByDay, setTimeByDay] = useState<Map<string, TimeValue>>(new Map());
   const [pollName, setPollName] = useState('');
   const [deadlineHours, setDeadlineHours] = useState<number | null>(48);
+
+  // edición de una sesión ya fijada (GM)
+  const [editingSession, setEditingSession] = useState<GameSession | null>(null);
+  const [editDay, setEditDay] = useState<string | null>(null);
+  const [editTime, setEditTime] = useState<TimeValue>(DEFAULT_TIME);
+  const [editTitle, setEditTitle] = useState('');
 
   // propuesta extra de un jugador
   const [proposingFor, setProposingFor] = useState<string | null>(null);
@@ -194,6 +201,30 @@ export default function ScheduleScreen() {
     }
   };
 
+  const openSessionEditor = (s: GameSession) => {
+    const date = new Date(s.starts_at);
+    const pad = (n: number) => String(n).padStart(2, '0');
+    setEditingSession(s);
+    setEditDay(`${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`);
+    setEditTime({ hour: date.getHours(), minute: date.getMinutes() - (date.getMinutes() % 15) });
+    setEditTitle(s.title ?? '');
+  };
+
+  const handleSaveSessionEdit = async () => {
+    if (!editingSession || !editDay) return;
+    setBusy(true);
+    try {
+      await updateSession(editingSession.id, dateAt(editDay, editTime), editTitle.trim() || null);
+      setEditingSession(null);
+      load();
+      showAlert('📅 Sesión actualizada', 'Los recordatorios se reprograman con la hora nueva.');
+    } catch (error) {
+      showAlert('No se pudo actualizar', error instanceof Error ? error.message : String(error));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   // ✋ voy / 🙅 no voy — toque en el mismo estado lo quita
   const handleRsvp = async (gameSession: GameSession, status: 'yes' | 'no') => {
     if (!session) return;
@@ -273,22 +304,61 @@ export default function ScheduleScreen() {
                       {s.title && <Text style={styles.sessionTitle}>{s.title}</Text>}
                     </View>
                     {isOwner && (
-                      <Pressable
-                        onPress={async () => {
-                          try {
-                            await deleteSession(s.id);
-                            setSessions((list) => list.filter((x) => x.id !== s.id));
-                          } catch (error) {
-                            showAlert(
-                              'No se pudo borrar',
-                              error instanceof Error ? error.message : String(error)
-                            );
-                          }
-                        }}>
-                        <Text style={styles.deleteLink}>Quitar</Text>
-                      </Pressable>
+                      <View style={styles.sessionActions}>
+                        <Pressable onPress={() => openSessionEditor(s)}>
+                          <Text style={styles.editLink}>✏️ Editar</Text>
+                        </Pressable>
+                        <Pressable
+                          onPress={async () => {
+                            try {
+                              await deleteSession(s.id);
+                              setSessions((list) => list.filter((x) => x.id !== s.id));
+                            } catch (error) {
+                              showAlert(
+                                'No se pudo borrar',
+                                error instanceof Error ? error.message : String(error)
+                              );
+                            }
+                          }}>
+                          <Text style={styles.deleteLink}>Quitar</Text>
+                        </Pressable>
+                      </View>
                     )}
                   </View>
+                  {editingSession?.id === s.id && (
+                    <View style={styles.formBlock}>
+                      <CalendarPicker
+                        selected={editDay ? new Set([editDay]) : new Set()}
+                        onToggle={(key) => setEditDay(key)}
+                      />
+                      <View style={styles.timeRow}>
+                        <Text style={styles.timeLabel}>Hora</Text>
+                        <TimeField value={editTime} onChange={setEditTime} />
+                      </View>
+                      <TextInput
+                        style={styles.nameInput}
+                        value={editTitle}
+                        onChangeText={setEditTitle}
+                        placeholder="Nombre (opcional)"
+                        placeholderTextColor="rgba(255,255,255,0.35)"
+                        maxLength={120}
+                      />
+                      <View style={styles.nav}>
+                        <OutlineButton
+                          label="Cancelar"
+                          tone="white"
+                          onPress={() => setEditingSession(null)}
+                          style={styles.navSmall}
+                        />
+                        <PrimaryButton
+                          label={busy ? 'Guardando…' : '💾 Guardar'}
+                          onPress={handleSaveSessionEdit}
+                          disabled={busy || !editDay}
+                          style={styles.navBig}
+                        />
+                      </View>
+                    </View>
+                  )}
                   <View style={styles.rsvpRow}>
                     <Pressable
                       style={[styles.rsvpButton, rsvp.mine === 'yes' && styles.rsvpYesActive]}
@@ -637,6 +707,16 @@ const styles = StyleSheet.create({
   },
   deleteLink: {
     color: Rolder.pass,
+    fontSize: 12.5,
+    fontFamily: RolderFonts.semibold,
+  },
+  sessionActions: {
+    flexDirection: 'row',
+    gap: 14,
+    alignItems: 'center',
+  },
+  editLink: {
+    color: Rolder.violetSoft,
     fontSize: 12.5,
     fontFamily: RolderFonts.semibold,
   },
