@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Modal, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 
 import { showAlert } from '@/lib/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -168,6 +168,14 @@ export default function OnboardingScreen() {
     return Number.isInteger(n) && n >= 16 && n <= 99 ? n : null;
   })();
 
+  // Para el guardado rápido al editar: todo lo obligatorio de todos los pasos
+  const allValid = () =>
+    alias.trim().length > 0 &&
+    avatarUrl !== null &&
+    parsedAge !== null &&
+    availability.size > 0 &&
+    (openToAny || experienceBySystem.size > 0);
+
   const stepValid = () => {
     switch (step) {
       case 0:
@@ -234,7 +242,15 @@ export default function OnboardingScreen() {
           </View>
           <View style={styles.progressRow}>
             {STEP_TITLES.map((_, i) => (
-              <View key={i} style={[styles.progressSegment, i <= step && styles.progressDone]} />
+              // editando (perfil ya completo), la barra navega directa al paso
+              <Pressable
+                key={i}
+                style={styles.progressTouch}
+                disabled={!wasComplete}
+                onPress={() => setStep(i)}
+                accessibilityLabel={`Ir al paso ${i + 1}`}>
+                <View style={[styles.progressSegment, i <= step && styles.progressDone]} />
+              </Pressable>
             ))}
           </View>
 
@@ -487,13 +503,25 @@ export default function OnboardingScreen() {
                   ? 'Siguiente'
                   : busy
                     ? 'Guardando…'
-                    : '⚔ Guardar y buscar mesa'
+                    : wasComplete
+                      ? '💾 Guardar cambios'
+                      : '⚔ Guardar y buscar mesa'
               }
               onPress={() => (step < TOTAL_STEPS - 1 ? setStep((s) => s + 1) : handleFinish())}
               disabled={!stepValid() || busy}
               style={styles.nextButton}
             />
           </View>
+
+          {/* editando: guardar desde cualquier paso sin recorrer los cuatro */}
+          {wasComplete && step < TOTAL_STEPS - 1 && (
+            <Pressable onPress={handleFinish} disabled={!allValid() || busy}>
+              <Text
+                style={[styles.quickSave, (!allValid() || busy) && styles.quickSaveDisabled]}>
+                {busy ? 'Guardando…' : '💾 Guardar cambios ya'}
+              </Text>
+            </Pressable>
+          )}
         </ScrollView>
       </SafeAreaView>
 
@@ -550,11 +578,24 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 6,
   },
-  progressSegment: {
+  progressTouch: {
     flex: 1,
+    paddingVertical: 6,
+  },
+  progressSegment: {
     height: 4,
     borderRadius: 2,
     backgroundColor: 'rgba(255,255,255,0.12)',
+  },
+  quickSave: {
+    color: Rolder.violetSoft,
+    fontSize: 13.5,
+    fontFamily: RolderFonts.semibold,
+    textAlign: 'center',
+    paddingVertical: 6,
+  },
+  quickSaveDisabled: {
+    opacity: 0.4,
   },
   progressDone: {
     backgroundColor: Rolder.violet,
