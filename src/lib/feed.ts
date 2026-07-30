@@ -162,10 +162,16 @@ export async function fetchPlayerFeed(userId: string): Promise<GroupCandidate[]>
     );
 }
 
-/** Candidatos con perfil completo que pasan los filtros duros para esta mesa, ordenados por score. */
+/**
+ * Candidatos que pasan los filtros duros para esta mesa, ordenados por score.
+ * Con `onlyApplicants` devuelve SOLO quienes han dado like a la mesa (la
+ * cola de solicitudes de la pantalla Candidatos); el pool completo de
+ * compatibles vive en el feed principal.
+ */
 export async function fetchGroupCandidates(
   groupId: string,
-  viewerId: string
+  viewerId: string,
+  options: { onlyApplicants?: boolean } = {}
 ): Promise<PlayerCandidate[]> {
   const { data: group, error: groupError } = await supabase
     .from('groups')
@@ -243,6 +249,7 @@ export async function fetchGroupCandidates(
       };
     })
     .filter((c) => c.result.pass)
+    .filter((c) => !options.onlyApplicants || c.likedGroup)
     // Los que ya han dado like a la mesa, primero; después por score
     .sort(
       (a, b) =>

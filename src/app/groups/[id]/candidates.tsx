@@ -50,7 +50,9 @@ export default function GroupCandidatesScreen() {
     setLoadError(false);
     setCandidates(undefined);
     setIndex(0);
-    fetchGroupCandidates(id, session.user.id)
+    // solo la cola de solicitudes (likes recibidos); el descubrimiento de
+    // compatibles vive en el feed principal
+    fetchGroupCandidates(id, session.user.id, { onlyApplicants: true })
       .then(setCandidates)
       .catch(() => setLoadError(true));
     fetchGroup(id)
@@ -221,7 +223,7 @@ export default function GroupCandidatesScreen() {
           }
         />
         <ThemedText type="small" numberOfLines={1} style={styles.subheader}>
-          Candidatos{group ? ` · ${group.name}` : ''}
+          Piden sitio{group ? ` · ${group.name}` : ''}
         </ThemedText>
 
         {loadError ? (
@@ -240,8 +242,9 @@ export default function GroupCandidatesScreen() {
           <View style={styles.centerBox}>
             <Text style={styles.centerEmoji}>🧭</Text>
             <ThemedText style={styles.centerText}>
-              No hay más candidatos compatibles por ahora. Los jugadores nuevos que
-              encajen con vuestro horario y sistema irán apareciendo aquí.
+              Nadie pide sitio ahora mismo. Cuando un jugador dé like a vuestra mesa
+              aparecerá aquí para que decidas: aceptar, hablar antes o pasar. Para
+              descubrir gente compatible, usa el feed principal.
             </ThemedText>
           </View>
         ) : (
