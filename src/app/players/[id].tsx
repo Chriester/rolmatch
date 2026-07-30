@@ -137,10 +137,14 @@ export default function PlayerProfileScreen() {
           )}
 
           {isMe && (
-            <View style={styles.block}>
+            <Pressable
+              style={styles.block}
+              accessibilityLabel="Ver misiones y recompensas"
+              onPress={() => router.push('/xp')}>
               <SectionLabel>Mi nivel</SectionLabel>
               <XpBar info={levelInfo} />
-            </View>
+              <Text style={styles.xpLink}>Misiones y recompensas ›</Text>
+            </Pressable>
           )}
 
           {profile.bio && (
@@ -403,6 +407,12 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(139,108,255,0.18)',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  xpLink: {
+    color: Rolder.violetSoft,
+    fontSize: 12,
+    fontFamily: RolderFonts.semibold,
+    textAlign: 'right',
   },
   reportLink: {
     color: Rolder.pass,

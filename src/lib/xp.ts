@@ -55,6 +55,135 @@ export function levelInfoFromXp(totalXp: number): LevelInfo {
   };
 }
 
+// ============================================================
+// Misiones: catálogo estático que espeja los triggers de la DB
+// (00016/00017/00032). El cliente solo LEE xp_events; los importes de
+// verdad los pone la base de datos.
+// ============================================================
+
+export type Mission = {
+  kind: string;
+  icon: string;
+  title: string;
+  description: string;
+  reward: string;
+  /** una vez en la vida de la cuenta */
+  once: boolean;
+  /** nota de tope para las repetibles */
+  capNote?: string;
+};
+
+export const MISSIONS: Mission[] = [
+  {
+    kind: 'profile_complete',
+    icon: '🪪',
+    title: 'Forja tu identidad',
+    description: 'Completa tu perfil con foto y una bio con sustancia.',
+    reward: '+100 XP',
+    once: true,
+  },
+  {
+    kind: 'first_character',
+    icon: '🧝',
+    title: 'Primer personaje',
+    description: 'Crea tu primer personaje para la vitrina.',
+    reward: '+50 XP',
+    once: true,
+  },
+  {
+    kind: 'character_complete',
+    icon: '📜',
+    title: 'Personaje de gala',
+    description: 'Un personaje con retrato, sistema, clase y concepto.',
+    reward: '+75 XP',
+    once: true,
+  },
+  {
+    kind: 'first_group',
+    icon: '🏰',
+    title: 'Funda tu mesa',
+    description: 'Crea tu primera mesa como GM.',
+    reward: '+80 XP',
+    once: true,
+  },
+  {
+    kind: 'notifications_on',
+    icon: '🔔',
+    title: 'Siempre alerta',
+    description: 'Activa las notificaciones (en Opciones, o instalando el APK).',
+    reward: '+40 XP',
+    once: true,
+  },
+  {
+    kind: 'match',
+    icon: '🤝',
+    title: 'Haz match',
+    description: 'Cada match entre jugador y mesa da XP a ambos lados.',
+    reward: '+40 XP',
+    once: false,
+    capNote: 'máx. 3 al día',
+  },
+  {
+    kind: 'join_group',
+    icon: '⚔️',
+    title: 'Únete a una mesa',
+    description: 'Entra como jugador en una mesa nueva.',
+    reward: '+60 XP',
+    once: false,
+    capNote: 'máx. 2 al día',
+  },
+  {
+    kind: 'journal_entry',
+    icon: '📖',
+    title: 'Cronista de la mesa',
+    description: 'Escribe en el histórico; con foto vale más.',
+    reward: '+30–50 XP',
+    once: false,
+    capNote: 'máx. 3 al día',
+  },
+  {
+    kind: 'rate_peer',
+    icon: '🎲',
+    title: 'Valora a tus compañeros',
+    description: 'Puntúa la fiabilidad de la gente con la que juegas.',
+    reward: '+15 XP',
+    once: false,
+    capNote: 'máx. 5 al día',
+  },
+  {
+    kind: 'session_played',
+    icon: '🕯️',
+    title: 'Sesión jugada',
+    description: 'Confirmad la sesión entre 3 miembros y todos cobráis.',
+    reward: '+150 XP',
+    once: false,
+    capNote: 'una por sesión',
+  },
+];
+
+export type MissionProgress = { times: number; earned: number };
+
+/** Desglose del XP propio por tipo de misión (la RLS solo deja ver el tuyo). */
+export async function fetchMyXpBreakdown(userId: string): Promise<Map<string, MissionProgress>> {
+  const { supabase } = await import('@/lib/supabase');
+  const { data, error } = await supabase
+    .from('xp_events')
+    .select('kind, amount')
+    .eq('user_id', userId);
+  if (error) throw error;
+  const byKind = new Map<string, MissionProgress>();
+  for (const event of data ?? []) {
+    const prev = byKind.get(event.kind) ?? { times: 0, earned: 0 };
+    byKind.set(event.kind, { times: prev.times + 1, earned: prev.earned + event.amount });
+  }
+  return byKind;
+}
+
+/** Hitos de título por nivel, de menor a mayor (derivados de TITLES). */
+export const TITLE_MILESTONES: { level: number; title: string }[] = [...TITLES]
+  .map(([level, title]) => ({ level, title }))
+  .sort((a, b) => a.level - b.level);
+
 /** Totales de XP para un conjunto de perfiles (vista agregada pública). */
 export async function fetchXpTotals(userIds: string[]): Promise<Map<string, number>> {
   if (userIds.length === 0) return new Map();

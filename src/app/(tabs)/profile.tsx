@@ -64,9 +64,13 @@ export default function ProfileTabScreen() {
             <Text style={styles.publicLink}>Ver mi perfil público ›</Text>
           </Pressable>
 
-          <View style={styles.xpBlock}>
+          <Pressable
+            style={({ pressed }) => [styles.xpBlock, pressed && styles.xpPressed]}
+            accessibilityLabel="Ver misiones y recompensas"
+            onPress={() => router.push('/xp')}>
             <XpBar info={levelInfo} />
-          </View>
+            <Text style={styles.xpLink}>Misiones y recompensas ›</Text>
+          </Pressable>
 
           {LINKS.map((link) => (
             <ListRow key={link.label} onPress={() => router.push(link.route as never)}>
@@ -137,6 +141,16 @@ const styles = StyleSheet.create({
     borderColor: Rolder.surfaceBorder,
     borderRadius: 16,
     padding: 14,
+    gap: 8,
+  },
+  xpPressed: {
+    opacity: 0.85,
+  },
+  xpLink: {
+    color: Rolder.violetSoft,
+    fontSize: 12,
+    fontFamily: RolderFonts.semibold,
+    textAlign: 'right',
   },
   linkIcon: {
     fontSize: 20,
