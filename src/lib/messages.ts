@@ -130,14 +130,21 @@ export async function markChatRead(groupId: string, userId: string) {
   }
 }
 
-// Ultimos `limit` mensajes de la mesa, mas reciente primero (para FlatList invertido).
-export async function fetchMessages(groupId: string, limit = 100): Promise<ChatMessage[]> {
-  const { data, error } = await supabase
+// Ultimos `limit` mensajes de la mesa, mas reciente primero (para FlatList
+// invertido). `before` pagina hacia atras: mensajes anteriores a ese instante.
+export async function fetchMessages(
+  groupId: string,
+  limit = 100,
+  before?: string
+): Promise<ChatMessage[]> {
+  let query = supabase
     .from('messages')
     .select(MESSAGE_SELECT)
     .eq('group_id', groupId)
     .order('created_at', { ascending: false })
     .limit(limit);
+  if (before) query = query.lt('created_at', before);
+  const { data, error } = await query;
   if (error) throw error;
   return (data ?? []) as unknown as ChatMessage[];
 }
