@@ -32,12 +32,14 @@ async function compressImage(asset: ImagePicker.ImagePickerAsset): Promise<{
  */
 export async function pickAndUploadImage(
   userId: string,
-  prefix: 'avatar' | 'group' | 'character' | 'journal',
-  aspect: [number, number] = [1, 1]
+  prefix: 'avatar' | 'group' | 'character' | 'journal' | 'chat',
+  aspect: [number, number] = [1, 1],
+  options: { allowsEditing?: boolean } = {}
 ): Promise<string | null> {
   const result = await ImagePicker.launchImageLibraryAsync({
     mediaTypes: ['images'],
-    allowsEditing: true,
+    // las fotos de chat van tal cual, sin recorte forzado
+    allowsEditing: options.allowsEditing ?? true,
     aspect,
     quality: 0.8,
   });

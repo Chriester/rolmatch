@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   FlatList,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   Share,
@@ -46,6 +47,7 @@ import {
   editMessage,
   fetchMessages,
   fetchMessageReactions,
+  sendImageMessage,
   sendMediaMessage,
   sendMessage,
   sendRollMessage,
@@ -58,6 +60,7 @@ import {
   type ReactionEvent,
   type ReactionSummary,
 } from '@/lib/messages';
+import { pickAndUploadImage } from '@/lib/images';
 import { cacheGet, cacheSet } from '@/lib/screen-cache';
 import { joinTypingChannel, leaveTypingChannel, type TypingHandle } from '@/lib/typing';
 
@@ -84,6 +87,7 @@ export default function GroupChatScreen() {
   const [hasMore, setHasMore] = useState(true);
   const [showJump, setShowJump] = useState(false);
   const [reactions, setReactions] = useState<Map<string, ReactionSummary[]>>(new Map());
+  const [viewingImage, setViewingImage] = useState<string | null>(null);
   const groupRef = useRef<GroupDetail | null | undefined>(undefined);
   const listRef = useRef<FlatList<ChatMessage>>(null);
   const typingRef = useRef<TypingHandle | null>(null);
@@ -306,6 +310,22 @@ export default function GroupChatScreen() {
     }
   };
 
+  const handleSendPhoto = async () => {
+    if (!id || !session || sending) return;
+    try {
+      const url = await pickAndUploadImage(session.user.id, 'chat', [4, 3], {
+        allowsEditing: false,
+      });
+      if (!url) return; // cancelado
+      setSending(true);
+      await sendImageMessage(id, session.user.id, url);
+    } catch (error) {
+      showAlert('No se pudo enviar la foto', error instanceof Error ? error.message : String(error));
+    } finally {
+      setSending(false);
+    }
+  };
+
   const handleCopyMessage = async (message: ChatMessage) => {
     setActionsFor(null);
     const text = message.body ?? '';
@@ -375,7 +395,15 @@ export default function GroupChatScreen() {
         <View style={[styles.messageCol, isMine && styles.messageColMine]}>
         {(() => {
           const media =
-            item.kind === 'gif' && item.media_url ? (
+            item.kind === 'image' && item.media_url ? (
+              <Pressable onPress={() => setViewingImage(item.media_url)}>
+                <Image
+                  source={{ uri: item.media_url }}
+                  style={styles.photoMessage}
+                  contentFit="cover"
+                />
+              </Pressable>
+            ) : item.kind === 'gif' && item.media_url ? (
               <Image source={{ uri: item.media_url }} style={styles.gifMessage} contentFit="cover" />
             ) : item.kind === 'sticker' ? (
               item.media_url ? (
@@ -572,6 +600,13 @@ export default function GroupChatScreen() {
                 accessibilityLabel="Tirar dados">
                 <Text style={styles.tabGlyph}>🎲</Text>
               </Pressable>
+              <Pressable
+                style={styles.tabButton}
+                onPress={handleSendPhoto}
+                disabled={sending}
+                accessibilityLabel="Enviar foto">
+                <Text style={styles.tabGlyph}>📷</Text>
+              </Pressable>
             </View>
             <View style={styles.composerRow}>
               <TextInput
@@ -633,6 +668,19 @@ export default function GroupChatScreen() {
       />
 
       <ChatInfoPanel visible={infoOpen} group={group} onClose={() => setInfoOpen(false)} />
+
+      {/* visor de foto a pantalla completa */}
+      <Modal
+        transparent
+        visible={viewingImage !== null}
+        animationType="fade"
+        onRequestClose={() => setViewingImage(null)}>
+        <Pressable style={styles.viewerBackdrop} onPress={() => setViewingImage(null)}>
+          {viewingImage && (
+            <Image source={{ uri: viewingImage }} style={styles.viewerImage} contentFit="contain" />
+          )}
+        </Pressable>
+      </Modal>
     </ThemedView>
   );
 }
@@ -830,6 +878,22 @@ const styles = StyleSheet.create({
     height: 150,
     borderRadius: 14,
     backgroundColor: Rolder.surface,
+  },
+  photoMessage: {
+    width: 220,
+    height: 165,
+    borderRadius: 14,
+    backgroundColor: Rolder.surface,
+  },
+  viewerBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.92)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  viewerImage: {
+    width: '100%',
+    height: '85%',
   },
   stickerMessage: {
     fontSize: 56,

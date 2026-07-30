@@ -3,7 +3,7 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
 import { rollSummary, type DiceRoll } from '@/lib/dice';
 import { supabase } from '@/lib/supabase';
 
-export type MessageKind = 'text' | 'gif' | 'sticker' | 'roll';
+export type MessageKind = 'text' | 'gif' | 'sticker' | 'roll' | 'image';
 
 export type ChatMessage = {
   id: string;
@@ -27,6 +27,7 @@ export function messagePreview(message: { body: string | null; kind: MessageKind
   if (message.kind === 'gif') return '🎞️ GIF';
   if (message.kind === 'sticker') return `${message.body ?? '🎟️'} sticker`;
   if (message.kind === 'roll') return message.body ?? '🎲 tirada';
+  if (message.kind === 'image') return '📷 Foto';
   return message.body ?? '';
 }
 
@@ -181,6 +182,21 @@ export async function sendMediaMessage(
       media_url: content.mediaUrl ?? null,
       body: content.body ?? null,
     })
+    .select(MESSAGE_SELECT)
+    .single();
+  if (error) throw error;
+  return data as unknown as ChatMessage;
+}
+
+/** Foto al chat (migr. 00038): la URL pública ya subida a Storage. */
+export async function sendImageMessage(
+  groupId: string,
+  senderId: string,
+  mediaUrl: string
+): Promise<ChatMessage> {
+  const { data, error } = await supabase
+    .from('messages')
+    .insert({ group_id: groupId, sender_id: senderId, kind: 'image', media_url: mediaUrl })
     .select(MESSAGE_SELECT)
     .single();
   if (error) throw error;

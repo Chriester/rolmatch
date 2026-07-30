@@ -45,7 +45,7 @@ type MessageRecord = {
   group_id: string;
   sender_id: string;
   body: string | null;
-  kind: 'text' | 'gif' | 'sticker' | 'roll' | null;
+  kind: 'text' | 'gif' | 'sticker' | 'roll' | 'image' | null;
 };
 
 type DmMessageRecord = {
@@ -53,7 +53,7 @@ type DmMessageRecord = {
   thread_id: string;
   sender_id: string;
   body: string | null;
-  kind: 'text' | 'gif' | 'sticker' | 'roll' | null;
+  kind: 'text' | 'gif' | 'sticker' | 'roll' | 'image' | null;
 };
 
 type PollRecord = { id: string; group_id: string; created_by: string; title: string | null };
@@ -116,6 +116,7 @@ function messagePreview(record: { body: string | null; kind: MessageRecord['kind
   if (record.kind === 'gif') return 'ha enviado un GIF 🎞️';
   if (record.kind === 'sticker') return `ha enviado ${record.body ?? 'un sticker'}`;
   if (record.kind === 'roll') return record.body ?? 'ha tirado los dados 🎲';
+  if (record.kind === 'image') return 'ha enviado una foto 📷';
   const body = (record.body ?? '').trim();
   return body.length > 120 ? `${body.slice(0, 117)}…` : body;
 }
