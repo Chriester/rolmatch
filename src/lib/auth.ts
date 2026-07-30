@@ -67,6 +67,17 @@ export async function signOut() {
 }
 
 /**
+ * Borra la cuenta ENTERA (RPC delete_my_account, migr. 00036): mesas y
+ * sesiones creadas primero, después la fila de auth — el resto cae en
+ * cascada. Tras el borrado se cierra la sesión local.
+ */
+export async function deleteMyAccount() {
+  const { error } = await supabase.rpc('delete_my_account');
+  if (error) throw error;
+  await supabase.auth.signOut().catch(() => {});
+}
+
+/**
  * Une al usuario al servidor comunitario de Discord vía la Edge Function
  * discord-join. El provider_token solo existe justo después del login OAuth,
  * por eso se llama al detectar sesión nueva. Nunca es fatal.

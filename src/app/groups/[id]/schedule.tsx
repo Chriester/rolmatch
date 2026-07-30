@@ -39,9 +39,12 @@ import {
 import {
   createSession,
   deleteSession,
+  fetchRsvps,
   fetchUpcomingSessions,
   formatSessionDate,
+  setRsvp,
   type GameSession,
+  type SessionRsvps,
 } from '@/lib/sessions';
 
 const DEFAULT_TIME: TimeValue = { hour: 21, minute: 0 };
@@ -74,6 +77,7 @@ export default function ScheduleScreen() {
   const session = useSession();
   const [group, setGroup] = useState<GroupDetail | null>(null);
   const [sessions, setSessions] = useState<GameSession[]>([]);
+  const [rsvps, setRsvps] = useState<Map<string, SessionRsvps>>(new Map());
   const [polls, setPolls] = useState<SessionPoll[] | undefined>(undefined);
   const [busy, setBusy] = useState(false);
 
@@ -92,9 +96,15 @@ export default function ScheduleScreen() {
 
   const load = useCallback(() => {
     if (!id || !session) return;
+    const viewerId = session.user.id;
     fetchGroup(id).then(setGroup).catch(() => {});
-    fetchUpcomingSessions(id).then(setSessions).catch(() => {});
-    fetchPolls(id, session.user.id).then(setPolls).catch(() => setPolls([]));
+    fetchUpcomingSessions(id)
+      .then((list) => {
+        setSessions(list);
+        fetchRsvps(list.map((s) => s.id), viewerId).then(setRsvps);
+      })
+      .catch(() => {});
+    fetchPolls(id, viewerId).then(setPolls).catch(() => setPolls([]));
   }, [id, session]);
 
   useFocusEffect(load);
@@ -184,6 +194,19 @@ export default function ScheduleScreen() {
     }
   };
 
+  // ✋ voy / 🙅 no voy — toque en el mismo estado lo quita
+  const handleRsvp = async (gameSession: GameSession, status: 'yes' | 'no') => {
+    if (!session) return;
+    const current = rsvps.get(gameSession.id) ?? { yes: [], no: [], mine: null };
+    const next = current.mine === status ? null : status;
+    try {
+      await setRsvp(gameSession.id, session.user.id, next);
+      load();
+    } catch (error) {
+      showAlert('No se pudo marcar', error instanceof Error ? error.message : String(error));
+    }
+  };
+
   const handleSendProposal = async (poll: SessionPoll) => {
     if (!session || !proposalDay) return;
     setBusy(true);
@@ -240,30 +263,54 @@ export default function ScheduleScreen() {
           {sessions.length === 0 ? (
             <Text style={styles.soft}>Ninguna fijada todavía.</Text>
           ) : (
-            sessions.map((s) => (
-              <View key={s.id} style={styles.sessionRow}>
-                <View style={styles.sessionBody}>
-                  <Text style={styles.sessionDate}>{formatSessionDate(s.starts_at)}</Text>
-                  {s.title && <Text style={styles.sessionTitle}>{s.title}</Text>}
+            sessions.map((s) => {
+              const rsvp = rsvps.get(s.id) ?? { yes: [], no: [], mine: null };
+              return (
+                <View key={s.id} style={styles.sessionCard}>
+                  <View style={styles.sessionRow}>
+                    <View style={styles.sessionBody}>
+                      <Text style={styles.sessionDate}>{formatSessionDate(s.starts_at)}</Text>
+                      {s.title && <Text style={styles.sessionTitle}>{s.title}</Text>}
+                    </View>
+                    {isOwner && (
+                      <Pressable
+                        onPress={async () => {
+                          try {
+                            await deleteSession(s.id);
+                            setSessions((list) => list.filter((x) => x.id !== s.id));
+                          } catch (error) {
+                            showAlert(
+                              'No se pudo borrar',
+                              error instanceof Error ? error.message : String(error)
+                            );
+                          }
+                        }}>
+                        <Text style={styles.deleteLink}>Quitar</Text>
+                      </Pressable>
+                    )}
+                  </View>
+                  <View style={styles.rsvpRow}>
+                    <Pressable
+                      style={[styles.rsvpButton, rsvp.mine === 'yes' && styles.rsvpYesActive]}
+                      onPress={() => handleRsvp(s, 'yes')}>
+                      <Text style={styles.rsvpLabel}>✋ Voy{rsvp.yes.length > 0 ? ` · ${rsvp.yes.length}` : ''}</Text>
+                    </Pressable>
+                    <Pressable
+                      style={[styles.rsvpButton, rsvp.mine === 'no' && styles.rsvpNoActive]}
+                      onPress={() => handleRsvp(s, 'no')}>
+                      <Text style={styles.rsvpLabel}>🙅 No voy{rsvp.no.length > 0 ? ` · ${rsvp.no.length}` : ''}</Text>
+                    </Pressable>
+                  </View>
+                  {(rsvp.yes.length > 0 || rsvp.no.length > 0) && (
+                    <Text style={styles.rsvpNames} numberOfLines={2}>
+                      {rsvp.yes.length > 0 ? `Van: ${rsvp.yes.join(', ')}` : ''}
+                      {rsvp.yes.length > 0 && rsvp.no.length > 0 ? ' · ' : ''}
+                      {rsvp.no.length > 0 ? `No van: ${rsvp.no.join(', ')}` : ''}
+                    </Text>
+                  )}
                 </View>
-                {isOwner && (
-                  <Pressable
-                    onPress={async () => {
-                      try {
-                        await deleteSession(s.id);
-                        setSessions((list) => list.filter((x) => x.id !== s.id));
-                      } catch (error) {
-                        showAlert(
-                          'No se pudo borrar',
-                          error instanceof Error ? error.message : String(error)
-                        );
-                      }
-                    }}>
-                    <Text style={styles.deleteLink}>Quitar</Text>
-                  </Pressable>
-                )}
-              </View>
-            ))
+              );
+            })
           )}
 
           {openPolls.length > 0 && <SectionLabel>Votaciones abiertas</SectionLabel>}
@@ -527,17 +574,50 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: RolderFonts.regular,
   },
-  sessionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+  sessionCard: {
     backgroundColor: Rolder.surface,
     borderWidth: 1,
     borderColor: Rolder.surfaceBorder,
     borderRadius: 14,
     paddingHorizontal: 14,
     paddingVertical: 11,
+    gap: 8,
+  },
+  sessionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     gap: 10,
+  },
+  rsvpRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  rsvpButton: {
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+  },
+  rsvpYesActive: {
+    backgroundColor: 'rgba(59,209,111,0.15)',
+    borderColor: 'rgba(59,209,111,0.7)',
+  },
+  rsvpNoActive: {
+    backgroundColor: 'rgba(255,90,95,0.12)',
+    borderColor: 'rgba(255,90,95,0.6)',
+  },
+  rsvpLabel: {
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 12.5,
+    fontFamily: RolderFonts.semibold,
+    fontWeight: '600',
+  },
+  rsvpNames: {
+    color: Rolder.textSecondary,
+    fontSize: 11.5,
+    fontFamily: RolderFonts.regular,
   },
   sessionBody: {
     flex: 1,

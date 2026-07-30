@@ -5,10 +5,11 @@
 import Constants from 'expo-constants';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { showAlert } from '@/lib/alert';
+import { confirmAction, showAlert } from '@/lib/alert';
+import { deleteMyAccount } from '@/lib/auth';
 import { AppHeader } from '@/components/app-header';
 import { ThemedView } from '@/components/themed-view';
 import { ListRow, OutlineButton, ScreenBlurb, ScreenTitle } from '@/components/ui';
@@ -107,6 +108,33 @@ export default function SettingsScreen() {
             </ListRow>
           ))}
 
+          <Pressable
+            onPress={async () => {
+              const ok = await confirmAction(
+                '¿Eliminar tu cuenta?',
+                'Se borran tu perfil, personajes, mesas, chats y todo lo demás. No se puede deshacer.',
+                'Sí, eliminar todo'
+              );
+              if (!ok) return;
+              const sure = await confirmAction(
+                'Última confirmación',
+                'De verdad de la buena: esto elimina tu cuenta para siempre.',
+                'Eliminar mi cuenta'
+              );
+              if (!sure) return;
+              try {
+                await deleteMyAccount();
+                router.replace('/login');
+              } catch (error) {
+                showAlert(
+                  'No se pudo eliminar',
+                  error instanceof Error ? error.message : String(error)
+                );
+              }
+            }}>
+            <Text style={styles.deleteAccount}>Eliminar mi cuenta</Text>
+          </Pressable>
+
           <Text style={styles.version}>
             rolder {Constants.expoConfig?.version ?? ''} · hecho con 🎲 en la comunidad
           </Text>
@@ -173,6 +201,13 @@ const styles = StyleSheet.create({
     fontSize: 12.5,
     fontFamily: RolderFonts.regular,
     lineHeight: 18,
+  },
+  deleteAccount: {
+    color: Rolder.pass,
+    fontSize: 13,
+    fontFamily: RolderFonts.semibold,
+    textAlign: 'center',
+    marginTop: Spacing.four,
   },
   version: {
     color: Rolder.textTertiary,

@@ -45,13 +45,18 @@ import {
   deleteMessage,
   editMessage,
   fetchMessages,
+  fetchMessageReactions,
   sendMediaMessage,
   sendMessage,
   sendRollMessage,
   markChatRead,
   subscribeToMessages,
+  subscribeToReactions,
+  toggleMessageReaction,
   unsubscribeFromMessages,
   type ChatMessage,
+  type ReactionEvent,
+  type ReactionSummary,
 } from '@/lib/messages';
 import { cacheGet, cacheSet } from '@/lib/screen-cache';
 import { joinTypingChannel, leaveTypingChannel, type TypingHandle } from '@/lib/typing';
@@ -78,6 +83,7 @@ export default function GroupChatScreen() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [showJump, setShowJump] = useState(false);
+  const [reactions, setReactions] = useState<Map<string, ReactionSummary[]>>(new Map());
   const groupRef = useRef<GroupDetail | null | undefined>(undefined);
   const listRef = useRef<FlatList<ChatMessage>>(null);
   const typingRef = useRef<TypingHandle | null>(null);
@@ -100,13 +106,16 @@ export default function GroupChatScreen() {
         cacheSet(`group-msgs:${id}`, list);
         setMessages(list);
         setHasMore(list.length >= 100);
+        if (session) {
+          fetchMessageReactions(list.map((m) => m.id), session.user.id).then(setReactions);
+        }
       })
       .catch(() => {
         const cached = cacheGet<ChatMessage[]>(`group-msgs:${id}`);
         if (!cached) showAlert('No se pudo cargar el chat', 'Vuelve a entrar en unos segundos.');
         setMessages((current) => current ?? cached ?? []);
       });
-  }, [id]);
+  }, [id, session]);
 
   // Votaciones abiertas → un banner desplegable por cada una
   useEffect(() => {
@@ -140,6 +149,68 @@ export default function GroupChatScreen() {
     });
     return () => unsubscribeFromMessages(channel);
   }, [id, session]);
+
+  // Reacciones en vivo: deltas de otros (las mías van optimistas)
+  useEffect(() => {
+    if (!id || !session) return;
+    const myId = session.user.id;
+    const apply = (event: ReactionEvent, delta: 1 | -1) => {
+      if (event.user_id === myId) return;
+      setReactions((map) => {
+        const next = new Map(map);
+        const list = [...(next.get(event.message_id) ?? [])];
+        const idx = list.findIndex((r) => r.emoji === event.emoji);
+        if (delta === 1) {
+          if (idx >= 0) list[idx] = { ...list[idx], count: list[idx].count + 1 };
+          else list.push({ emoji: event.emoji, count: 1, mine: false });
+        } else if (idx >= 0) {
+          const count = list[idx].count - 1;
+          if (count <= 0 && !list[idx].mine) list.splice(idx, 1);
+          else list[idx] = { ...list[idx], count: Math.max(count, 1) };
+        }
+        next.set(event.message_id, list);
+        return next;
+      });
+    };
+    const channel = subscribeToReactions(`group:${id}`, {
+      onAdd: (e) => apply(e, 1),
+      onRemove: (e) => apply(e, -1),
+    });
+    return () => unsubscribeFromMessages(channel);
+  }, [id, session]);
+
+  const handleToggleReaction = async (message: ChatMessage, emoji: string) => {
+    if (!session) return;
+    const current = reactions.get(message.id) ?? [];
+    const mine = current.find((r) => r.emoji === emoji)?.mine ?? false;
+    // pintado optimista
+    setReactions((map) => {
+      const next = new Map(map);
+      const list = [...(next.get(message.id) ?? [])];
+      const idx = list.findIndex((r) => r.emoji === emoji);
+      if (!mine) {
+        if (idx >= 0) list[idx] = { ...list[idx], count: list[idx].count + 1, mine: true };
+        else list.push({ emoji, count: 1, mine: true });
+      } else if (idx >= 0) {
+        const count = list[idx].count - 1;
+        if (count <= 0) list.splice(idx, 1);
+        else list[idx] = { ...list[idx], count, mine: false };
+      }
+      next.set(message.id, list);
+      return next;
+    });
+    try {
+      await toggleMessageReaction(message.id, session.user.id, emoji, !mine);
+    } catch {
+      fetchMessageReactions([message.id], session.user.id).then((fresh) =>
+        setReactions((map) => {
+          const next = new Map(map);
+          next.set(message.id, fresh.get(message.id) ?? []);
+          return next;
+        })
+      );
+    }
+  };
 
   // Canal efímero de «escribiendo…»
   useEffect(() => {
@@ -208,6 +279,13 @@ export default function GroupChatScreen() {
         ...(list ?? []),
         ...older.filter((o) => !list?.some((m) => m.id === o.id)),
       ]);
+      if (session && older.length > 0) {
+        const olderReactions = await fetchMessageReactions(
+          older.map((m) => m.id),
+          session.user.id
+        );
+        setReactions((map) => new Map([...map, ...olderReactions]));
+      }
     } catch {
       // sin red: se reintenta al volver a llegar arriba
     } finally {
@@ -288,11 +366,13 @@ export default function GroupChatScreen() {
 
   const renderItem = ({ item }: { item: ChatMessage }) => {
     const isMine = item.sender_id === session?.user.id;
+    const itemReactions = reactions.get(item.id) ?? [];
     return (
       <Pressable
         style={[styles.messageRow, isMine && styles.messageRowMine]}
         onLongPress={() => setActionsFor(item)}
         delayLongPress={350}>
+        <View style={[styles.messageCol, isMine && styles.messageColMine]}>
         {(() => {
           const media =
             item.kind === 'gif' && item.media_url ? (
@@ -344,6 +424,22 @@ export default function GroupChatScreen() {
             </View>
           );
         })()}
+        {itemReactions.length > 0 && (
+          <View style={styles.reactionChips}>
+            {itemReactions.map((r) => (
+              <Pressable
+                key={r.emoji}
+                style={[styles.reactionChip, r.mine && styles.reactionChipMine]}
+                onPress={() => handleToggleReaction(item, r.emoji)}>
+                <Text style={styles.reactionChipLabel}>
+                  {r.emoji}
+                  {r.count > 1 ? ` ${r.count}` : ''}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        )}
+        </View>
       </Pressable>
     );
   };
@@ -521,6 +617,10 @@ export default function GroupChatScreen() {
         canCopy={actionsFor?.kind === 'text' || actionsFor?.kind === 'roll'}
         canEdit={actionsFor?.kind === 'text' && actionsFor?.sender_id === session?.user.id}
         canDelete={actionsFor?.sender_id === session?.user.id}
+        onReact={(emoji) => {
+          if (actionsFor) handleToggleReaction(actionsFor, emoji);
+          setActionsFor(null);
+        }}
         onCopy={() => actionsFor && handleCopyMessage(actionsFor)}
         onEdit={() => {
           if (!actionsFor) return;
@@ -607,6 +707,35 @@ const styles = StyleSheet.create({
   },
   messageRowMine: {
     justifyContent: 'flex-end',
+  },
+  messageCol: {
+    maxWidth: '85%',
+    alignItems: 'flex-start',
+    gap: 3,
+  },
+  messageColMine: {
+    alignItems: 'flex-end',
+  },
+  reactionChips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 4,
+  },
+  reactionChip: {
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  reactionChipMine: {
+    backgroundColor: 'rgba(139,108,255,0.2)',
+    borderColor: 'rgba(139,108,255,0.7)',
+  },
+  reactionChipLabel: {
+    color: 'rgba(255,255,255,0.9)',
+    fontSize: 12,
   },
   bubble: {
     maxWidth: '80%',

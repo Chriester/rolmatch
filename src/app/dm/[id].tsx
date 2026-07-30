@@ -41,16 +41,20 @@ import {
   deleteDmMessage,
   editDmMessage,
   fetchDmMessages,
+  fetchDmReactions,
   fetchDmThread,
   markDmRead,
   sendDmMediaMessage,
   sendDmMessage,
   sendDmRollMessage,
   subscribeToDmMessages,
+  subscribeToDmReactions,
+  toggleDmReaction,
   unsubscribeFromDmMessages,
   type DmMessage,
   type DmThread,
 } from '@/lib/dm';
+import type { ReactionSummary } from '@/lib/messages';
 import { cacheGet, cacheSet } from '@/lib/screen-cache';
 import { joinTypingChannel, leaveTypingChannel, type TypingHandle } from '@/lib/typing';
 
@@ -74,6 +78,7 @@ export default function DmChatScreen() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [showJump, setShowJump] = useState(false);
+  const [reactions, setReactions] = useState<Map<string, ReactionSummary[]>>(new Map());
   const listRef = useRef<FlatList<DmMessage>>(null);
   const typingRef = useRef<TypingHandle | null>(null);
   const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -91,6 +96,7 @@ export default function DmChatScreen() {
         cacheSet(`dm-msgs:${id}`, list);
         setMessages(list);
         setHasMore(list.length >= 100);
+        fetchDmReactions(list.map((m) => m.id), session.user.id).then(setReactions);
       })
       .catch(() => {
         const cached = cacheGet<DmMessage[]>(`dm-msgs:${id}`);
@@ -117,6 +123,66 @@ export default function DmChatScreen() {
     });
     return () => unsubscribeFromDmMessages(channel);
   }, [id, session]);
+
+  // Reacciones en vivo (las mías van optimistas)
+  useEffect(() => {
+    if (!id || !session) return;
+    const myId = session.user.id;
+    const apply = (event: { message_id: string; user_id: string; emoji: string }, delta: 1 | -1) => {
+      if (event.user_id === myId) return;
+      setReactions((map) => {
+        const next = new Map(map);
+        const list = [...(next.get(event.message_id) ?? [])];
+        const idx = list.findIndex((r) => r.emoji === event.emoji);
+        if (delta === 1) {
+          if (idx >= 0) list[idx] = { ...list[idx], count: list[idx].count + 1 };
+          else list.push({ emoji: event.emoji, count: 1, mine: false });
+        } else if (idx >= 0) {
+          const count = list[idx].count - 1;
+          if (count <= 0 && !list[idx].mine) list.splice(idx, 1);
+          else list[idx] = { ...list[idx], count: Math.max(count, 1) };
+        }
+        next.set(event.message_id, list);
+        return next;
+      });
+    };
+    const channel = subscribeToDmReactions(`dm:${id}`, {
+      onAdd: (e) => apply(e, 1),
+      onRemove: (e) => apply(e, -1),
+    });
+    return () => unsubscribeFromDmMessages(channel);
+  }, [id, session]);
+
+  const handleToggleReaction = async (message: DmMessage, emoji: string) => {
+    if (!session) return;
+    const mine = (reactions.get(message.id) ?? []).find((r) => r.emoji === emoji)?.mine ?? false;
+    setReactions((map) => {
+      const next = new Map(map);
+      const list = [...(next.get(message.id) ?? [])];
+      const idx = list.findIndex((r) => r.emoji === emoji);
+      if (!mine) {
+        if (idx >= 0) list[idx] = { ...list[idx], count: list[idx].count + 1, mine: true };
+        else list.push({ emoji, count: 1, mine: true });
+      } else if (idx >= 0) {
+        const count = list[idx].count - 1;
+        if (count <= 0) list.splice(idx, 1);
+        else list[idx] = { ...list[idx], count, mine: false };
+      }
+      next.set(message.id, list);
+      return next;
+    });
+    try {
+      await toggleDmReaction(message.id, session.user.id, emoji, !mine);
+    } catch {
+      fetchDmReactions([message.id], session.user.id).then((fresh) =>
+        setReactions((map) => {
+          const next = new Map(map);
+          next.set(message.id, fresh.get(message.id) ?? []);
+          return next;
+        })
+      );
+    }
+  };
 
   // Canal efímero de «escribiendo…»
   useEffect(() => {
@@ -181,6 +247,13 @@ export default function DmChatScreen() {
         ...(list ?? []),
         ...older.filter((o) => !list?.some((m) => m.id === o.id)),
       ]);
+      if (session && older.length > 0) {
+        const olderReactions = await fetchDmReactions(
+          older.map((m) => m.id),
+          session.user.id
+        );
+        setReactions((map) => new Map([...map, ...olderReactions]));
+      }
     } catch {
       // sin red: se reintenta al volver a llegar arriba
     } finally {
@@ -274,22 +347,40 @@ export default function DmChatScreen() {
       ) : null;
 
     const roll = item.kind === 'roll' ? parseRoll(item.media_url) : null;
+    const itemReactions = reactions.get(item.id) ?? [];
 
     return (
       <Pressable
         style={[styles.messageRow, isMine && styles.messageRowMine]}
         onLongPress={() => setActionsFor(item)}
         delayLongPress={350}>
-        {roll ? (
-          <RollBubble roll={roll} />
-        ) : media ? (
-          <View style={styles.mediaWrap}>{media}</View>
-        ) : (
-          <View style={[styles.bubble, isMine ? styles.bubbleMine : styles.bubbleTheirs]}>
-            <Text style={isMine ? styles.bubbleTextMine : styles.bubbleText}>{item.body}</Text>
-            {item.edited_at && <Text style={styles.editedTag}>editado</Text>}
-          </View>
-        )}
+        <View style={[styles.messageCol, isMine && styles.messageColMine]}>
+          {roll ? (
+            <RollBubble roll={roll} />
+          ) : media ? (
+            <View style={styles.mediaWrap}>{media}</View>
+          ) : (
+            <View style={[styles.bubble, isMine ? styles.bubbleMine : styles.bubbleTheirs]}>
+              <Text style={isMine ? styles.bubbleTextMine : styles.bubbleText}>{item.body}</Text>
+              {item.edited_at && <Text style={styles.editedTag}>editado</Text>}
+            </View>
+          )}
+          {itemReactions.length > 0 && (
+            <View style={styles.reactionChips}>
+              {itemReactions.map((r) => (
+                <Pressable
+                  key={r.emoji}
+                  style={[styles.reactionChip, r.mine && styles.reactionChipMine]}
+                  onPress={() => handleToggleReaction(item, r.emoji)}>
+                  <Text style={styles.reactionChipLabel}>
+                    {r.emoji}
+                    {r.count > 1 ? ` ${r.count}` : ''}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          )}
+        </View>
       </Pressable>
     );
   };
@@ -448,6 +539,10 @@ export default function DmChatScreen() {
         canCopy={actionsFor?.kind === 'text' || actionsFor?.kind === 'roll'}
         canEdit={actionsFor?.kind === 'text' && actionsFor?.sender_id === session?.user.id}
         canDelete={actionsFor?.sender_id === session?.user.id}
+        onReact={(emoji) => {
+          if (actionsFor) handleToggleReaction(actionsFor, emoji);
+          setActionsFor(null);
+        }}
         onCopy={() => actionsFor && handleCopyMessage(actionsFor)}
         onEdit={() => {
           if (!actionsFor) return;
@@ -535,6 +630,35 @@ const styles = StyleSheet.create({
   },
   messageRowMine: {
     justifyContent: 'flex-end',
+  },
+  messageCol: {
+    maxWidth: '85%',
+    alignItems: 'flex-start',
+    gap: 3,
+  },
+  messageColMine: {
+    alignItems: 'flex-end',
+  },
+  reactionChips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 4,
+  },
+  reactionChip: {
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  reactionChipMine: {
+    backgroundColor: 'rgba(139,108,255,0.2)',
+    borderColor: 'rgba(139,108,255,0.7)',
+  },
+  reactionChipLabel: {
+    color: 'rgba(255,255,255,0.9)',
+    fontSize: 12,
   },
   bubble: {
     maxWidth: '80%',
