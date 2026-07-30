@@ -78,7 +78,7 @@ export default function LikesScreen() {
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
         <AppHeader />
-        <ScreenTitle>💘 Te han dado like</ScreenTitle>
+        <ScreenTitle>🔭 Tus encuentros</ScreenTitle>
 
         {loadError ? (
           <View style={styles.centerBox}>
@@ -91,15 +91,17 @@ export default function LikesScreen() {
           </View>
         ) : likes.length === 0 ? (
           <View style={styles.centerBox}>
-            <Text style={styles.centerEmoji}>🕰️</Text>
+            <Text style={styles.centerEmoji}>🔭</Text>
             <Text style={styles.centerText}>
-              Todavía nadie te ha dado like. Completa tu perfil y tu vitrina — todo llega.
+              El catalejo aún no avista a nadie: aquí aparecerá quien te dé like. Completa tu
+              perfil y tu vitrina — todo llega.
             </Text>
           </View>
         ) : (
           <>
             <Text style={styles.counter}>
-              {likes.length} {likes.length === 1 ? 'like te espera' : 'likes te esperan'}
+              {likes.length}{' '}
+              {likes.length === 1 ? 'encuentro te espera' : 'encuentros te esperan'}
             </Text>
 
             {!premium && (
