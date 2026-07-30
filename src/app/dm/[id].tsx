@@ -23,7 +23,10 @@ import { Image } from 'expo-image';
 
 import { confirmAction, showAlert } from '@/lib/alert';
 import { AppHeader } from '@/components/app-header';
+import { DiceRoller } from '@/components/dice-roller';
 import { MessageActions } from '@/components/message-actions';
+import { RollBubble } from '@/components/roll-bubble';
+import { parseRoll, type DiceRoll } from '@/lib/dice';
 import {
   ChatMediaPickers,
   gifSearchAvailable,
@@ -41,6 +44,7 @@ import {
   markDmRead,
   sendDmMediaMessage,
   sendDmMessage,
+  sendDmRollMessage,
   subscribeToDmMessages,
   unsubscribeFromDmMessages,
   type DmMessage,
@@ -62,7 +66,7 @@ export default function DmChatScreen() {
   );
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
-  const [pickerTab, setPickerTab] = useState<PickerTab | null>(null);
+  const [pickerTab, setPickerTab] = useState<PickerTab | 'dice' | null>(null);
   const [actionsFor, setActionsFor] = useState<DmMessage | null>(null);
   const [editing, setEditing] = useState<DmMessage | null>(null);
   const [otherTyping, setOtherTyping] = useState(false);
@@ -159,6 +163,19 @@ export default function DmChatScreen() {
     if (text.trim()) typingRef.current?.sendTyping('typing');
   };
 
+  const handleSendRoll = async (roll: DiceRoll) => {
+    if (!id || !session || sending) return;
+    setSending(true);
+    setPickerTab(null);
+    try {
+      await sendDmRollMessage(id, session.user.id, roll);
+    } catch (error) {
+      showAlert('No se pudo tirar', error instanceof Error ? error.message : String(error));
+    } finally {
+      setSending(false);
+    }
+  };
+
   const handleDeleteMessage = async (message: DmMessage) => {
     setActionsFor(null);
     const ok = await confirmAction('¿Borrar mensaje?', 'Desaparecerá para ambos.', 'Borrar');
@@ -216,12 +233,16 @@ export default function DmChatScreen() {
         )
       ) : null;
 
+    const roll = item.kind === 'roll' ? parseRoll(item.media_url) : null;
+
     return (
       <Pressable
         style={[styles.messageRow, isMine && styles.messageRowMine]}
         onLongPress={isMine ? () => setActionsFor(item) : undefined}
         delayLongPress={350}>
-        {media ? (
+        {roll ? (
+          <RollBubble roll={roll} />
+        ) : media ? (
           <View style={styles.mediaWrap}>{media}</View>
         ) : (
           <View style={[styles.bubble, isMine ? styles.bubbleMine : styles.bubbleTheirs]}>
@@ -294,7 +315,7 @@ export default function DmChatScreen() {
               </Pressable>
             </View>
           )}
-          {pickerTab !== null && (
+          {pickerTab !== null && pickerTab !== 'dice' && (
             <ChatMediaPickers
               tab={pickerTab}
               onEmoji={(e) => setDraft((d) => d + e)}
@@ -302,6 +323,7 @@ export default function DmChatScreen() {
               onGif={(url) => handleSendMedia('gif', { mediaUrl: url })}
             />
           )}
+          {pickerTab === 'dice' && <DiceRoller onRoll={handleSendRoll} busy={sending} />}
           <View style={styles.pickerTabs}>
             <Pressable
               style={[styles.tabButton, pickerTab === 'emoji' && styles.tabActive]}
@@ -323,6 +345,12 @@ export default function DmChatScreen() {
                 <Text style={styles.tabLabel}>GIF</Text>
               </Pressable>
             )}
+            <Pressable
+              style={[styles.tabButton, pickerTab === 'dice' && styles.tabActive]}
+              onPress={() => setPickerTab(pickerTab === 'dice' ? null : 'dice')}
+              accessibilityLabel="Tirar dados">
+              <Text style={styles.tabGlyph}>🎲</Text>
+            </Pressable>
           </View>
           <View style={styles.composerRow}>
             <TextInput

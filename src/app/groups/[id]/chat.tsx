@@ -25,7 +25,10 @@ import { confirmAction, showAlert } from '@/lib/alert';
 import { AppHeader } from '@/components/app-header';
 import { ChatInfoPanel } from '@/components/chat-info-panel';
 import { ChatPollBanner } from '@/components/chat-poll-banner';
+import { DiceRoller } from '@/components/dice-roller';
 import { MessageActions } from '@/components/message-actions';
+import { RollBubble } from '@/components/roll-bubble';
+import { parseRoll, type DiceRoll } from '@/lib/dice';
 import { fetchPolls, type SessionPoll } from '@/lib/polls';
 import {
   ChatMediaPickers,
@@ -43,6 +46,7 @@ import {
   fetchMessages,
   sendMediaMessage,
   sendMessage,
+  sendRollMessage,
   markChatRead,
   subscribeToMessages,
   unsubscribeFromMessages,
@@ -66,7 +70,7 @@ export default function GroupChatScreen() {
   const [sending, setSending] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
   const [activePoll, setActivePoll] = useState<SessionPoll | null>(null);
-  const [pickerTab, setPickerTab] = useState<PickerTab | null>(null);
+  const [pickerTab, setPickerTab] = useState<PickerTab | 'dice' | null>(null);
   const [actionsFor, setActionsFor] = useState<ChatMessage | null>(null);
   const [editing, setEditing] = useState<ChatMessage | null>(null);
   const [typingAlias, setTypingAlias] = useState<string | null>(null);
@@ -185,6 +189,19 @@ export default function GroupChatScreen() {
     }
   };
 
+  const handleSendRoll = async (roll: DiceRoll) => {
+    if (!id || !session || sending) return;
+    setSending(true);
+    setPickerTab(null);
+    try {
+      await sendRollMessage(id, session.user.id, roll);
+    } catch (error) {
+      showAlert('No se pudo tirar', error instanceof Error ? error.message : String(error));
+    } finally {
+      setSending(false);
+    }
+  };
+
   const handleDeleteMessage = async (message: ChatMessage) => {
     setActionsFor(null);
     const ok = await confirmAction('¿Borrar mensaje?', 'Desaparecerá para toda la mesa.', 'Borrar');
@@ -250,6 +267,18 @@ export default function GroupChatScreen() {
           const editedTag = item.edited_at ? (
             <Text style={styles.editedTag}>editado</Text>
           ) : null;
+
+          if (item.kind === 'roll') {
+            const roll = parseRoll(item.media_url);
+            if (roll) {
+              return (
+                <RollBubble
+                  roll={roll}
+                  senderAlias={isMine ? null : item.profiles?.alias ?? 'Jugador/a'}
+                />
+              );
+            }
+          }
 
           if (isMine) {
             return media ? (
@@ -358,7 +387,7 @@ export default function GroupChatScreen() {
                 </Pressable>
               </View>
             )}
-            {pickerTab !== null && (
+            {pickerTab !== null && pickerTab !== 'dice' && (
               <ChatMediaPickers
                 tab={pickerTab}
                 onEmoji={(e) => setDraft((d) => d + e)}
@@ -366,6 +395,7 @@ export default function GroupChatScreen() {
                 onGif={(url) => handleSendMedia('gif', { mediaUrl: url })}
               />
             )}
+            {pickerTab === 'dice' && <DiceRoller onRoll={handleSendRoll} busy={sending} />}
             <View style={styles.pickerTabs}>
               <Pressable
                 style={[styles.tabButton, pickerTab === 'emoji' && styles.tabActive]}
@@ -387,6 +417,12 @@ export default function GroupChatScreen() {
                   <Text style={styles.tabLabel}>GIF</Text>
                 </Pressable>
               )}
+              <Pressable
+                style={[styles.tabButton, pickerTab === 'dice' && styles.tabActive]}
+                onPress={() => setPickerTab(pickerTab === 'dice' ? null : 'dice')}
+                accessibilityLabel="Tirar dados">
+                <Text style={styles.tabGlyph}>🎲</Text>
+              </Pressable>
             </View>
             <View style={styles.composerRow}>
               <TextInput

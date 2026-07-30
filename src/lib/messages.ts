@@ -1,8 +1,9 @@
 import type { RealtimeChannel } from '@supabase/supabase-js';
 
+import { rollSummary, type DiceRoll } from '@/lib/dice';
 import { supabase } from '@/lib/supabase';
 
-export type MessageKind = 'text' | 'gif' | 'sticker';
+export type MessageKind = 'text' | 'gif' | 'sticker' | 'roll';
 
 export type ChatMessage = {
   id: string;
@@ -23,6 +24,7 @@ const MESSAGE_SELECT =
 export function messagePreview(message: { body: string | null; kind: MessageKind }): string {
   if (message.kind === 'gif') return '🎞️ GIF';
   if (message.kind === 'sticker') return `${message.body ?? '🎟️'} sticker`;
+  if (message.kind === 'roll') return message.body ?? '🎲 tirada';
   return message.body ?? '';
 }
 
@@ -169,6 +171,27 @@ export async function sendMediaMessage(
       kind,
       media_url: content.mediaUrl ?? null,
       body: content.body ?? null,
+    })
+    .select(MESSAGE_SELECT)
+    .single();
+  if (error) throw error;
+  return data as unknown as ChatMessage;
+}
+
+/** Tirada de dados al chat: body legible + JSON en media_url (migr. 00031). */
+export async function sendRollMessage(
+  groupId: string,
+  senderId: string,
+  roll: DiceRoll
+): Promise<ChatMessage> {
+  const { data, error } = await supabase
+    .from('messages')
+    .insert({
+      group_id: groupId,
+      sender_id: senderId,
+      kind: 'roll',
+      body: rollSummary(roll),
+      media_url: JSON.stringify(roll),
     })
     .select(MESSAGE_SELECT)
     .single();
