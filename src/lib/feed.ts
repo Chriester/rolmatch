@@ -17,6 +17,8 @@ export type GroupCandidate = {
     format: GroupFormat;
     frequency: string | null;
     systems: { name: string } | null;
+    /** sin plazas abiertas: se puede pedir sitio igualmente (el GM decide) */
+    full: boolean;
   };
   result: MatchResult;
 };
@@ -99,26 +101,34 @@ export async function fetchPlayerFeed(userId: string): Promise<GroupCandidate[]>
     ...(mySwipes ?? []).map((s) => s.group_id),
   ]);
 
+  // Las mesas LLENAS también salen (marcadas): darles like te convierte en
+  // candidato y el GM decide si amplía la mesa — clave con pool pequeño.
   const { data: groups, error } = await supabase
     .from('groups')
     .select(
       `id, owner_id, name, image_url, boosted_until, description, format, frequency, timezone, language, system_id,
        session_weekday, session_slot, experience_wanted, vtt,
        style_combat_narrative, style_serious_humor, style_roleplay_weight,
-       systems(name), group_openings!inner(is_open)`
+       systems(name), group_openings(seats, is_open)`
     )
-    .eq('is_active', true)
-    .eq('group_openings.is_open', true);
+    .eq('is_active', true);
   if (error) throw error;
 
   return (groups ?? [])
     .filter((g) => !excluded.has(g.id) && !blocked.has(g.owner_id))
-    .map((g) => ({
-      group: g as unknown as GroupCandidate['group'],
-      result: matchPlayerToGroup(me, g as unknown as MatchGroup),
-    }))
+    .map((g) => {
+      const openings = (g.group_openings ?? []) as { seats: number; is_open: boolean }[];
+      const full = !openings.some((o) => o.is_open && o.seats > 0);
+      return {
+        group: { ...g, full } as unknown as GroupCandidate['group'],
+        result: matchPlayerToGroup(me, g as unknown as MatchGroup),
+      };
+    })
     .filter((c) => c.result.pass)
-    .sort((a, b) => b.result.score - a.result.score);
+    // llenas al final; dentro de cada bloque, por score
+    .sort(
+      (a, b) => Number(a.group.full) - Number(b.group.full) || b.result.score - a.result.score
+    );
 }
 
 /** Candidatos con perfil completo que pasan los filtros duros para esta mesa, ordenados por score. */
@@ -244,12 +254,12 @@ export async function fetchUnifiedFeed(userId: string): Promise<UnifiedFeed> {
   }
 
   if (role === 'gm' || role === 'both') {
+    // también las mesas llenas: sus candidatos («piden sitio») deben llegar al GM
     const { data: myGroups } = await supabase
       .from('groups')
-      .select('id, name, image_url, session_weekday, session_slot, timezone, group_openings!inner(is_open)')
+      .select('id, name, image_url, session_weekday, session_slot, timezone')
       .eq('owner_id', userId)
-      .eq('is_active', true)
-      .eq('group_openings.is_open', true);
+      .eq('is_active', true);
 
     // Un candidato puede encajar en varias de mis mesas: nos quedamos con la
     // mejor combinación (like previo gana; si no, mayor score)
@@ -275,7 +285,7 @@ export async function fetchUnifiedFeed(userId: string): Promise<UnifiedFeed> {
     );
   }
 
-  // Likes recibidos primero; después mesas destacadas (boost premium); después score
+  // Likes recibidos primero; después destacadas (boost); llenas al final; después score
   const liked = (item: FeedItem) => (item.kind === 'player' && item.candidate.likedGroup ? 1 : 0);
   const boosted = (item: FeedItem) =>
     item.kind === 'group' &&
@@ -283,9 +293,13 @@ export async function fetchUnifiedFeed(userId: string): Promise<UnifiedFeed> {
     new Date(item.group.boosted_until).getTime() > Date.now()
       ? 1
       : 0;
+  const full = (item: FeedItem) => (item.kind === 'group' && item.group.full ? 1 : 0);
   const score = (item: FeedItem) =>
     item.kind === 'group' ? item.result.score : item.candidate.result.score;
-  items.sort((a, b) => liked(b) - liked(a) || boosted(b) - boosted(a) || score(b) - score(a));
+  items.sort(
+    (a, b) =>
+      liked(b) - liked(a) || boosted(b) - boosted(a) || full(a) - full(b) || score(b) - score(a)
+  );
 
   return { items, myAvailability: meRow.availability_slots };
 }

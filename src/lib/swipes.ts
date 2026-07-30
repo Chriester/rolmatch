@@ -58,6 +58,33 @@ export async function undoGroupSwipeOnUser(groupId: string, userId: string) {
   if (error) throw error;
 }
 
+/**
+ * Vuelve a barajar: borra mis «pass» (como jugador y, si tengo mesas, los
+ * de mis mesas sobre candidatos). Los likes se conservan — solo reaparece
+ * en el feed lo que descartaste. Vital en una alpha con pool pequeño.
+ */
+export async function resetPasses(userId: string): Promise<void> {
+  const { error } = await supabase
+    .from('swipes')
+    .delete()
+    .eq('user_id', userId)
+    .eq('origin', 'user')
+    .eq('direction', 'pass');
+  if (error) throw error;
+
+  const { data: myGroups } = await supabase.from('groups').select('id').eq('owner_id', userId);
+  const groupIds = (myGroups ?? []).map((g) => g.id);
+  if (groupIds.length > 0) {
+    const { error: groupError } = await supabase
+      .from('swipes')
+      .delete()
+      .in('group_id', groupIds)
+      .eq('origin', 'group')
+      .eq('direction', 'pass');
+    if (groupError) throw groupError;
+  }
+}
+
 /** El trigger de la DB crea el match al segundo like recíproco; aquí solo lo consultamos. */
 async function hasMatch(userId: string, groupId: string): Promise<boolean> {
   const { data, error } = await supabase

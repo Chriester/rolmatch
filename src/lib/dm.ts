@@ -73,7 +73,9 @@ export async function getOrCreateDmThread(myId: string, otherId: string): Promis
       if (raced) return raced.id;
     }
     if (insertError.code === '42501') {
-      throw new Error('Solo puedes escribir a jugadores con los que compartes mesa.');
+      throw new Error(
+        'Solo puedes escribir a gente con la que compartes mesa, o candidatos de tus mesas.'
+      );
     }
     throw insertError;
   }
