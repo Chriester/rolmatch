@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Switch, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { showAlert } from '@/lib/alert';
@@ -10,7 +10,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
-import { REPORT_REASONS, submitReport } from '@/lib/moderation';
+import { REPORT_REASONS, blockUser, submitReport } from '@/lib/moderation';
 
 export default function ReportScreen() {
   const { kind, id, name } = useLocalSearchParams<{
@@ -21,6 +21,7 @@ export default function ReportScreen() {
   const session = useSession();
   const [reason, setReason] = useState<string | null>(null);
   const [details, setDetails] = useState('');
+  const [alsoBlock, setAlsoBlock] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const handleSubmit = async () => {
@@ -28,9 +29,14 @@ export default function ReportScreen() {
     setBusy(true);
     try {
       await submitReport(session.user.id, { kind, id }, reason, details.trim() || null);
+      if (alsoBlock && kind === 'user') {
+        await blockUser(session.user.id, id);
+      }
       showAlert(
         'Reporte enviado',
-        'Gracias por avisar. El equipo de moderación lo revisará.'
+        alsoBlock && kind === 'user'
+          ? 'Gracias por avisar. Además, esa persona ya no puede verte ni escribirte.'
+          : 'Gracias por avisar. El equipo de moderación lo revisará.'
       );
       if (router.canGoBack()) router.back();
       else router.replace('/');
@@ -59,6 +65,18 @@ export default function ReportScreen() {
               <Chip key={r} label={r} selected={reason === r} onPress={() => setReason(r)} />
             ))}
           </View>
+
+          {kind === 'user' && (
+            <View style={styles.blockRow}>
+              <View style={styles.blockLabel}>
+                <ThemedText>Bloquear también</ThemedText>
+                <ThemedText type="small">
+                  Dejaréis de veros en feeds y chats, en ambas direcciones
+                </ThemedText>
+              </View>
+              <Switch value={alsoBlock} onValueChange={setAlsoBlock} />
+            </View>
+          )}
 
           <ThemedText type="small">Cuéntanos más (opcional)</ThemedText>
           <TextInput
@@ -102,6 +120,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: Spacing.two,
+  },
+  blockRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: Spacing.three,
+  },
+  blockLabel: {
+    flex: 1,
+    gap: 2,
   },
   input: {
     borderWidth: 1,

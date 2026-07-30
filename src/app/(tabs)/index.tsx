@@ -65,6 +65,7 @@ import {
 } from '@/lib/profile';
 import {
   groupSwipeOnUser,
+  resetPasses,
   swipeOnGroup,
   undoGroupSwipeOnUser,
   undoSwipeOnGroup,
@@ -279,6 +280,7 @@ export default function HomeScreen() {
             <CardChip label={g.systems?.name ?? 'Sistema sin definir'} />
             <CardChip label={FORMAT_LABELS[g.format]} />
             {g.frequency && <CardChip label={g.frequency} />}
+            {g.full && <CardChip label="🈵 Completa · pide sitio" />}
           </CardChipRow>
           <CardHint />
           <CardBlurb>
@@ -533,10 +535,16 @@ export default function HomeScreen() {
             <Text style={styles.centerEmoji}>🃏</Text>
             <ThemedText style={styles.centerText}>
               No hay más mesas ni candidatos compatibles por ahora. Amplía tu
-              disponibilidad y sistemas, o vuelve más tarde.
+              disponibilidad y sistemas, o vuelve a barajar lo que descartaste.
             </ThemedText>
-            <Pressable style={styles.retryButton} onPress={load}>
-              <Text style={styles.retryLabel}>Volver a empezar</Text>
+            <Pressable
+              style={styles.retryButton}
+              onPress={() => {
+                if (!session) return;
+                // borra solo los «pass»: lo descartado vuelve a la baraja
+                resetPasses(session.user.id).then(load).catch(load);
+              }}>
+              <Text style={styles.retryLabel}>🔄 Volver a barajar los pases</Text>
             </Pressable>
             <Pressable onPress={() => router.push('/onboarding')}>
               <ThemedText type="small" themeColor="textSecondary">

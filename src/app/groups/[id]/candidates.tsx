@@ -20,6 +20,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
+import { getOrCreateDmThread } from '@/lib/dm';
 import { fetchGroupCandidates, type PlayerCandidate } from '@/lib/feed';
 import { fetchGroup, type GroupDetail } from '@/lib/groups';
 import { blockUser } from '@/lib/moderation';
@@ -71,6 +72,20 @@ export default function GroupCandidatesScreen() {
       .catch((error) =>
         showAlert('No se pudo guardar el swipe', error instanceof Error ? error.message : String(error))
       );
+  };
+
+  // Negociar antes de aceptar (p. ej. mesa llena): DM directo con el candidato
+  const handleTalk = async (candidate: PlayerCandidate) => {
+    if (!session) return;
+    try {
+      const threadId = await getOrCreateDmThread(session.user.id, candidate.player.id);
+      router.push({ pathname: '/dm/[id]', params: { id: threadId } });
+    } catch (error) {
+      showAlert(
+        'No se pudo abrir el chat',
+        error instanceof Error ? error.message : String(error)
+      );
+    }
   };
 
   const handleBlock = async () => {
@@ -176,6 +191,9 @@ export default function GroupCandidatesScreen() {
         </Text>
       )}
       <View style={styles.moderationRow}>
+        <Pressable onPress={() => handleTalk(c)}>
+          <Text style={sheetText.link}>💬 Hablar antes</Text>
+        </Pressable>
         <Pressable
           onPress={() =>
             router.push({
@@ -258,7 +276,7 @@ export default function GroupCandidatesScreen() {
         right={{ imageUrl: matchWith?.player.avatar_url ?? null, fallbackEmoji: '🧙' }}
         subtitle={
           matchWith
-            ? `${matchWith.player.alias} también quiere jugar en vuestra mesa. Mirad el canal de Discord de la mesa.`
+            ? `${matchWith.player.alias} ya es de la mesa: os espera en su chat.`
             : ''
         }
         onClose={() => setMatchWith(null)}

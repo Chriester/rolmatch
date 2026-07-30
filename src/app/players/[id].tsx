@@ -8,7 +8,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { showAlert } from '@/lib/alert';
+import { confirmAction, showAlert } from '@/lib/alert';
 import { AppHeader } from '@/components/app-header';
 import {
   AvailabilityMiniGrid,
@@ -23,6 +23,7 @@ import { useSession } from '@/hooks/use-session';
 import { FORMAT_LABELS, VTT_LABELS } from '@/lib/groups';
 import { characterAgeLabel } from '@/lib/characters';
 import { getOrCreateDmThread } from '@/lib/dm';
+import { blockUser } from '@/lib/moderation';
 import { fetchPlayerProfile, type PlayerProfile } from '@/lib/players';
 import { GENDER_LABELS, SAFETY_TOOL_LABELS, ageFromBirthYear } from '@/lib/profile';
 import { cacheGet, cacheSet } from '@/lib/screen-cache';
@@ -291,15 +292,39 @@ export default function PlayerProfileScreen() {
           )}
 
           {!isMe && (
-            <Pressable
-              onPress={() =>
-                router.push({
-                  pathname: '/report',
-                  params: { kind: 'user', id, name: profile.alias },
-                })
-              }>
-              <Text style={styles.reportLink}>Reportar a {profile.alias}</Text>
-            </Pressable>
+            <View style={styles.moderationRow}>
+              <Pressable
+                onPress={() =>
+                  router.push({
+                    pathname: '/report',
+                    params: { kind: 'user', id, name: profile.alias },
+                  })
+                }>
+                <Text style={styles.reportLink}>Reportar</Text>
+              </Pressable>
+              <Pressable
+                onPress={async () => {
+                  if (!session || !id) return;
+                  const ok = await confirmAction(
+                    `¿Bloquear a ${profile.alias}?`,
+                    'Dejaréis de veros en feeds y chats, en ambas direcciones. Se puede deshacer solo contactando con soporte.',
+                    'Sí, bloquear'
+                  );
+                  if (!ok) return;
+                  try {
+                    await blockUser(session.user.id, id);
+                    showAlert('Bloqueado', `${profile.alias} ya no puede verte ni escribirte.`);
+                    router.replace('/');
+                  } catch (error) {
+                    showAlert(
+                      'No se pudo bloquear',
+                      error instanceof Error ? error.message : String(error)
+                    );
+                  }
+                }}>
+                <Text style={styles.reportLink}>Bloquear</Text>
+              </Pressable>
+            </View>
           )}
         </ScrollView>
       </SafeAreaView>
@@ -414,12 +439,17 @@ const styles = StyleSheet.create({
     fontFamily: RolderFonts.semibold,
     textAlign: 'right',
   },
+  moderationRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: Spacing.six,
+    marginTop: Spacing.two,
+    marginBottom: Spacing.four,
+  },
   reportLink: {
     color: Rolder.pass,
     fontSize: 13,
     fontFamily: RolderFonts.semibold,
     textAlign: 'center',
-    marginTop: Spacing.two,
-    marginBottom: Spacing.four,
   },
 });
