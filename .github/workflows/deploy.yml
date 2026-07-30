@@ -61,6 +61,8 @@ jobs:
       # con su verify_jwt de supabase/config.toml — adiós a pegar código en
       # el dashboard. Solo corre si existe el secret SUPABASE_ACCESS_TOKEN
       # (supabase.com → Account → Access Tokens).
+      # --use-api: empaquetado en el servidor de Supabase — el runner de
+      # Actions no tiene el Docker de edge-runtime y su registro limita pulls
       - name: Deploy Edge Functions (Supabase)
         if: ${{ env.SUPABASE_ACCESS_TOKEN != '' }}
-        run: npx supabase functions deploy --project-ref pyysoeztdtxwbtpxwdnl
+        run: npx supabase functions deploy --use-api --project-ref pyysoeztdtxwbtpxwdnl
