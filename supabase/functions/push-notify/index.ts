@@ -88,9 +88,6 @@ type ReportRecord = {
   reason: string;
 };
 
-// Moderación de la alpha: se localiza por email vía la API admin (el id
-// cambia si la cuenta se resetea; el email no).
-const MODERATOR_EMAIL = 'chrishernandezponce@gmail.com';
 
 type WebhookPayload =
   | { type: 'INSERT'; table: 'matches'; record: MatchRecord }
@@ -365,19 +362,13 @@ async function buildForSession(record: SessionRecord): Promise<Map<string, { tit
   return out;
 }
 
-/** Reporte nuevo: aviso a moderación con quién reporta a quién y por qué. */
+/** Reporte nuevo: aviso a todos los moderadores (profiles.is_moderator). */
 async function buildForReport(record: ReportRecord): Promise<Map<string, { title: string; body: string; url: string }>> {
-  const { data: userList } = await supabase.auth.admin.listUsers({ page: 1, perPage: 200 });
-  const moderator = userList?.users.find(
-    (u: { id: string; email?: string }) => u.email === MODERATOR_EMAIL
-  );
-  if (!moderator) return new Map();
-
-  const { data: reporter } = await supabase
-    .from('profiles')
-    .select('alias')
-    .eq('id', record.reporter_id)
-    .single();
+  const [{ data: moderators }, { data: reporter }] = await Promise.all([
+    supabase.from('profiles').select('id').eq('is_moderator', true),
+    supabase.from('profiles').select('alias').eq('id', record.reporter_id).single(),
+  ]);
+  if (!moderators || moderators.length === 0) return new Map();
 
   let target = 'algo';
   let url = '/';
@@ -400,11 +391,13 @@ async function buildForReport(record: ReportRecord): Promise<Map<string, { title
   }
 
   const out = new Map<string, { title: string; body: string; url: string }>();
-  out.set(moderator.id, {
-    title: '🚨 Reporte nuevo',
-    body: `${reporter?.alias ?? 'Alguien'} reporta a ${target}: ${record.reason}`,
-    url,
-  });
+  for (const moderator of moderators) {
+    out.set(moderator.id, {
+      title: '🚨 Reporte nuevo',
+      body: `${reporter?.alias ?? 'Alguien'} reporta a ${target}: ${record.reason}`,
+      url,
+    });
+  }
   return out;
 }
 
