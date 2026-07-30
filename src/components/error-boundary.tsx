@@ -7,6 +7,8 @@
 import { Component, type ReactNode } from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, Text } from 'react-native';
 
+import { reportClientError } from '@/lib/error-log';
+
 type ErrorBoundaryState = { error: Error | null };
 
 export class ErrorBoundary extends Component<{ children: ReactNode }, ErrorBoundaryState> {
@@ -18,6 +20,8 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, ErrorBound
 
   componentDidCatch(error: Error, info: { componentStack?: string | null }) {
     console.error('ErrorBoundary:', error, info.componentStack);
+    // queda registrado en client_errors para moderación (best-effort)
+    reportClientError(error, info.componentStack);
   }
 
   handleReload = () => {
