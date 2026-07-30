@@ -230,7 +230,7 @@ async function buildForSwipe(record: SwipeRecord): Promise<Map<string, { title: 
     // mesa → jugador: teaser sin nombre
     out.set(record.user_id, {
       title: '💜 ¡Le gustas a una mesa!',
-      body: 'Descubre cuál en tu pestaña de Likes.',
+      body: 'Descubre cuál en tu pestaña de Encuentros 🔭.',
       url: '/likes',
     });
   }

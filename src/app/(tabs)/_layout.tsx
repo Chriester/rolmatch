@@ -108,8 +108,8 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="likes"
         options={{
-          title: 'Likes',
-          tabBarIcon: ({ focused }) => <TabButton emoji="💘" focused={focused} />,
+          title: 'Encuentros',
+          tabBarIcon: ({ focused }) => <TabButton emoji="🔭" focused={focused} />,
         }}
       />
       <Tabs.Screen
