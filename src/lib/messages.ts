@@ -206,6 +206,94 @@ export async function sendRollMessage(
   return data as unknown as ChatMessage;
 }
 
+// ---- Reacciones (migr. 00036) ----
+
+export const REACTION_EMOJIS = ['👍', '❤️', '😂', '😮', '🎲', '🔥'];
+
+export type ReactionSummary = { emoji: string; count: number; mine: boolean };
+
+export type ReactionEvent = { message_id: string; user_id: string; emoji: string };
+
+/** Reacciones agregadas por mensaje. Degrada a vacío sin la migración. */
+export async function fetchMessageReactions(
+  messageIds: string[],
+  viewerId: string
+): Promise<Map<string, ReactionSummary[]>> {
+  const map = new Map<string, ReactionSummary[]>();
+  if (messageIds.length === 0) return map;
+  try {
+    const { data, error } = await supabase
+      .from('message_reactions')
+      .select('message_id, user_id, emoji')
+      .in('message_id', messageIds);
+    if (error) throw error;
+    for (const row of (data ?? []) as ReactionEvent[]) {
+      const list = map.get(row.message_id) ?? [];
+      const existing = list.find((r) => r.emoji === row.emoji);
+      if (existing) {
+        existing.count += 1;
+        existing.mine = existing.mine || row.user_id === viewerId;
+      } else {
+        list.push({ emoji: row.emoji, count: 1, mine: row.user_id === viewerId });
+      }
+      map.set(row.message_id, list);
+    }
+  } catch {
+    // migración 00036 sin aplicar
+  }
+  return map;
+}
+
+export async function toggleMessageReaction(
+  messageId: string,
+  userId: string,
+  emoji: string,
+  on: boolean
+) {
+  if (on) {
+    const { error } = await supabase
+      .from('message_reactions')
+      .insert({ message_id: messageId, user_id: userId, emoji });
+    if (error && error.code !== '23505') throw error;
+  } else {
+    const { error } = await supabase
+      .from('message_reactions')
+      .delete()
+      .eq('message_id', messageId)
+      .eq('user_id', userId)
+      .eq('emoji', emoji);
+    if (error) throw error;
+  }
+}
+
+/**
+ * Reacciones en vivo. Sin filtro (message_id no es filtrable por mesa): el
+ * caller descarta los eventos de mensajes que no tenga cargados.
+ */
+export function subscribeToReactions(
+  key: string,
+  handlers: { onAdd: (e: ReactionEvent) => void; onRemove: (e: ReactionEvent) => void }
+): RealtimeChannel {
+  return supabase
+    .channel(`reactions:${key}`)
+    .on(
+      'postgres_changes',
+      { event: 'INSERT', schema: 'public', table: 'message_reactions' },
+      (payload) => handlers.onAdd(payload.new as ReactionEvent)
+    )
+    .on(
+      'postgres_changes',
+      { event: 'DELETE', schema: 'public', table: 'message_reactions' },
+      (payload) => {
+        const old = payload.old as Partial<ReactionEvent>;
+        if (old.message_id && old.user_id && old.emoji) {
+          handlers.onRemove(old as ReactionEvent);
+        }
+      }
+    )
+    .subscribe();
+}
+
 /** Edita un mensaje propio (la RLS rechaza los ajenos). */
 export async function editMessage(messageId: string, body: string) {
   const { error } = await supabase

@@ -5,6 +5,8 @@ import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Rolder, RolderFonts, Spacing } from '@/constants/theme';
 
+const REACTIONS = ['👍', '❤️', '😂', '😮', '🎲', '🔥'];
+
 export function MessageActions({
   visible,
   canCopy,
@@ -13,6 +15,7 @@ export function MessageActions({
   onCopy,
   onEdit,
   onDelete,
+  onReact,
   onClose,
 }: {
   visible: boolean;
@@ -25,12 +28,26 @@ export function MessageActions({
   onCopy: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  /** reacción rápida (si la pantalla las soporta) */
+  onReact?: (emoji: string) => void;
   onClose: () => void;
 }) {
   return (
     <Modal transparent visible={visible} animationType="fade" onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose}>
         <View style={styles.sheet}>
+          {onReact && (
+            <View style={styles.reactionRow}>
+              {REACTIONS.map((emoji) => (
+                <Pressable
+                  key={emoji}
+                  style={({ pressed }) => [styles.reaction, pressed && styles.pressed]}
+                  onPress={() => onReact(emoji)}>
+                  <Text style={styles.reactionEmoji}>{emoji}</Text>
+                </Pressable>
+              ))}
+            </View>
+          )}
           {canCopy && (
             <Pressable
               style={({ pressed }) => [styles.action, pressed && styles.pressed]}
@@ -103,5 +120,20 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: RolderFonts.regular,
     textAlign: 'center',
+  },
+  reactionRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    paddingBottom: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.08)',
+    marginBottom: 4,
+  },
+  reaction: {
+    borderRadius: 999,
+    padding: 8,
+  },
+  reactionEmoji: {
+    fontSize: 22,
   },
 });

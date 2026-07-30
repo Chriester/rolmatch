@@ -70,6 +70,59 @@ export async function deleteSession(id: string) {
 // cuando 3 miembros distintos confirman, todos los confirmantes cobran.
 // ============================================================
 
+// ---- Asistencia previa (✋ voy / 🙅 no voy, migr. 00036) ----
+
+export type RsvpStatus = 'yes' | 'no';
+export type SessionRsvps = { yes: string[]; no: string[]; mine: RsvpStatus | null };
+
+/** Asistencia por sesión con alias. Degrada a vacío sin la migración. */
+export async function fetchRsvps(
+  sessionIds: string[],
+  viewerId: string
+): Promise<Map<string, SessionRsvps>> {
+  const map = new Map<string, SessionRsvps>();
+  if (sessionIds.length === 0) return map;
+  try {
+    const { data, error } = await supabase
+      .from('session_rsvps')
+      .select('session_id, user_id, status, profiles(alias)')
+      .in('session_id', sessionIds);
+    if (error) throw error;
+    for (const row of data ?? []) {
+      const raw = row as unknown as {
+        session_id: string;
+        user_id: string;
+        status: RsvpStatus;
+        profiles: { alias: string } | null;
+      };
+      const entry = map.get(raw.session_id) ?? { yes: [], no: [], mine: null };
+      entry[raw.status].push(raw.profiles?.alias ?? '¿?');
+      if (raw.user_id === viewerId) entry.mine = raw.status;
+      map.set(raw.session_id, entry);
+    }
+  } catch {
+    // migración 00036 sin aplicar
+  }
+  return map;
+}
+
+/** Marca (o cambia, o quita con null) mi asistencia a una sesión. */
+export async function setRsvp(sessionId: string, userId: string, status: RsvpStatus | null) {
+  if (status === null) {
+    const { error } = await supabase
+      .from('session_rsvps')
+      .delete()
+      .eq('session_id', sessionId)
+      .eq('user_id', userId);
+    if (error) throw error;
+    return;
+  }
+  const { error } = await supabase
+    .from('session_rsvps')
+    .upsert({ session_id: sessionId, user_id: userId, status });
+  if (error) throw error;
+}
+
 export const SESSION_CONFIRM_QUORUM = 3;
 export const SESSION_CONFIRM_WINDOW_DAYS = 7;
 export const SESSION_XP = 150;

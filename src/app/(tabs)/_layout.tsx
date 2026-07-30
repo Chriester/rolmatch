@@ -11,6 +11,7 @@ import { Pressable, StyleSheet, Text, View, type PressableProps, type StyleProp,
 import { Rolder, RolderFonts } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
 import { hapticTap } from '@/lib/haptics';
+import { setAppBadge } from '@/lib/badge';
 import { fetchUnreadTotal } from '@/lib/messages';
 
 // Sin ripple de Android (el círculo se recortaba contra el borde de la
@@ -86,6 +87,7 @@ export default function TabsLayout() {
     const refresh = () => {
       fetchUnreadTotal(session.user.id).then((n) => {
         if (alive) setUnread(n);
+        setAppBadge(n); // número en el icono (Android/PWA)
       });
     };
     refresh();

@@ -182,6 +182,87 @@ export async function sendDmRollMessage(
   return data as DmMessage;
 }
 
+// ---- Reacciones del 1-a-1 (migr. 00036) ----
+
+export async function fetchDmReactions(
+  messageIds: string[],
+  viewerId: string
+): Promise<Map<string, { emoji: string; count: number; mine: boolean }[]>> {
+  const map = new Map<string, { emoji: string; count: number; mine: boolean }[]>();
+  if (messageIds.length === 0) return map;
+  try {
+    const { data, error } = await supabase
+      .from('dm_message_reactions')
+      .select('message_id, user_id, emoji')
+      .in('message_id', messageIds);
+    if (error) throw error;
+    for (const row of (data ?? []) as { message_id: string; user_id: string; emoji: string }[]) {
+      const list = map.get(row.message_id) ?? [];
+      const existing = list.find((r) => r.emoji === row.emoji);
+      if (existing) {
+        existing.count += 1;
+        existing.mine = existing.mine || row.user_id === viewerId;
+      } else {
+        list.push({ emoji: row.emoji, count: 1, mine: row.user_id === viewerId });
+      }
+      map.set(row.message_id, list);
+    }
+  } catch {
+    // migración 00036 sin aplicar
+  }
+  return map;
+}
+
+export async function toggleDmReaction(
+  messageId: string,
+  userId: string,
+  emoji: string,
+  on: boolean
+) {
+  if (on) {
+    const { error } = await supabase
+      .from('dm_message_reactions')
+      .insert({ message_id: messageId, user_id: userId, emoji });
+    if (error && error.code !== '23505') throw error;
+  } else {
+    const { error } = await supabase
+      .from('dm_message_reactions')
+      .delete()
+      .eq('message_id', messageId)
+      .eq('user_id', userId)
+      .eq('emoji', emoji);
+    if (error) throw error;
+  }
+}
+
+export function subscribeToDmReactions(
+  key: string,
+  handlers: {
+    onAdd: (e: { message_id: string; user_id: string; emoji: string }) => void;
+    onRemove: (e: { message_id: string; user_id: string; emoji: string }) => void;
+  }
+): RealtimeChannel {
+  return supabase
+    .channel(`dm-reactions:${key}`)
+    .on(
+      'postgres_changes',
+      { event: 'INSERT', schema: 'public', table: 'dm_message_reactions' },
+      (payload) =>
+        handlers.onAdd(payload.new as { message_id: string; user_id: string; emoji: string })
+    )
+    .on(
+      'postgres_changes',
+      { event: 'DELETE', schema: 'public', table: 'dm_message_reactions' },
+      (payload) => {
+        const old = payload.old as Partial<{ message_id: string; user_id: string; emoji: string }>;
+        if (old.message_id && old.user_id && old.emoji) {
+          handlers.onRemove(old as { message_id: string; user_id: string; emoji: string });
+        }
+      }
+    )
+    .subscribe();
+}
+
 /** Edita un mensaje propio (la RLS rechaza los ajenos). */
 export async function editDmMessage(messageId: string, body: string) {
   const { error } = await supabase
