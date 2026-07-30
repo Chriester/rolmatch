@@ -5,6 +5,7 @@
 
 import type { RealtimeChannel } from '@supabase/supabase-js';
 
+import { rollSummary, type DiceRoll } from '@/lib/dice';
 import { messagePreview, type ChatSummary, type MessageKind } from '@/lib/messages';
 import { fetchBlockRelations } from '@/lib/moderation';
 import { supabase } from '@/lib/supabase';
@@ -142,6 +143,27 @@ export async function sendDmMediaMessage(
       kind,
       media_url: content.mediaUrl ?? null,
       body: content.body ?? null,
+    })
+    .select(DM_MESSAGE_SELECT)
+    .single();
+  if (error) throw error;
+  return data as DmMessage;
+}
+
+/** Tirada de dados al 1-a-1: body legible + JSON en media_url (migr. 00031). */
+export async function sendDmRollMessage(
+  threadId: string,
+  senderId: string,
+  roll: DiceRoll
+): Promise<DmMessage> {
+  const { data, error } = await supabase
+    .from('dm_messages')
+    .insert({
+      thread_id: threadId,
+      sender_id: senderId,
+      kind: 'roll',
+      body: rollSummary(roll),
+      media_url: JSON.stringify(roll),
     })
     .select(DM_MESSAGE_SELECT)
     .single();

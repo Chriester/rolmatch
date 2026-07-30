@@ -121,5 +121,7 @@ export async function fetchReceivedLikes(userId: string): Promise<ReceivedLike[]
     }
   }
 
-  return likes;
+  // los likes que ya cuajaron en match sobran aquí: esa relación vive en
+  // la mesa y sus chats, no en la bandeja de pendientes
+  return likes.filter((like) => !like.matched);
 }

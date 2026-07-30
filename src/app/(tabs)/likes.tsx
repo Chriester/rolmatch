@@ -10,7 +10,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppHeader } from '@/components/app-header';
 import { ThemedView } from '@/components/themed-view';
-import { ListRow, OutlineButton, ScreenTitle, StatusPill } from '@/components/ui';
+import { ListRow, OutlineButton, ScreenTitle } from '@/components/ui';
 import { Rolder, RolderFonts, Spacing } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
 import { fetchPremiumStatus, fetchReceivedLikes, type ReceivedLike } from '@/lib/premium';
@@ -70,7 +70,6 @@ export default function LikesScreen() {
           </Text>
           <Text style={styles.meta}>{premium ? subtitle : 'Hazte premium para verlo'}</Text>
         </View>
-        {item.matched && <StatusPill label="💘 MATCH" tone="violet" />}
       </ListRow>
     );
   };
