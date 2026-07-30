@@ -17,6 +17,7 @@ import { Rolder } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
 import { ensureCommunityMembership } from '@/lib/auth';
 import { DISCORD_ENABLED } from '@/lib/config';
+import { ErrorBoundary } from '@/components/error-boundary';
 import { UpdateBanner } from '@/components/update-banner';
 import { UpdateOverlay } from '@/components/update-overlay';
 import { useNotificationTapRouting } from '@/lib/notifications';
@@ -71,6 +72,7 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
+      <ErrorBoundary>
       <ThemeProvider value={RolderNavTheme}>
         <Stack screenOptions={{ headerShown: false }}>
         <Stack.Protected guard={!!session}>
@@ -101,6 +103,7 @@ export default function RootLayout() {
         {updating && <UpdateOverlay />}
         {webUpdateReady && <UpdateBanner />}
       </ThemeProvider>
+      </ErrorBoundary>
     </GestureHandlerRootView>
   );
 }
