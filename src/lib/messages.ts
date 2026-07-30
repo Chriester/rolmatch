@@ -17,8 +17,10 @@ export type ChatMessage = {
   profiles: { alias: string; avatar_url: string | null } | null;
 };
 
+// Hint del FK obligatorio: message_reactions es tabla puente messages↔profiles
+// y sin él el embed es ambiguo (PGRST201) desde la migración 00036
 const MESSAGE_SELECT =
-  'id, group_id, sender_id, body, kind, media_url, created_at, edited_at, profiles(alias, avatar_url)';
+  'id, group_id, sender_id, body, kind, media_url, created_at, edited_at, profiles!messages_sender_id_fkey(alias, avatar_url)';
 
 /** Preview de un mensaje para listas (los media no tienen body legible) */
 export function messagePreview(message: { body: string | null; kind: MessageKind }): string {
@@ -56,7 +58,7 @@ export async function fetchMyChats(userId: string): Promise<ChatSummary[]> {
     await Promise.all([
       supabase
         .from('messages')
-        .select('group_id, sender_id, body, kind, created_at, profiles(alias)')
+        .select('group_id, sender_id, body, kind, created_at, profiles!messages_sender_id_fkey(alias)')
         .in(
           'group_id',
           groups.map((g) => g.id)
