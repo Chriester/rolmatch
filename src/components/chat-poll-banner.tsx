@@ -40,7 +40,8 @@ export function ChatPollBanner({ groupId, poll, viewerId, onChanged }: ChatPollB
     <View style={styles.banner}>
       <Pressable style={styles.header} onPress={() => setOpen((v) => !v)}>
         <Text style={styles.title} numberOfLines={1}>
-          🗳️ ¿Cuándo jugamos? · {poll.options.length} opciones · {totalVotes} votos
+          🗳️ {poll.title ?? '¿Cuándo jugamos?'} · {poll.options.length} opciones · {totalVotes}{' '}
+          votos
         </Text>
         <Text style={styles.chevron}>{open ? '︿' : '﹀'}</Text>
       </Pressable>

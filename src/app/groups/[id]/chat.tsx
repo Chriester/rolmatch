@@ -69,7 +69,7 @@ export default function GroupChatScreen() {
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
-  const [activePoll, setActivePoll] = useState<SessionPoll | null>(null);
+  const [activePolls, setActivePolls] = useState<SessionPoll[]>([]);
   const [pickerTab, setPickerTab] = useState<PickerTab | 'dice' | null>(null);
   const [actionsFor, setActionsFor] = useState<ChatMessage | null>(null);
   const [editing, setEditing] = useState<ChatMessage | null>(null);
@@ -102,11 +102,11 @@ export default function GroupChatScreen() {
       });
   }, [id]);
 
-  // Votación activa → banner arriba del chat
+  // Votaciones abiertas → un banner desplegable por cada una
   useEffect(() => {
     if (!id || !session) return;
     fetchPolls(id, session.user.id)
-      .then((polls) => setActivePoll(polls.find((p) => p.status === 'open') ?? null))
+      .then((polls) => setActivePolls(polls.filter((p) => p.status === 'open')))
       .catch(() => {});
   }, [id, session]);
 
@@ -323,28 +323,26 @@ export default function GroupChatScreen() {
           </Text>
           <Pressable
             style={({ pressed }) => [styles.infoButton, pressed && styles.pressed]}
-            onPress={() =>
-              router.push({ pathname: '/groups/[id]/schedule', params: { id: id! } })
-            }
-            accessibilityLabel="Organizar partida">
-            <Text style={styles.calendarGlyph}>📅</Text>
-          </Pressable>
-          <Pressable
-            style={({ pressed }) => [styles.infoButton, pressed && styles.pressed]}
             onPress={() => setInfoOpen(true)}
             accessibilityLabel="Información de la mesa">
             <Text style={styles.infoGlyph}>i</Text>
           </Pressable>
         </View>
 
-        {activePoll && session && id && iAmMember && (
-          <ChatPollBanner
-            groupId={id}
-            poll={activePoll}
-            viewerId={session.user.id}
-            onChanged={setActivePoll}
-          />
-        )}
+        {session &&
+          id &&
+          iAmMember &&
+          activePolls.map((poll) => (
+            <ChatPollBanner
+              key={poll.id}
+              groupId={id}
+              poll={poll}
+              viewerId={session.user.id}
+              onChanged={(next) =>
+                setActivePolls((list) => list.map((p) => (p.id === next.id ? next : p)))
+              }
+            />
+          ))}
 
         {!iAmMember ? (
           <View style={styles.centerBox}>
@@ -518,9 +516,6 @@ const styles = StyleSheet.create({
     backgroundColor: Rolder.input,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  calendarGlyph: {
-    fontSize: 15,
   },
   infoGlyph: {
     color: Rolder.violet,
