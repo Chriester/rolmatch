@@ -1,0 +1,28 @@
+# Config del CLI de Supabase — hace falta para `supabase functions deploy`
+# (el flag verify_jwt de cada función vive aquí; sin esto el CLI las
+# desplegaría todas con JWT activado y rompería los webhooks).
+
+project_id = "pyysoeztdtxwbtpxwdnl"
+
+# Auth por cabecera x-webhook-secret (webhooks y cron)
+[functions.push-notify]
+verify_jwt = false
+
+[functions.push-reminders]
+verify_jwt = false
+
+[functions.discord-match]
+verify_jwt = false
+
+[functions.discord-reminders]
+verify_jwt = false
+
+[functions.discord-cleanup]
+verify_jwt = false
+
+# Invocadas desde la app con la sesión del usuario
+[functions.discord-join]
+verify_jwt = true
+
+[functions.redeem-promo]
+verify_jwt = true
