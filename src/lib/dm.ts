@@ -161,6 +161,21 @@ export async function sendDmMediaMessage(
   return data as DmMessage;
 }
 
+/** Foto al 1-a-1 (migr. 00038). */
+export async function sendDmImageMessage(
+  threadId: string,
+  senderId: string,
+  mediaUrl: string
+): Promise<DmMessage> {
+  const { data, error } = await supabase
+    .from('dm_messages')
+    .insert({ thread_id: threadId, sender_id: senderId, kind: 'image', media_url: mediaUrl })
+    .select(DM_MESSAGE_SELECT)
+    .single();
+  if (error) throw error;
+  return data as DmMessage;
+}
+
 /** Tirada de dados al 1-a-1: body legible + JSON en media_url (migr. 00031). */
 export async function sendDmRollMessage(
   threadId: string,
