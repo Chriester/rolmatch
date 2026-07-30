@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { Modal, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 
 import { showAlert } from '@/lib/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -65,6 +65,19 @@ const TIMEZONES: { value: string; label: string }[] = [
 
 const TOTAL_STEPS = 4;
 const STEP_TITLES = ['Quién eres', 'Cuándo juegas', 'A qué juegas', 'Cómo juegas'];
+
+// Si venía de un enlace compartido (p. ej. invitación a una mesa), al acabar
+// el perfil retomamos el proceso donde lo dejó en vez de mandarle al feed.
+function nextRouteAfterOnboarding(): string {
+  if (Platform.OS === 'web' && typeof window !== 'undefined') {
+    const pending = localStorage.getItem('rolder-ruta-pendiente');
+    if (pending) {
+      localStorage.removeItem('rolder-ruta-pendiente');
+      return pending;
+    }
+  }
+  return '/';
+}
 
 export default function OnboardingScreen() {
   const session = useSession();
@@ -219,7 +232,7 @@ export default function OnboardingScreen() {
         [...experienceBySystem].map(([system_id, experience]) => ({ system_id, experience }))
       );
       if (wasComplete) {
-        router.replace('/');
+        router.replace(nextRouteAfterOnboarding() as never);
       } else {
         setCelebrate(true);
       }
@@ -535,7 +548,10 @@ export default function OnboardingScreen() {
                 Ya apareces en el feed de las mesas compatibles contigo. Completa tu foto y bio
                 (si no lo has hecho) y gana tus primeros puntos de experiencia.
               </Text>
-              <PrimaryButton label="¡A rodar dados!" onPress={() => router.replace('/')} />
+              <PrimaryButton
+                label="¡A rodar dados!"
+                onPress={() => router.replace(nextRouteAfterOnboarding() as never)}
+              />
             </View>
           </View>
         </Modal>

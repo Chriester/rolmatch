@@ -85,6 +85,22 @@ export async function resetPasses(userId: string): Promise<void> {
   }
 }
 
+/** Mi swipe previo sobre una mesa (para el botón «pedir sitio» del perfil). */
+export async function fetchMySwipeOnGroup(
+  userId: string,
+  groupId: string
+): Promise<SwipeDirection | null> {
+  const { data, error } = await supabase
+    .from('swipes')
+    .select('direction')
+    .eq('user_id', userId)
+    .eq('group_id', groupId)
+    .eq('origin', 'user')
+    .maybeSingle();
+  if (error) throw error;
+  return (data?.direction as SwipeDirection) ?? null;
+}
+
 /** El trigger de la DB crea el match al segundo like recíproco; aquí solo lo consultamos. */
 async function hasMatch(userId: string, groupId: string): Promise<boolean> {
   const { data, error } = await supabase
