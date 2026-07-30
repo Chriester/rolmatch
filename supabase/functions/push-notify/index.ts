@@ -80,6 +80,18 @@ type SessionRecord = {
   created_by: string;
 };
 
+type ReportRecord = {
+  id: string;
+  reporter_id: string;
+  reported_user_id: string | null;
+  reported_group_id: string | null;
+  reason: string;
+};
+
+// Moderación de la alpha: se localiza por email vía la API admin (el id
+// cambia si la cuenta se resetea; el email no).
+const MODERATOR_EMAIL = 'chrishernandezponce@gmail.com';
+
 type WebhookPayload =
   | { type: 'INSERT'; table: 'matches'; record: MatchRecord }
   | { type: 'INSERT'; table: 'messages'; record: MessageRecord }
@@ -89,7 +101,8 @@ type WebhookPayload =
   | { type: 'INSERT'; table: 'character_likes'; record: CharacterLikeRecord }
   | { type: 'INSERT'; table: 'session_poll_proposals'; record: ProposalRecord }
   | { type: 'INSERT'; table: 'session_poll_votes'; record: PollVoteRecord }
-  | { type: 'INSERT'; table: 'sessions'; record: SessionRecord };
+  | { type: 'INSERT'; table: 'sessions'; record: SessionRecord }
+  | { type: 'INSERT'; table: 'reports'; record: ReportRecord };
 
 type PushMessage = {
   to: string;
@@ -352,6 +365,49 @@ async function buildForSession(record: SessionRecord): Promise<Map<string, { tit
   return out;
 }
 
+/** Reporte nuevo: aviso a moderación con quién reporta a quién y por qué. */
+async function buildForReport(record: ReportRecord): Promise<Map<string, { title: string; body: string; url: string }>> {
+  const { data: userList } = await supabase.auth.admin.listUsers({ page: 1, perPage: 200 });
+  const moderator = userList?.users.find(
+    (u: { id: string; email?: string }) => u.email === MODERATOR_EMAIL
+  );
+  if (!moderator) return new Map();
+
+  const { data: reporter } = await supabase
+    .from('profiles')
+    .select('alias')
+    .eq('id', record.reporter_id)
+    .single();
+
+  let target = 'algo';
+  let url = '/';
+  if (record.reported_group_id) {
+    const { data: group } = await supabase
+      .from('groups')
+      .select('name')
+      .eq('id', record.reported_group_id)
+      .single();
+    target = `la mesa «${group?.name ?? '?'}»`;
+    url = `/groups/${record.reported_group_id}`;
+  } else if (record.reported_user_id) {
+    const { data: reported } = await supabase
+      .from('profiles')
+      .select('alias')
+      .eq('id', record.reported_user_id)
+      .single();
+    target = reported?.alias ?? 'un usuario';
+    url = `/players/${record.reported_user_id}`;
+  }
+
+  const out = new Map<string, { title: string; body: string; url: string }>();
+  out.set(moderator.id, {
+    title: '🚨 Reporte nuevo',
+    body: `${reporter?.alias ?? 'Alguien'} reporta a ${target}: ${record.reason}`,
+    url,
+  });
+  return out;
+}
+
 async function sendAll(byUser: Map<string, { title: string; body: string; url: string }>) {
   if (byUser.size === 0) return { sent: 0 };
 
@@ -459,7 +515,9 @@ Deno.serve(async (request) => {
                       ? await buildForPollVote(payload.record)
                       : payload.table === 'sessions'
                         ? await buildForSession(payload.record)
-                        : new Map<string, { title: string; body: string; url: string }>();
+                        : payload.table === 'reports'
+                          ? await buildForReport(payload.record)
+                          : new Map<string, { title: string; body: string; url: string }>();
 
     const result = await sendAll(byUser);
     const webResult = await sendAllWeb(byUser);

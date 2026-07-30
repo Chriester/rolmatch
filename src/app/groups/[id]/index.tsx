@@ -5,8 +5,10 @@ import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Linking,
+  Platform,
   Pressable,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   View,
@@ -71,6 +73,27 @@ export default function GroupDetailScreen() {
   const [confirmations, setConfirmations] = useState<Map<string, SessionConfirmState>>(new Map());
   const [boostedUntil, setBoostedUntil] = useState<string | null>(null);
   const [boostBusy, setBoostBusy] = useState(false);
+
+  const handleShare = async (name: string) => {
+    if (!id) return;
+    const url = `https://rolmatch.vercel.app/groups/${id}`;
+    const text = `Únete a mi mesa «${name}» en rolder 🎲 ${url}`;
+    try {
+      if (Platform.OS === 'web') {
+        const nav = navigator as { share?: (data: object) => Promise<void>; clipboard?: { writeText: (t: string) => Promise<void> } };
+        if (nav.share) {
+          await nav.share({ title: `«${name}» en rolder`, text, url });
+        } else {
+          await nav.clipboard?.writeText(url);
+          showAlert('🔗 Enlace copiado', 'Pégalo donde quieras para invitar gente a la mesa.');
+        }
+      } else {
+        await Share.share({ message: text });
+      }
+    } catch {
+      // compartir cancelado por el usuario
+    }
+  };
 
   const handleBoost = async () => {
     if (!id) return;
@@ -216,16 +239,24 @@ export default function GroupDetailScreen() {
                 )}
               </CardChipRow>
             </View>
-            {isOwner && (
+            <View style={styles.heroFabs}>
               <Pressable
-                style={styles.editFab}
-                accessibilityLabel="Editar mesa"
-                onPress={() =>
-                  router.push({ pathname: '/groups/[id]/edit', params: { id: group.id } })
-                }>
-                <Text style={styles.editFabIcon}>✏️</Text>
+                style={styles.heroFab}
+                accessibilityLabel="Compartir mesa"
+                onPress={() => handleShare(group.name)}>
+                <Text style={styles.heroFabIcon}>🔗</Text>
               </Pressable>
-            )}
+              {isOwner && (
+                <Pressable
+                  style={styles.heroFab}
+                  accessibilityLabel="Editar mesa"
+                  onPress={() =>
+                    router.push({ pathname: '/groups/[id]/edit', params: { id: group.id } })
+                  }>
+                  <Text style={styles.heroFabIcon}>✏️</Text>
+                </Pressable>
+              )}
+            </View>
           </View>
 
           {isMember && (
@@ -747,10 +778,14 @@ const styles = StyleSheet.create({
   actionPressed: {
     opacity: 0.7,
   },
-  editFab: {
+  heroFabs: {
     position: 'absolute',
     top: 10,
     right: 10,
+    flexDirection: 'row',
+    gap: 8,
+  },
+  heroFab: {
     width: 34,
     height: 34,
     borderRadius: 17,
@@ -758,7 +793,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  editFabIcon: {
+  heroFabIcon: {
     fontSize: 15,
   },
   matchRow: {

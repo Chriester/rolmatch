@@ -74,6 +74,8 @@ export default function GroupChatScreen() {
   const [actionsFor, setActionsFor] = useState<ChatMessage | null>(null);
   const [editing, setEditing] = useState<ChatMessage | null>(null);
   const [typingAlias, setTypingAlias] = useState<string | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
   const groupRef = useRef<GroupDetail | null | undefined>(undefined);
   const typingRef = useRef<TypingHandle | null>(null);
   const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -94,6 +96,7 @@ export default function GroupChatScreen() {
       .then((list) => {
         cacheSet(`group-msgs:${id}`, list);
         setMessages(list);
+        setHasMore(list.length >= 100);
       })
       .catch(() => {
         const cached = cacheGet<ChatMessage[]>(`group-msgs:${id}`);
@@ -186,6 +189,26 @@ export default function GroupChatScreen() {
     if (text.trim() && session) {
       const me = groupRef.current?.group_members.find((m) => m.user_id === session.user.id);
       typingRef.current?.sendTyping(me?.profiles?.alias ?? 'Alguien');
+    }
+  };
+
+  // El "final" de un FlatList invertido es la parte de ARRIBA: al llegar,
+  // se traen los mensajes anteriores al más viejo cargado.
+  const handleLoadOlder = async () => {
+    if (!id || loadingMore || !hasMore || !messages || messages.length === 0) return;
+    setLoadingMore(true);
+    try {
+      const oldest = messages[messages.length - 1];
+      const older = await fetchMessages(id, 50, oldest.created_at);
+      if (older.length < 50) setHasMore(false);
+      setMessages((list) => [
+        ...(list ?? []),
+        ...older.filter((o) => !list?.some((m) => m.id === o.id)),
+      ]);
+    } catch {
+      // sin red: se reintenta al volver a llegar arriba
+    } finally {
+      setLoadingMore(false);
     }
   };
 
@@ -359,6 +382,9 @@ export default function GroupChatScreen() {
               keyExtractor={(m) => m.id}
               contentContainerStyle={styles.listContent}
               renderItem={renderItem}
+              onEndReached={handleLoadOlder}
+              onEndReachedThreshold={0.3}
+              ListFooterComponent={loadingMore ? <ActivityIndicator /> : null}
               ListEmptyComponent={
                 <View style={styles.centerBox}>
                   <ThemedText style={styles.centerText}>

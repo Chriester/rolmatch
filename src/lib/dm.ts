@@ -103,14 +103,23 @@ export async function fetchDmThread(threadId: string, myId: string): Promise<DmT
   };
 }
 
-/** Últimos `limit` mensajes del hilo, más reciente primero (FlatList invertido). */
-export async function fetchDmMessages(threadId: string, limit = 100): Promise<DmMessage[]> {
-  const { data, error } = await supabase
+/**
+ * Últimos `limit` mensajes del hilo, más reciente primero (FlatList
+ * invertido). `before` pagina hacia atrás.
+ */
+export async function fetchDmMessages(
+  threadId: string,
+  limit = 100,
+  before?: string
+): Promise<DmMessage[]> {
+  let query = supabase
     .from('dm_messages')
     .select(DM_MESSAGE_SELECT)
     .eq('thread_id', threadId)
     .order('created_at', { ascending: false })
     .limit(limit);
+  if (before) query = query.lt('created_at', before);
+  const { data, error } = await query;
   if (error) throw error;
   return (data ?? []) as DmMessage[];
 }

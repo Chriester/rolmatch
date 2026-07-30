@@ -70,6 +70,8 @@ export default function DmChatScreen() {
   const [actionsFor, setActionsFor] = useState<DmMessage | null>(null);
   const [editing, setEditing] = useState<DmMessage | null>(null);
   const [otherTyping, setOtherTyping] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
   const typingRef = useRef<TypingHandle | null>(null);
   const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -85,6 +87,7 @@ export default function DmChatScreen() {
       .then((list) => {
         cacheSet(`dm-msgs:${id}`, list);
         setMessages(list);
+        setHasMore(list.length >= 100);
       })
       .catch(() => {
         const cached = cacheGet<DmMessage[]>(`dm-msgs:${id}`);
@@ -161,6 +164,25 @@ export default function DmChatScreen() {
   const handleDraftChange = (text: string) => {
     setDraft(text);
     if (text.trim()) typingRef.current?.sendTyping('typing');
+  };
+
+  // El "final" del FlatList invertido es la parte de arriba: cargar anteriores
+  const handleLoadOlder = async () => {
+    if (!id || loadingMore || !hasMore || !messages || messages.length === 0) return;
+    setLoadingMore(true);
+    try {
+      const oldest = messages[messages.length - 1];
+      const older = await fetchDmMessages(id, 50, oldest.created_at);
+      if (older.length < 50) setHasMore(false);
+      setMessages((list) => [
+        ...(list ?? []),
+        ...older.filter((o) => !list?.some((m) => m.id === o.id)),
+      ]);
+    } catch {
+      // sin red: se reintenta al volver a llegar arriba
+    } finally {
+      setLoadingMore(false);
+    }
   };
 
   const handleSendRoll = async (roll: DiceRoll) => {
@@ -289,6 +311,9 @@ export default function DmChatScreen() {
             keyExtractor={(m) => m.id}
             contentContainerStyle={styles.listContent}
             renderItem={renderItem}
+            onEndReached={handleLoadOlder}
+            onEndReachedThreshold={0.3}
+            ListFooterComponent={loadingMore ? <ActivityIndicator /> : null}
             ListEmptyComponent={
               <View style={styles.centerBox}>
                 <ThemedText style={styles.centerText}>
