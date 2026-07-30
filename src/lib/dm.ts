@@ -322,6 +322,21 @@ export function unsubscribeFromDmMessages(channel: RealtimeChannel) {
   supabase.removeChannel(channel);
 }
 
+/** Mi última lectura de este hilo (para el separador «nuevos»). */
+export async function fetchDmLastRead(threadId: string, userId: string): Promise<string | null> {
+  try {
+    const { data } = await supabase
+      .from('dm_reads')
+      .select('last_read_at')
+      .eq('thread_id', threadId)
+      .eq('user_id', userId)
+      .maybeSingle();
+    return data?.last_read_at ?? null;
+  } catch {
+    return null;
+  }
+}
+
 /** Marca el hilo como leído hasta ahora (best effort). */
 export async function markDmRead(threadId: string, userId: string) {
   try {

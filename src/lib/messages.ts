@@ -122,6 +122,21 @@ export async function fetchUnreadTotal(userId: string): Promise<number> {
   }
 }
 
+/** Mi última lectura de este chat (para el separador «nuevos»). */
+export async function fetchLastRead(groupId: string, userId: string): Promise<string | null> {
+  try {
+    const { data } = await supabase
+      .from('chat_reads')
+      .select('last_read_at')
+      .eq('group_id', groupId)
+      .eq('user_id', userId)
+      .maybeSingle();
+    return data?.last_read_at ?? null;
+  } catch {
+    return null;
+  }
+}
+
 /** Marca el chat como leído hasta ahora (best effort: sin migración, no-op). */
 export async function markChatRead(groupId: string, userId: string) {
   try {
