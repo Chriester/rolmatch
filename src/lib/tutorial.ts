@@ -20,3 +20,20 @@ export async function markTutorialSeen(): Promise<void> {
     // sin storage (modo privado, etc.): no pasa nada, se verá otra vez
   }
 }
+
+/** Guías por pantalla (misma filosofía, un flag por clave). */
+export async function shouldShowCoach(key: string): Promise<boolean> {
+  try {
+    return (await AsyncStorage.getItem(`rolder-coach-${key}`)) === null;
+  } catch {
+    return false;
+  }
+}
+
+export async function markCoachSeen(key: string): Promise<void> {
+  try {
+    await AsyncStorage.setItem(`rolder-coach-${key}`, '1');
+  } catch {
+    // ídem: se verá otra vez y no pasa nada
+  }
+}
