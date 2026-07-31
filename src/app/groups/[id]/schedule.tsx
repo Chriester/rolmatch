@@ -4,7 +4,7 @@
 // votan y pueden proponer una fecha extra que cae en la bandeja del GM.
 
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -32,6 +32,8 @@ import {
   fetchPolls,
   proposeDate,
   resolveProposal,
+  subscribeToPolls,
+  unsubscribeFromPolls,
   setVote,
   type PollProposal,
   type SessionPoll,
@@ -86,7 +88,7 @@ export default function ScheduleScreen() {
   const [composing, setComposing] = useState(false);
   const [days, setDays] = useState<Set<string>>(new Set());
   const [globalTime, setGlobalTime] = useState<TimeValue>(DEFAULT_TIME);
-  const [timeByDay, setTimeByDay] = useState<Map<string, TimeValue>>(new Map());
+  const [timesByDay, setTimesByDay] = useState<Map<string, (TimeValue | null)[]>>(new Map());
   const [pollName, setPollName] = useState('');
   const [deadlineHours, setDeadlineHours] = useState<number | null>(48);
 
@@ -116,15 +118,42 @@ export default function ScheduleScreen() {
 
   useFocusEffect(load);
 
+  // Realtime: si otro miembro crea/cierra una votación, vota o propone,
+  // esta pantalla se refresca sola (nada de residuales hasta recargar)
+  useEffect(() => {
+    if (!id || !session) return;
+    const viewerId = session.user.id;
+    const channel = subscribeToPolls(id, () => {
+      fetchPolls(id, viewerId).then(setPolls).catch(() => {});
+    });
+    return () => unsubscribeFromPolls(channel);
+  }, [id, session]);
+
   const isOwner = group !== null && session?.user.id === group.owner_id;
 
-  const timeFor = (key: string): TimeValue => timeByDay.get(key) ?? globalTime;
-  const composerDates = () => [...days].sort().map((key) => dateAt(key, timeFor(key)));
+  // cada día seleccionado puede tener VARIAS horas; null = «sigue la global»
+  const entriesFor = (key: string): (TimeValue | null)[] => timesByDay.get(key) ?? [null];
+  const optionCount = [...days].reduce((n, key) => n + entriesFor(key).length, 0);
+  const composerDates = () => {
+    const seen = new Set<string>();
+    const dates: Date[] = [];
+    for (const key of [...days].sort()) {
+      for (const t of entriesFor(key)) {
+        const date = dateAt(key, t ?? globalTime);
+        const iso = date.toISOString();
+        if (!seen.has(iso)) {
+          seen.add(iso);
+          dates.push(date);
+        }
+      }
+    }
+    return dates;
+  };
 
   const resetComposer = () => {
     setComposing(false);
     setDays(new Set());
-    setTimeByDay(new Map());
+    setTimesByDay(new Map());
     setPollName('');
     setDeadlineHours(48);
   };
@@ -523,40 +552,85 @@ export default function ScheduleScreen() {
                 <SectionLabel>Fechas propuestas</SectionLabel>
                 <CalendarPicker
                   selected={days}
-                  onToggle={(key) =>
+                  onToggle={(key) => {
+                    const removing = days.has(key);
                     setDays((prev) => {
                       const next = new Set(prev);
-                      if (next.has(key)) next.delete(key);
+                      if (removing) next.delete(key);
                       else next.add(key);
                       return next;
-                    })
-                  }
+                    });
+                    if (removing) {
+                      setTimesByDay((prev) => {
+                        const next = new Map(prev);
+                        next.delete(key);
+                        return next;
+                      });
+                    }
+                  }}
                 />
 
                 {days.size > 0 && (
                   <>
                     <View style={styles.timeRow}>
                       <Text style={styles.timeLabel}>Hora para todas</Text>
-                      <TimeField
-                        value={globalTime}
-                        onChange={(t) => {
-                          setGlobalTime(t);
-                          setTimeByDay(new Map()); // la global resetea los ajustes
-                        }}
-                      />
+                      {/* las horas no ajustadas a mano siguen a la global */}
+                      <TimeField value={globalTime} onChange={setGlobalTime} />
                     </View>
-                    {[...days].sort().map((key) => (
-                      <View key={key} style={styles.dayRow}>
-                        <Text style={styles.dayLabel}>{shortDate(key)}</Text>
-                        <TimeField
-                          compact
-                          value={timeFor(key)}
-                          onChange={(t) =>
-                            setTimeByDay((prev) => new Map(prev).set(key, t))
-                          }
-                        />
-                      </View>
-                    ))}
+                    {[...days].sort().map((key) =>
+                      entriesFor(key).map((entry, i) => (
+                        <View key={`${key}:${i}`} style={styles.dayRow}>
+                          <Text style={[styles.dayLabel, i > 0 && styles.dayLabelExtra]}>
+                            {i === 0 ? shortDate(key) : '↳ también a las'}
+                          </Text>
+                          <View style={styles.dayControls}>
+                            <TimeField
+                              compact
+                              value={entry ?? globalTime}
+                              onChange={(t) =>
+                                setTimesByDay((prev) => {
+                                  const next = new Map(prev);
+                                  const list = [...(next.get(key) ?? [null])];
+                                  list[i] = t;
+                                  next.set(key, list);
+                                  return next;
+                                })
+                              }
+                            />
+                            {i === 0 ? (
+                              <Pressable
+                                accessibilityLabel={`Añadir otra hora el ${shortDate(key)}`}
+                                style={styles.timeExtraButton}
+                                onPress={() =>
+                                  setTimesByDay((prev) => {
+                                    const next = new Map(prev);
+                                    next.set(key, [...(next.get(key) ?? [null]), null]);
+                                    return next;
+                                  })
+                                }>
+                                <Text style={styles.timeExtraAdd}>＋</Text>
+                              </Pressable>
+                            ) : (
+                              <Pressable
+                                accessibilityLabel="Quitar esta hora"
+                                style={styles.timeExtraButton}
+                                onPress={() =>
+                                  setTimesByDay((prev) => {
+                                    const next = new Map(prev);
+                                    next.set(
+                                      key,
+                                      (next.get(key) ?? [null]).filter((_, j) => j !== i)
+                                    );
+                                    return next;
+                                  })
+                                }>
+                                <Text style={styles.timeExtraRemove}>✕</Text>
+                              </Pressable>
+                            )}
+                          </View>
+                        </View>
+                      ))
+                    )}
 
                     <SectionLabel>Nombre (opcional)</SectionLabel>
                     <TextInput
@@ -598,8 +672,8 @@ export default function ScheduleScreen() {
                 </View>
                 <OutlineButton
                   label={
-                    days.size > 1
-                      ? `📌 Fijar las ${days.size} sin votación`
+                    optionCount > 1
+                      ? `📌 Fijar las ${optionCount} sin votación`
                       : '📌 Fijar sin votación'
                   }
                   onPress={handleFixDirect}
@@ -847,6 +921,34 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: RolderFonts.semibold,
     textTransform: 'capitalize',
+  },
+  dayLabelExtra: {
+    color: 'rgba(255,255,255,0.5)',
+    textTransform: 'none',
+  },
+  dayControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  timeExtraButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  timeExtraAdd: {
+    color: Rolder.violetSoft,
+    fontSize: 15,
+    fontFamily: RolderFonts.bold,
+  },
+  timeExtraRemove: {
+    color: 'rgba(255,255,255,0.55)',
+    fontSize: 13,
+    fontFamily: RolderFonts.bold,
   },
   nameInput: {
     backgroundColor: Rolder.input,

@@ -4,6 +4,8 @@
 // sesión real. Los extras de la migración 00030 (closes_at, propuestas)
 // degradan con gracia si aún no está aplicada.
 
+import type { RealtimeChannel } from '@supabase/supabase-js';
+
 import { supabase } from '@/lib/supabase';
 
 export type PollOption = {
@@ -180,6 +182,34 @@ export async function proposeDate(pollId: string, proposerId: string, date: Date
     .from('session_poll_proposals')
     .insert({ poll_id: pollId, proposer_id: proposerId, starts_at: date.toISOString() });
   if (error) throw error;
+}
+
+/**
+ * Cambios en votaciones (crear/cerrar, opciones, votos, propuestas): avisa
+ * con debounce y el llamante refresca con fetchPolls. Votos y opciones no
+ * llevan group_id, así que escuchamos las tablas sin filtro y el refetch
+ * (con RLS) decide qué se ve. Requiere la migración 00039 (publication).
+ */
+export function subscribeToPolls(groupId: string, onChange: () => void): RealtimeChannel {
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  const notify = () => {
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(onChange, 400);
+  };
+  let channel = supabase.channel(`polls:group:${groupId}`);
+  for (const table of [
+    'session_polls',
+    'session_poll_options',
+    'session_poll_votes',
+    'session_poll_proposals',
+  ]) {
+    channel = channel.on('postgres_changes', { event: '*', schema: 'public', table }, notify);
+  }
+  return channel.subscribe();
+}
+
+export function unsubscribeFromPolls(channel: RealtimeChannel) {
+  supabase.removeChannel(channel);
 }
 
 /** El GM añade la propuesta como opción de la votación, o la rechaza. */
