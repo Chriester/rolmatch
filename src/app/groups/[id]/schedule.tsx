@@ -19,6 +19,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppHeader } from '@/components/app-header';
 import { CalendarPicker } from '@/components/calendar-picker';
 import { Chip } from '@/components/chip';
+import { OrganizarCoach } from '@/components/organizar-coach';
 import { TimeField, type TimeValue } from '@/components/time-field';
 import { ThemedView } from '@/components/themed-view';
 import { OutlineButton, PrimaryButton, ScreenBlurb, ScreenTitle, SectionLabel } from '@/components/ui';
@@ -26,6 +27,7 @@ import { MaxContentWidth, Rolder, RolderFonts, Spacing } from '@/constants/theme
 import { useSession } from '@/hooks/use-session';
 import { showAlert } from '@/lib/alert';
 import { fetchGroup, type GroupDetail } from '@/lib/groups';
+import { markCoachSeen, shouldShowCoach } from '@/lib/tutorial';
 import {
   closePoll,
   createPoll,
@@ -130,6 +132,20 @@ export default function ScheduleScreen() {
   }, [id, session]);
 
   const isOwner = group !== null && session?.user.id === group.owner_id;
+
+  // guía de primeros pasos: salta sola la primera vez (cuando ya sabemos
+  // si el viewer es GM o jugador) y se reabre con el botón «?»
+  const [coachOpen, setCoachOpen] = useState(false);
+  useEffect(() => {
+    if (group === null || !session) return;
+    shouldShowCoach('organizar').then((show) => {
+      if (show) setCoachOpen(true);
+    });
+  }, [group, session]);
+  const closeCoach = () => {
+    setCoachOpen(false);
+    markCoachSeen('organizar');
+  };
 
   // cada día seleccionado puede tener VARIAS horas; null = «sigue la global»
   const entriesFor = (key: string): (TimeValue | null)[] => timesByDay.get(key) ?? [null];
@@ -316,7 +332,15 @@ export default function ScheduleScreen() {
                 : router.replace({ pathname: '/groups/[id]', params: { id: id! } })
             }
           />
-          <ScreenTitle>📅 Organizar partida</ScreenTitle>
+          <View style={styles.titleRow}>
+            <ScreenTitle>📅 Organizar partida</ScreenTitle>
+            <Pressable
+              style={styles.helpButton}
+              onPress={() => setCoachOpen(true)}
+              accessibilityLabel="Cómo se organiza una partida">
+              <Text style={styles.helpGlyph}>?</Text>
+            </Pressable>
+          </View>
           <ScreenBlurb>«{group.name}»</ScreenBlurb>
 
           <SectionLabel>Próximas partidas</SectionLabel>
@@ -690,6 +714,8 @@ export default function ScheduleScreen() {
           )}
         </ScrollView>
       </SafeAreaView>
+
+      <OrganizarCoach visible={coachOpen} isOwner={isOwner} onClose={closeCoach} />
     </ThemedView>
   );
 }
@@ -905,6 +931,27 @@ const styles = StyleSheet.create({
     fontSize: 13.5,
     fontFamily: RolderFonts.semibold,
     fontWeight: '600',
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  helpButton: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    borderWidth: 1,
+    borderColor: 'rgba(139,108,255,0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  helpGlyph: {
+    color: Rolder.violetSoft,
+    fontSize: 15,
+    fontFamily: RolderFonts.bold,
+    fontWeight: '700',
   },
   dayRow: {
     flexDirection: 'row',
