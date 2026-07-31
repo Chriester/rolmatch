@@ -53,7 +53,9 @@ export function RollBubble({
 
 const styles = StyleSheet.create({
   card: {
-    maxWidth: '85%',
+    // sin maxWidth propio: lo limita el messageCol del chat (un % aquí
+    // se resolvería contra un padre content-sized y desbordaría)
+    maxWidth: '100%',
     backgroundColor: 'rgba(245,166,35,0.08)',
     borderWidth: 1.5,
     borderColor: 'rgba(245,166,35,0.45)',

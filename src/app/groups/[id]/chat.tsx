@@ -804,7 +804,9 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   bubble: {
-    maxWidth: '80%',
+    // el tope de anchura vive en messageCol: un maxWidth % aquí se
+    // resolvería contra un padre que encoge al contenido (en web parte
+    // palabras en vertical)
     borderRadius: 16,
     paddingVertical: 8,
     paddingHorizontal: 13,

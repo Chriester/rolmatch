@@ -719,7 +719,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   bubble: {
-    maxWidth: '80%',
+    // el tope de anchura vive en messageCol (ver chat de mesa)
     borderRadius: 16,
     paddingVertical: 8,
     paddingHorizontal: 13,
