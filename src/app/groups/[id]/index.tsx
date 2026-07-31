@@ -103,18 +103,23 @@ export default function GroupDetailScreen() {
   const handleShare = async (name: string) => {
     if (!id) return;
     const url = `https://rolmatch.vercel.app/groups/${id}?invitacion=1`;
-    const text = `Únete a mi mesa «${name}» en rolder 🎲 ${url}`;
     try {
       if (Platform.OS === 'web') {
         const nav = navigator as { share?: (data: object) => Promise<void>; clipboard?: { writeText: (t: string) => Promise<void> } };
         if (nav.share) {
-          await nav.share({ title: `«${name}» en rolder`, text, url });
+          // texto SIN la URL: con ella en ambos campos muchos destinos
+          // (WhatsApp incluido) pegaban el enlace dos veces
+          await nav.share({
+            title: `«${name}» en rolder`,
+            text: `Únete a mi mesa «${name}» en rolder 🎲`,
+            url,
+          });
         } else {
           await nav.clipboard?.writeText(url);
           showAlert('🔗 Enlace copiado', 'Pégalo donde quieras para invitar gente a la mesa.');
         }
       } else {
-        await Share.share({ message: text });
+        await Share.share({ message: `Únete a mi mesa «${name}» en rolder 🎲 ${url}` });
       }
     } catch {
       // compartir cancelado por el usuario

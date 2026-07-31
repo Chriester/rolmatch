@@ -47,6 +47,8 @@ jobs:
         run: npx vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
       - name: Version marker (aviso de recarga en clientes web)
         run: echo "{\"sha\":\"${{ github.sha }}\"}" > .vercel/output/static/version.json
+      - name: Open Graph (vista previa al compartir enlaces)
+        run: node scripts/inject-og.js
       - name: Deploy
         run: npx vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
 
