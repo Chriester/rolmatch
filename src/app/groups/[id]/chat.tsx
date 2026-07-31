@@ -6,6 +6,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  AppState,
   FlatList,
   KeyboardAvoidingView,
   Modal,
@@ -31,7 +32,7 @@ import { DiceRoller } from '@/components/dice-roller';
 import { MessageActions } from '@/components/message-actions';
 import { RollBubble } from '@/components/roll-bubble';
 import { parseRoll, type DiceRoll } from '@/lib/dice';
-import { fetchPolls, type SessionPoll } from '@/lib/polls';
+import { fetchPolls, subscribeToPolls, unsubscribeFromPolls, type SessionPoll } from '@/lib/polls';
 import {
   ChatMediaPickers,
   gifSearchAvailable,
@@ -135,12 +136,25 @@ export default function GroupChatScreen() {
       });
   }, [id, session]);
 
-  // Votaciones abiertas → un banner desplegable por cada una
+  // Votaciones abiertas → un banner desplegable por cada una. Realtime
+  // mantiene la lista viva (crear/cerrar/votar) y al volver del fondo
+  // refrescamos por si se perdieron eventos con la app dormida.
   useEffect(() => {
     if (!id || !session) return;
-    fetchPolls(id, session.user.id)
-      .then((polls) => setActivePolls(polls.filter((p) => p.status === 'open')))
-      .catch(() => {});
+    const viewerId = session.user.id;
+    const refresh = () =>
+      fetchPolls(id, viewerId)
+        .then((polls) => setActivePolls(polls.filter((p) => p.status === 'open')))
+        .catch(() => {});
+    refresh();
+    const channel = subscribeToPolls(id, refresh);
+    const appState = AppState.addEventListener('change', (state) => {
+      if (state === 'active') refresh();
+    });
+    return () => {
+      unsubscribeFromPolls(channel);
+      appState.remove();
+    };
   }, [id, session]);
 
   useEffect(() => {
