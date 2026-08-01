@@ -31,6 +31,7 @@ import {
   VTT_LABELS,
   WEEKDAY_LABELS,
   fetchGroup,
+  freeSeats,
   removeGroupMember,
   type GroupDetail,
 } from '@/lib/groups';
@@ -85,14 +86,10 @@ export default function GroupDetailScreen() {
     try {
       // si antes hizo pass (en el feed), lo deshacemos y pedimos sitio
       if (mySwipe === 'pass') await undoSwipeOnGroup(session.user.id, id);
-      const matched = await swipeOnGroup(session.user.id, id, 'like');
+      await swipeOnGroup(session.user.id, id, 'like');
       setMySwipe('like');
-      if (matched) {
-        showAlert('🤝 ¡Estás dentro!', 'La mesa ya te había elegido: bienvenida a bordo.');
-        fetchGroup(id).then(setGroup).catch(() => {});
-      } else {
-        showAlert('🙋 Sitio pedido', 'El GM verá tu solicitud y decidirá. Te avisamos si entras.');
-      }
+      // el match ya solo lo cierra el GM al aceptar en Candidatos (00040)
+      showAlert('🙋 Sitio pedido', 'El GM verá tu solicitud y decidirá. Te avisamos si entras.');
     } catch (error) {
       showAlert('No se pudo pedir sitio', error instanceof Error ? error.message : String(error));
     } finally {
@@ -243,9 +240,8 @@ export default function GroupDetailScreen() {
     );
   }
 
-  const openSeats = group.group_openings
-    .filter((o) => o.is_open)
-    .reduce((total, o) => total + o.seats, 0);
+  // plazas libres derivadas del límite y los miembros reales
+  const openSeats = freeSeats(group);
 
   const isOwner = session?.user.id === group.owner_id;
   const isMember = group.group_members.some((m) => m.user_id === session?.user.id);

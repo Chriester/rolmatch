@@ -128,11 +128,16 @@ values
   ('dddddddd-dddd-4ddd-8ddd-dddddddddddd', 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', 1, null)
 on conflict (id) do nothing;
 
+-- desde la 00040 las plazas se derivan de groups.max_players
+update groups set max_players = 2 where id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+update groups set max_players = 1 where id = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+
 -- 6. Swipes preparados para que TU cuenta real pueda provocar matches
 --    (tu cuenta = el único perfil con discord_id; los falsos no tienen)
 
--- 6a. La "Mesa de prueba — Los Colmillos de Ankh" ya te ha dado like:
---     en cuanto le des a "Me interesa" en el feed → match instantáneo.
+-- 6a. La "Mesa de prueba — Los Colmillos de Ankh" ya te ha dado like.
+--     Desde la 00040 tu like ya no cierra el match (lo cierra el GM al
+--     aceptar en Candidatos), así que esto solo pinta el banner 💘.
 insert into swipes (user_id, group_id, origin, direction)
 select p.id, 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'group', 'like'
 from profiles p

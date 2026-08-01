@@ -117,6 +117,11 @@ from groups g
 where g.owner_id in (select id from auth.users where email like 'gm%@test.rolmatch.local')
 on conflict (id) do nothing;
 
+-- desde la 00040 las plazas se derivan de groups.max_players
+update groups g
+set max_players = 1 + (abs(hashtext(g.id::text)) % 3)
+where g.owner_id in (select id from auth.users where email like 'gm%@test.rolmatch.local');
+
 -- 3. Jugadores falsos (8)
 insert into auth.users (
   instance_id, id, aud, role, email, encrypted_password, email_confirmed_at,

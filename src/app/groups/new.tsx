@@ -43,7 +43,7 @@ const EXPERIENCE_OPTIONS: { value: ExperienceLevel | null; label: string }[] = [
   { value: 'veteran', label: 'Veterano' },
 ];
 
-const SEAT_OPTIONS = [1, 2, 3, 4, 5];
+const SEAT_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8];
 
 export default function NewGroupScreen() {
   const session = useSession();
@@ -197,7 +197,7 @@ export default function NewGroupScreen() {
             ))}
           </View>
 
-          <SectionLabel>Plazas libres</SectionLabel>
+          <SectionLabel>Límite de jugadores (sin contarte)</SectionLabel>
           <View style={styles.chipRow}>
             {SEAT_OPTIONS.map((n) => (
               <Chip key={n} label={String(n)} selected={seats === n} onPress={() => setSeats(n)} />

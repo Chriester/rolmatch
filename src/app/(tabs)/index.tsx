@@ -334,6 +334,8 @@ export default function HomeScreen() {
           {playerAge !== null ? `, ${playerAge}` : ''}
         </Text>
         <CardChipRow>
+          {/* a qué mesa iría: es LO primero que hay que saber antes del like */}
+          <CardChip variant="green" label={`🎲 Para «${item.forGroup.name}»`} />
           <CardChip label={ROLE_LABELS[c.player.role] ?? c.player.role} />
           {playerGender && <CardChip label={playerGender} />}
           <CardChip label={`⚔️ Nv. ${playerLevel} · ${titleForLevel(playerLevel)}`} />

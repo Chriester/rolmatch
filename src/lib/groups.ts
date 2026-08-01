@@ -57,14 +57,22 @@ export type GroupDetail = {
     member_role: MemberRole;
     profiles: { alias: string; avatar_url: string | null } | null;
   }[];
-  group_openings: { id: string; seats: number; requirements: string | null; is_open: boolean }[];
+  max_players: number;
 };
 
-/** Crea la mesa, su hueco de plazas y añade al creador como miembro GM. */
-export async function createGroup(ownerId: string, group: GroupInput, seats: number) {
+/** Plazas libres DERIVADAS: límite menos miembros (sin contar al GM). */
+export function freeSeats(
+  group: Pick<GroupDetail, 'max_players' | 'owner_id' | 'group_members'>
+): number {
+  const players = group.group_members.filter((m) => m.user_id !== group.owner_id).length;
+  return Math.max(0, group.max_players - players);
+}
+
+/** Crea la mesa con su límite de jugadores y añade al creador como GM. */
+export async function createGroup(ownerId: string, group: GroupInput, maxPlayers: number) {
   const { data, error } = await supabase
     .from('groups')
-    .insert({ ...group, owner_id: ownerId })
+    .insert({ ...group, owner_id: ownerId, max_players: maxPlayers })
     .select('id')
     .single();
   if (error) throw error;
@@ -75,40 +83,16 @@ export async function createGroup(ownerId: string, group: GroupInput, seats: num
     .insert({ group_id: groupId, user_id: ownerId, member_role: 'gm' });
   if (memberError) throw memberError;
 
-  if (seats > 0) {
-    const { error: openingError } = await supabase
-      .from('group_openings')
-      .insert({ group_id: groupId, seats });
-    if (openingError) throw openingError;
-  }
-
   return groupId;
 }
 
-/** Actualiza los datos de la mesa y sus plazas libres (solo el dueño, por RLS). */
-export async function updateGroup(groupId: string, group: GroupInput, seats: number) {
-  const { error } = await supabase.from('groups').update(group).eq('id', groupId);
+/** Actualiza los datos de la mesa y su límite de jugadores (solo el dueño, por RLS). */
+export async function updateGroup(groupId: string, group: GroupInput, maxPlayers: number) {
+  const { error } = await supabase
+    .from('groups')
+    .update({ ...group, max_players: maxPlayers })
+    .eq('id', groupId);
   if (error) throw error;
-
-  const { data: openings, error: openingsError } = await supabase
-    .from('group_openings')
-    .select('id')
-    .eq('group_id', groupId)
-    .limit(1);
-  if (openingsError) throw openingsError;
-
-  if (openings && openings.length > 0) {
-    const { error: updError } = await supabase
-      .from('group_openings')
-      .update({ seats: Math.max(seats, 1), is_open: seats > 0 })
-      .eq('id', openings[0].id);
-    if (updError) throw updError;
-  } else if (seats > 0) {
-    const { error: insError } = await supabase
-      .from('group_openings')
-      .insert({ group_id: groupId, seats });
-    if (insError) throw insError;
-  }
 }
 
 /**
@@ -147,9 +131,9 @@ export async function fetchGroup(groupId: string): Promise<GroupDetail> {
       `id, owner_id, name, image_url, boosted_until, format, description, timezone, system_id, session_weekday, session_slot,
        frequency, experience_wanted, style_combat_narrative, style_serious_humor,
        style_roleplay_weight, vtt, discord_invite_url, is_active,
+       max_players,
        systems(name),
-       group_members(user_id, member_role, profiles(alias, avatar_url)),
-       group_openings(id, seats, requirements, is_open)`
+       group_members(user_id, member_role, profiles(alias, avatar_url))`
     )
     .eq('id', groupId)
     .single();

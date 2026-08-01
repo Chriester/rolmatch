@@ -116,7 +116,7 @@ export async function fetchPlayerFeed(userId: string): Promise<GroupCandidate[]>
       `id, owner_id, name, image_url, boosted_until, description, format, frequency, timezone, language, system_id,
        session_weekday, session_slot, experience_wanted, vtt,
        style_combat_narrative, style_serious_humor, style_roleplay_weight,
-       systems(name), group_openings(seats, is_open)`
+       systems(name), max_players, group_members(user_id)`
     )
     .eq('is_active', true);
   if (error) throw error;
@@ -141,8 +141,10 @@ export async function fetchPlayerFeed(userId: string): Promise<GroupCandidate[]>
 
   return visible
     .map((g) => {
-      const openings = (g.group_openings ?? []) as { seats: number; is_open: boolean }[];
-      const full = !openings.some((o) => o.is_open && o.seats > 0);
+      // plazas derivadas: límite menos miembros sin contar al GM
+      const memberRows = (g.group_members ?? []) as { user_id: string }[];
+      const players = memberRows.filter((m) => m.user_id !== g.owner_id).length;
+      const full = players >= ((g.max_players as number) ?? 5);
       const ownerProfile = ownersById.get(g.owner_id);
       const owner = {
         alias: ownerProfile?.alias ?? 'GM',
@@ -186,7 +188,11 @@ export async function fetchGroupCandidates(
   const [{ data: members }, { data: groupSwipes }, { data: userLikes }, blocked] =
     await Promise.all([
       supabase.from('group_members').select('user_id').eq('group_id', groupId),
-      supabase.from('swipes').select('user_id').eq('group_id', groupId).eq('origin', 'group'),
+      supabase
+        .from('swipes')
+        .select('user_id, direction')
+        .eq('group_id', groupId)
+        .eq('origin', 'group'),
       supabase
         .from('swipes')
         .select('user_id, proposed_character_id')
@@ -198,9 +204,14 @@ export async function fetchGroupCandidates(
   const likesByUser = new Map(
     (userLikes ?? []).map((like) => [like.user_id, like.proposed_character_id])
   );
+  // En la cola de solicitudes, un like previo de la mesa NO excluye: el GM
+  // pudo fichar al jugador desde el feed antes de que pidiera sitio, y es
+  // aquí donde acepta (su like rearmado cierra el match). Un pass sí excluye.
   const excluded = new Set([
     ...(members ?? []).map((m) => m.user_id),
-    ...(groupSwipes ?? []).map((s) => s.user_id),
+    ...(groupSwipes ?? [])
+      .filter((s) => (options.onlyApplicants ? s.direction === 'pass' : true))
+      .map((s) => s.user_id),
     ...blocked,
   ]);
 
