@@ -11,6 +11,7 @@ import { RolderBrand } from '@/components/brand';
 import { Rolder, Spacing } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
 import { fetchUnreadTotal } from '@/lib/messages';
+import { onUnreadChanged } from '@/lib/unread-events';
 import { fetchProfileData } from '@/lib/profile';
 
 type AppHeaderProps = {
@@ -30,7 +31,10 @@ export function AppHeader({ onBack, right }: AppHeaderProps) {
     fetchProfileData(session.user.id)
       .then((p) => setAvatarUrl(p.avatar_url))
       .catch(() => {});
-    fetchUnreadTotal(session.user.id).then(setUnread);
+    const refreshUnread = () => fetchUnreadTotal(session.user.id).then(setUnread);
+    refreshUnread();
+    // el punto de no-leídos se apaga al momento al leer un chat
+    return onUnreadChanged(refreshUnread);
   }, [session]);
 
   return (

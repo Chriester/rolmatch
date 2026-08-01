@@ -9,6 +9,7 @@ import { rollSummary, type DiceRoll } from '@/lib/dice';
 import { messagePreview, type ChatSummary, type MessageKind } from '@/lib/messages';
 import { fetchBlockRelations } from '@/lib/moderation';
 import { supabase } from '@/lib/supabase';
+import { emitUnreadChanged } from '@/lib/unread-events';
 
 export type DmMessage = {
   id: string;
@@ -343,6 +344,7 @@ export async function markDmRead(threadId: string, userId: string) {
     await supabase
       .from('dm_reads')
       .upsert({ thread_id: threadId, user_id: userId, last_read_at: new Date().toISOString() });
+    emitUnreadChanged(); // el badge del tab se refresca al momento
   } catch {
     // sin migración o sin red: el badge simplemente no se actualiza
   }

@@ -151,7 +151,7 @@ async function buildForMatch(record: MatchRecord): Promise<Map<string, { title: 
 }
 
 /** Mensajes para un mensaje de chat: a todos los miembros menos el emisor. */
-async function buildForMessage(record: MessageRecord): Promise<Map<string, { title: string; body: string; url: string }>> {
+async function buildForMessage(record: MessageRecord): Promise<Map<string, { title: string; body: string; url: string; tag?: string }>> {
   const [{ data: group }, { data: sender }, { data: members }] = await Promise.all([
     supabase.from('groups').select('name').eq('id', record.group_id).single(),
     supabase.from('profiles').select('alias').eq('id', record.sender_id).single(),
@@ -162,15 +162,18 @@ async function buildForMessage(record: MessageRecord): Promise<Map<string, { tit
   const url = `/groups/${record.group_id}/chat`;
   const title = `💬 ${group.name}`;
   const body = `${sender?.alias ?? 'Alguien'}: ${messagePreview(record)}`;
-  const out = new Map<string, { title: string; body: string; url: string }>();
+  // tag: el service worker agrupa los mensajes seguidos del mismo chat en
+  // UNA notificación con contador (estilo WhatsApp) en vez de apilarlas
+  const tag = `chat-${record.group_id}`;
+  const out = new Map<string, { title: string; body: string; url: string; tag?: string }>();
   for (const member of members) {
-    if (member.user_id !== record.sender_id) out.set(member.user_id, { title, body, url });
+    if (member.user_id !== record.sender_id) out.set(member.user_id, { title, body, url, tag });
   }
   return out;
 }
 
 /** Mensaje directo: solo al otro participante del hilo. */
-async function buildForDm(record: DmMessageRecord): Promise<Map<string, { title: string; body: string; url: string }>> {
+async function buildForDm(record: DmMessageRecord): Promise<Map<string, { title: string; body: string; url: string; tag?: string }>> {
   const [{ data: thread }, { data: sender }] = await Promise.all([
     supabase.from('dm_threads').select('user_lo, user_hi').eq('id', record.thread_id).single(),
     supabase.from('profiles').select('alias').eq('id', record.sender_id).single(),
@@ -178,11 +181,12 @@ async function buildForDm(record: DmMessageRecord): Promise<Map<string, { title:
   if (!thread) return new Map();
 
   const recipient = thread.user_lo === record.sender_id ? thread.user_hi : thread.user_lo;
-  const out = new Map<string, { title: string; body: string; url: string }>();
+  const out = new Map<string, { title: string; body: string; url: string; tag?: string }>();
   out.set(recipient, {
     title: `💬 ${sender?.alias ?? 'Alguien'}`,
     body: messagePreview(record),
     url: `/dm/${record.thread_id}`,
+    tag: `dm-${record.thread_id}`,
   });
   return out;
 }
@@ -453,7 +457,7 @@ async function sendAll(byUser: Map<string, { title: string; body: string; url: s
 }
 
 /** Web Push a los navegadores suscritos de esos usuarios (iOS/web). */
-async function sendAllWeb(byUser: Map<string, { title: string; body: string; url: string }>) {
+async function sendAllWeb(byUser: Map<string, { title: string; body: string; url: string; tag?: string }>) {
   if (!VAPID_PRIVATE_KEY || byUser.size === 0) return { webSent: 0 };
   const { data: subs } = await supabase
     .from('web_push_subscriptions')
