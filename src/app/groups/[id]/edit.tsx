@@ -39,7 +39,7 @@ const EXPERIENCE_OPTIONS: { value: ExperienceLevel | null; label: string }[] = [
   { value: 'intermediate', label: 'Intermedio' },
   { value: 'veteran', label: 'Veterano' },
 ];
-const SEAT_OPTIONS = [0, 1, 2, 3, 4, 5];
+const SEAT_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8];
 
 export default function EditGroupScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -79,9 +79,7 @@ export default function EditGroupScreen() {
         setWeekday(g.session_weekday);
         setSlot(g.session_slot);
         setFrequency(g.frequency);
-        setSeats(
-          g.group_openings.filter((o) => o.is_open).reduce((total, o) => total + o.seats, 0)
-        );
+        setSeats(g.max_players);
         setExperience(g.experience_wanted);
         setCombatNarrative(g.style_combat_narrative);
         setSeriousHumor(g.style_serious_humor);
@@ -212,10 +210,10 @@ export default function EditGroupScreen() {
             ))}
           </View>
 
-          <SectionLabel>Plazas libres</SectionLabel>
+          <SectionLabel>Límite de jugadores (sin contarte)</SectionLabel>
           <View style={styles.chipRow}>
             {SEAT_OPTIONS.map((n) => (
-              <Chip key={n} label={n === 0 ? 'Completa' : String(n)} selected={seats === n} onPress={() => setSeats(n)} />
+              <Chip key={n} label={String(n)} selected={seats === n} onPress={() => setSeats(n)} />
             ))}
           </View>
 

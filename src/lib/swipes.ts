@@ -4,7 +4,9 @@ export type SwipeDirection = 'like' | 'pass';
 
 /**
  * Swipe del jugador sobre una mesa, con personaje propuesto opcional (§4.2).
- * Devuelve true si se produjo match.
+ * Desde la 00040 el match solo lo cierra la mesa (el aceptar del GM), así
+ * que aquí `matched` es prácticamente siempre false — se conserva por si
+ * el aceptar llega en carrera.
  */
 export async function swipeOnGroup(
   userId: string,
@@ -29,9 +31,14 @@ export async function groupSwipeOnUser(
   userId: string,
   direction: SwipeDirection
 ): Promise<boolean> {
-  const { error } = await supabase
-    .from('swipes')
-    .insert({ user_id: userId, group_id: groupId, origin: 'group', direction });
+  const payload = { user_id: userId, group_id: groupId, origin: 'group', direction };
+  let { error } = await supabase.from('swipes').insert(payload);
+  if (error && error.code === '23505') {
+    // el GM ya había fichado al jugador desde el feed: rearmamos el like
+    // para que el trigger de aceptación vuelva a evaluar el match
+    await undoGroupSwipeOnUser(groupId, userId);
+    ({ error } = await supabase.from('swipes').insert(payload));
+  }
   if (error) throw error;
   return direction === 'like' ? hasMatch(userId, groupId) : false;
 }
