@@ -2,6 +2,7 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
 
 import { rollSummary, type DiceRoll } from '@/lib/dice';
 import { supabase } from '@/lib/supabase';
+import { emitUnreadChanged } from '@/lib/unread-events';
 
 export type MessageKind = 'text' | 'gif' | 'sticker' | 'roll' | 'image';
 
@@ -143,6 +144,7 @@ export async function markChatRead(groupId: string, userId: string) {
     await supabase
       .from('chat_reads')
       .upsert({ group_id: groupId, user_id: userId, last_read_at: new Date().toISOString() });
+    emitUnreadChanged(); // el badge del tab se refresca al momento
   } catch {
     // tabla aún no migrada o sin red: el badge simplemente no se actualiza
   }

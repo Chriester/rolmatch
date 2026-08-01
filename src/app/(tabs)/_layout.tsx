@@ -13,6 +13,7 @@ import { useSession } from '@/hooks/use-session';
 import { hapticTap } from '@/lib/haptics';
 import { setAppBadge } from '@/lib/badge';
 import { fetchUnreadTotal } from '@/lib/messages';
+import { onUnreadChanged } from '@/lib/unread-events';
 
 // Sin ripple de Android (el círculo se recortaba contra el borde de la
 // barra): el círculo del botón solo aparece MIENTRAS se presiona, con un
@@ -79,8 +80,8 @@ export default function TabsLayout() {
   const session = useSession();
   const [unread, setUnread] = useState(0);
 
-  // Badge de chats: al montar y refresco suave cada minuto (el contador
-  // fino ya lo pinta la propia lista de chats al entrar)
+  // Badge de chats: al montar, refresco suave cada minuto y AL INSTANTE
+  // cuando se marca un chat como leído (emitUnreadChanged)
   useEffect(() => {
     if (!session) return;
     let alive = true;
@@ -92,9 +93,11 @@ export default function TabsLayout() {
     };
     refresh();
     const timer = setInterval(refresh, 60_000);
+    const offUnread = onUnreadChanged(refresh);
     return () => {
       alive = false;
       clearInterval(timer);
+      offUnread();
     };
   }, [session]);
 
