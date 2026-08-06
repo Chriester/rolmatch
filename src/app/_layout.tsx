@@ -26,6 +26,7 @@ import { useQuickActions } from '@/lib/quick-actions';
 import { useOtaUpdates } from '@/lib/updates';
 import { useWebVersionCheck } from '@/lib/version-check';
 import { setupWebPwa } from '@/lib/web-push';
+import { setupWebTweaks } from '@/lib/web-tweaks';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -64,6 +65,8 @@ export default function RootLayout() {
     }
     // Web: manifest PWA + refresco silencioso de la suscripción push
     setupWebPwa(session?.user.id ?? null);
+    // Web: sin arrastre nativo de imágenes (rompía el swipe con ratón)
+    setupWebTweaks();
   }, [session, fontsLoaded]);
 
   // Deep link tras login (web): quien llega a un enlace compartido sin
