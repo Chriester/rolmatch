@@ -8,7 +8,7 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
 import { rollSummary, type DiceRoll } from '@/lib/dice';
 import { messagePreview, type ChatSummary, type MessageKind } from '@/lib/messages';
 import { fetchBlockRelations } from '@/lib/moderation';
-import { supabase } from '@/lib/supabase';
+import { supabase, uniqueChannel } from '@/lib/supabase';
 import { emitUnreadChanged } from '@/lib/unread-events';
 
 export type DmMessage = {
@@ -258,8 +258,7 @@ export function subscribeToDmReactions(
     onRemove: (e: { message_id: string; user_id: string; emoji: string }) => void;
   }
 ): RealtimeChannel {
-  return supabase
-    .channel(`dm-reactions:${key}`)
+  return uniqueChannel(`dm-reactions:${key}`)
     .on(
       'postgres_changes',
       { event: 'INSERT', schema: 'public', table: 'dm_message_reactions' },
@@ -304,8 +303,7 @@ export function subscribeToDmMessages(
   }
 ): RealtimeChannel {
   const filter = { schema: 'public', table: 'dm_messages', filter: `thread_id=eq.${threadId}` };
-  return supabase
-    .channel(`dm:${threadId}`)
+  return uniqueChannel(`dm:${threadId}`)
     .on('postgres_changes', { ...filter, event: 'INSERT' }, (payload) =>
       handlers.onInsert(payload.new as DmMessage)
     )

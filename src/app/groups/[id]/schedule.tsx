@@ -80,6 +80,9 @@ function shortDate(key: string): string {
 export default function ScheduleScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const session = useSession();
+  // la suscripción depende del id, no del objeto session: supabase-js emite
+  // una sesión nueva en cada refresco de token y la rehacía sin motivo
+  const userId = session?.user.id ?? null;
   const [group, setGroup] = useState<GroupDetail | null>(null);
   const [sessions, setSessions] = useState<GameSession[]>([]);
   const [rsvps, setRsvps] = useState<Map<string, SessionRsvps>>(new Map());
@@ -123,13 +126,12 @@ export default function ScheduleScreen() {
   // Realtime: si otro miembro crea/cierra una votación, vota o propone,
   // esta pantalla se refresca sola (nada de residuales hasta recargar)
   useEffect(() => {
-    if (!id || !session) return;
-    const viewerId = session.user.id;
+    if (!id || !userId) return;
     const channel = subscribeToPolls(id, () => {
-      fetchPolls(id, viewerId).then(setPolls).catch(() => {});
+      fetchPolls(id, userId).then(setPolls).catch(() => {});
     });
     return () => unsubscribeFromPolls(channel);
-  }, [id, session]);
+  }, [id, userId]);
 
   const isOwner = group !== null && session?.user.id === group.owner_id;
 

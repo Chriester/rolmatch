@@ -6,7 +6,7 @@
 
 import type { RealtimeChannel } from '@supabase/supabase-js';
 
-import { supabase } from '@/lib/supabase';
+import { supabase, uniqueChannel } from '@/lib/supabase';
 
 export type PollOption = {
   id: string;
@@ -196,7 +196,7 @@ export function subscribeToPolls(groupId: string, onChange: () => void): Realtim
     if (timer) clearTimeout(timer);
     timer = setTimeout(onChange, 400);
   };
-  let channel = supabase.channel(`polls:group:${groupId}`);
+  let channel = uniqueChannel(`polls:group:${groupId}`);
   for (const table of [
     'session_polls',
     'session_poll_options',

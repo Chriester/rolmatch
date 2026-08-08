@@ -65,6 +65,10 @@ import { joinTypingChannel, leaveTypingChannel, type TypingHandle } from '@/lib/
 export default function DmChatScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const session = useSession();
+  // Los efectos dependen del id, NO del objeto session: supabase-js emite una
+  // sesión nueva en cada refresco de token (y al volver a la pestaña en web),
+  // y eso rehacía suscripciones y refetcheaba el historial sin motivo.
+  const userId = session?.user.id ?? null;
   // arranca con lo último visto para no enseñar la rueda al volver a un
   // hilo ya visitado; el fetch de abajo refresca en silencio
   const [thread, setThread] = useState<DmThread | null | undefined>(() =>
@@ -90,34 +94,34 @@ export default function DmChatScreen() {
   const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    if (!id || !session) return;
-    fetchDmThread(id, session.user.id)
+    if (!id || !userId) return;
+    fetchDmThread(id, userId)
       .then((t) => {
         cacheSet(`dm-thread:${id}`, t);
         setThread(t);
       })
       .catch(() => setThread((current) => current ?? null));
     // última lectura ANTES de marcar como leído → separador «— nuevos —»
-    const lastReadPromise = fetchDmLastRead(id, session.user.id);
+    const lastReadPromise = fetchDmLastRead(id, userId);
     fetchDmMessages(id)
       .then(async (list) => {
         cacheSet(`dm-msgs:${id}`, list);
         setMessages(list);
         setHasMore(list.length >= 100);
-        fetchDmReactions(list.map((m) => m.id), session.user.id).then(setReactions);
+        fetchDmReactions(list.map((m) => m.id), userId).then(setReactions);
         const lastRead = await lastReadPromise;
         const unread = list.filter(
-          (m) => m.sender_id !== session.user.id && (!lastRead || m.created_at > lastRead)
+          (m) => m.sender_id !== userId && (!lastRead || m.created_at > lastRead)
         );
         setFirstUnreadId(unread.length > 0 ? unread[unread.length - 1].id : null);
-        markDmRead(id, session.user.id);
+        markDmRead(id, userId);
       })
       .catch(() => {
         const cached = cacheGet<DmMessage[]>(`dm-msgs:${id}`);
         if (!cached) showAlert('No se pudo cargar el chat', 'Vuelve a entrar en unos segundos.');
         setMessages((current) => current ?? cached ?? []);
       });
-  }, [id, session]);
+  }, [id, userId]);
 
   useEffect(() => {
     if (!id) return;
@@ -128,7 +132,7 @@ export default function DmChatScreen() {
           return [row, ...(list ?? [])];
         });
         // Lo estoy viendo llegar: no debe contar como no-leído
-        if (session) markDmRead(id, session.user.id);
+        if (userId) markDmRead(id, userId);
       },
       onUpdate: (row) =>
         setMessages((list) => list?.map((m) => (m.id === row.id ? { ...m, ...row } : m))),
@@ -136,14 +140,13 @@ export default function DmChatScreen() {
         setMessages((list) => list?.filter((m) => m.id !== deletedId)),
     });
     return () => unsubscribeFromDmMessages(channel);
-  }, [id, session]);
+  }, [id, userId]);
 
   // Reacciones en vivo (las mías van optimistas)
   useEffect(() => {
-    if (!id || !session) return;
-    const myId = session.user.id;
+    if (!id || !userId) return;
     const apply = (event: { message_id: string; user_id: string; emoji: string }, delta: 1 | -1) => {
-      if (event.user_id === myId) return;
+      if (event.user_id === userId) return;
       setReactions((map) => {
         const next = new Map(map);
         const list = [...(next.get(event.message_id) ?? [])];
@@ -165,7 +168,7 @@ export default function DmChatScreen() {
       onRemove: (e) => apply(e, -1),
     });
     return () => unsubscribeFromDmMessages(channel);
-  }, [id, session]);
+  }, [id, userId]);
 
   const handleToggleReaction = async (message: DmMessage, emoji: string) => {
     if (!session) return;
@@ -200,8 +203,8 @@ export default function DmChatScreen() {
 
   // Canal efímero de «escribiendo…»
   useEffect(() => {
-    if (!id || !session) return;
-    const handle = joinTypingChannel(`dm:${id}`, session.user.id, () => {
+    if (!id || !userId) return;
+    const handle = joinTypingChannel(`dm:${id}`, userId, () => {
       setOtherTyping(true);
       if (typingTimer.current) clearTimeout(typingTimer.current);
       typingTimer.current = setTimeout(() => setOtherTyping(false), 3500);
@@ -212,7 +215,7 @@ export default function DmChatScreen() {
       typingRef.current = null;
       leaveTypingChannel(handle);
     };
-  }, [id, session]);
+  }, [id, userId]);
 
   const handleSend = async () => {
     if (!id || !session || !draft.trim() || sending) return;

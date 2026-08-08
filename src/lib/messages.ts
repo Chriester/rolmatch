@@ -1,7 +1,7 @@
 import type { RealtimeChannel } from '@supabase/supabase-js';
 
 import { rollSummary, type DiceRoll } from '@/lib/dice';
-import { supabase } from '@/lib/supabase';
+import { supabase, uniqueChannel } from '@/lib/supabase';
 import { emitUnreadChanged } from '@/lib/unread-events';
 
 export type MessageKind = 'text' | 'gif' | 'sticker' | 'roll' | 'image';
@@ -309,8 +309,7 @@ export function subscribeToReactions(
   key: string,
   handlers: { onAdd: (e: ReactionEvent) => void; onRemove: (e: ReactionEvent) => void }
 ): RealtimeChannel {
-  return supabase
-    .channel(`reactions:${key}`)
+  return uniqueChannel(`reactions:${key}`)
     .on(
       'postgres_changes',
       { event: 'INSERT', schema: 'public', table: 'message_reactions' },
@@ -356,8 +355,7 @@ export function subscribeToMessages(
   }
 ): RealtimeChannel {
   const filter = { schema: 'public', table: 'messages', filter: `group_id=eq.${groupId}` };
-  return supabase
-    .channel(`messages:group:${groupId}`)
+  return uniqueChannel(`messages:group:${groupId}`)
     .on('postgres_changes', { ...filter, event: 'INSERT' }, (payload) =>
       handlers.onInsert(payload.new as Omit<ChatMessage, 'profiles'>)
     )

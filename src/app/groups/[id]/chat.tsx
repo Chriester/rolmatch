@@ -69,6 +69,10 @@ import { joinTypingChannel, leaveTypingChannel, type TypingHandle } from '@/lib/
 export default function GroupChatScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const session = useSession();
+  // Los efectos dependen del id, NO del objeto session: supabase-js emite una
+  // sesión nueva en cada refresco de token (y al volver a la pestaña en web),
+  // y eso rehacía suscripciones y refetcheaba el historial sin motivo.
+  const userId = session?.user.id ?? null;
   // arranca con lo último visto (si lo hay) para no enseñar la rueda al
   // volver a un chat ya visitado; el fetch de abajo refresca en silencio
   const [group, setGroup] = useState<GroupDetail | null | undefined>(() =>
@@ -110,23 +114,20 @@ export default function GroupChatScreen() {
       .catch(() => setGroup((current) => current ?? null));
     // la última lectura se consulta ANTES de marcar como leído: de ahí sale
     // el separador «— nuevos —»
-    const lastReadPromise = session
-      ? fetchLastRead(id, session.user.id)
-      : Promise.resolve(null);
+    const lastReadPromise = userId ? fetchLastRead(id, userId) : Promise.resolve(null);
     fetchMessages(id)
       .then(async (list) => {
         cacheSet(`group-msgs:${id}`, list);
         setMessages(list);
         setHasMore(list.length >= 100);
-        if (session) {
-          fetchMessageReactions(list.map((m) => m.id), session.user.id).then(setReactions);
+        if (userId) {
+          fetchMessageReactions(list.map((m) => m.id), userId).then(setReactions);
           const lastRead = await lastReadPromise;
           const unread = list.filter(
-            (m) =>
-              m.sender_id !== session.user.id && (!lastRead || m.created_at > lastRead)
+            (m) => m.sender_id !== userId && (!lastRead || m.created_at > lastRead)
           );
           setFirstUnreadId(unread.length > 0 ? unread[unread.length - 1].id : null);
-          markChatRead(id, session.user.id);
+          markChatRead(id, userId);
         }
       })
       .catch(() => {
@@ -134,16 +135,15 @@ export default function GroupChatScreen() {
         if (!cached) showAlert('No se pudo cargar el chat', 'Vuelve a entrar en unos segundos.');
         setMessages((current) => current ?? cached ?? []);
       });
-  }, [id, session]);
+  }, [id, userId]);
 
   // Votaciones abiertas → un banner desplegable por cada una. Realtime
   // mantiene la lista viva (crear/cerrar/votar) y al volver del fondo
   // refrescamos por si se perdieron eventos con la app dormida.
   useEffect(() => {
-    if (!id || !session) return;
-    const viewerId = session.user.id;
+    if (!id || !userId) return;
     const refresh = () =>
-      fetchPolls(id, viewerId)
+      fetchPolls(id, userId)
         .then((polls) => setActivePolls(polls.filter((p) => p.status === 'open')))
         .catch(() => {});
     refresh();
@@ -155,7 +155,7 @@ export default function GroupChatScreen() {
       unsubscribeFromPolls(channel);
       appState.remove();
     };
-  }, [id, session]);
+  }, [id, userId]);
 
   useEffect(() => {
     if (!id) return;
@@ -170,7 +170,7 @@ export default function GroupChatScreen() {
           return [message, ...(list ?? [])];
         });
         // Lo estoy viendo llegar: no debe contar como no-leído
-        if (session) markChatRead(id, session.user.id);
+        if (userId) markChatRead(id, userId);
       },
       onUpdate: (row) =>
         setMessages((list) =>
@@ -180,14 +180,13 @@ export default function GroupChatScreen() {
         setMessages((list) => list?.filter((m) => m.id !== deletedId)),
     });
     return () => unsubscribeFromMessages(channel);
-  }, [id, session]);
+  }, [id, userId]);
 
   // Reacciones en vivo: deltas de otros (las mías van optimistas)
   useEffect(() => {
-    if (!id || !session) return;
-    const myId = session.user.id;
+    if (!id || !userId) return;
     const apply = (event: ReactionEvent, delta: 1 | -1) => {
-      if (event.user_id === myId) return;
+      if (event.user_id === userId) return;
       setReactions((map) => {
         const next = new Map(map);
         const list = [...(next.get(event.message_id) ?? [])];
@@ -209,7 +208,7 @@ export default function GroupChatScreen() {
       onRemove: (e) => apply(e, -1),
     });
     return () => unsubscribeFromMessages(channel);
-  }, [id, session]);
+  }, [id, userId]);
 
   const handleToggleReaction = async (message: ChatMessage, emoji: string) => {
     if (!session) return;
@@ -246,8 +245,8 @@ export default function GroupChatScreen() {
 
   // Canal efímero de «escribiendo…»
   useEffect(() => {
-    if (!id || !session) return;
-    const handle = joinTypingChannel(`group:${id}`, session.user.id, (alias) => {
+    if (!id || !userId) return;
+    const handle = joinTypingChannel(`group:${id}`, userId, (alias) => {
       setTypingAlias(alias);
       if (typingTimer.current) clearTimeout(typingTimer.current);
       typingTimer.current = setTimeout(() => setTypingAlias(null), 3500);
@@ -258,7 +257,7 @@ export default function GroupChatScreen() {
       typingRef.current = null;
       leaveTypingChannel(handle);
     };
-  }, [id, session]);
+  }, [id, userId]);
 
   const handleSend = async () => {
     if (!id || !session || !draft.trim() || sending) return;
