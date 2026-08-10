@@ -19,21 +19,41 @@ import { onUnreadChanged } from '@/lib/unread-events';
 // Sin ripple de Android (el círculo se recortaba contra el borde de la
 // barra): el círculo del botón solo aparece MIENTRAS se presiona, con un
 // toque háptico — en reposo solo se ven los iconos sobre el fondo.
+//
+// Los iconos son emojis sin etiqueta visible (tabBarShowLabel: false), así
+// que lo único que anuncia un lector de pantalla es lo que reenviemos aquí.
+// Expo Router 57 pasa al botón `aria-label` (de tabBarAccessibilityLabel),
+// `role` y `aria-selected`; hay que cogerlos uno a uno y NO esparcir el
+// resto, que trae el android_ripple que quitamos a propósito.
 type BarButtonProps = {
   children: React.ReactNode;
   onPress?: PressableProps['onPress'];
   onLongPress?: PressableProps['onLongPress'];
-  accessibilityState?: PressableProps['accessibilityState'];
+  role?: PressableProps['role'];
+  'aria-label'?: string;
+  'aria-selected'?: boolean;
+  testID?: string;
   style?: StyleProp<ViewStyle>;
 };
 
-function BarButton({ children, onPress, onLongPress, accessibilityState, style }: BarButtonProps) {
+function BarButton({
+  children,
+  onPress,
+  onLongPress,
+  role,
+  testID,
+  style,
+  ...aria
+}: BarButtonProps) {
   return (
     <Pressable
       onPress={onPress}
       onLongPress={onLongPress}
       onPressIn={() => hapticTap()}
-      accessibilityState={accessibilityState}
+      role={role}
+      aria-label={aria['aria-label']}
+      aria-selected={aria['aria-selected']}
+      testID={testID}
       style={[style as object, styles.itemCenter]}>
       {({ pressed }) => (
         <View style={[styles.halo, pressed && styles.haloPressed]}>{children}</View>
@@ -120,6 +140,7 @@ export default function TabsLayout() {
         name="likes"
         options={{
           title: 'Encuentros',
+          tabBarAccessibilityLabel: 'Encuentros',
           tabBarIcon: ({ focused }) => <TabButton emoji="🔭" focused={focused} />,
         }}
       />
@@ -127,6 +148,7 @@ export default function TabsLayout() {
         name="groups"
         options={{
           title: 'Mesas',
+          tabBarAccessibilityLabel: 'Mis mesas',
           tabBarIcon: ({ focused }) => <TabButton emoji="🛡️" focused={focused} />,
         }}
       />
@@ -134,6 +156,7 @@ export default function TabsLayout() {
         name="index"
         options={{
           title: 'Feed',
+          tabBarAccessibilityLabel: 'Feed de mesas y jugadores',
           tabBarIcon: ({ focused }) => <FeedButton focused={focused} />,
         }}
       />
@@ -141,6 +164,9 @@ export default function TabsLayout() {
         name="chats"
         options={{
           title: 'Chats',
+          // el globito de no leídos es visual: aquí va en palabras
+          tabBarAccessibilityLabel:
+            unread > 0 ? `Chats, ${unread} sin leer` : 'Chats',
           tabBarIcon: ({ focused }) => (
             <TabButton emoji="💬" focused={focused} badge={unread} />
           ),
@@ -150,6 +176,7 @@ export default function TabsLayout() {
         name="profile"
         options={{
           title: 'Perfil',
+          tabBarAccessibilityLabel: 'Mi perfil',
           tabBarIcon: ({ focused }) => <TabButton emoji="👤" focused={focused} />,
         }}
       />

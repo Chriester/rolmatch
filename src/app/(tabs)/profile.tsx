@@ -49,6 +49,7 @@ export default function ProfileTabScreen() {
 
           <Pressable
             style={styles.identity}
+            accessibilityLabel="Ver mi perfil público"
             onPress={() =>
               session &&
               router.push({ pathname: '/players/[id]', params: { id: session.user.id } })

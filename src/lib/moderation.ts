@@ -36,6 +36,48 @@ export async function blockUser(blockerId: string, blockedId: string) {
   if (error && error.code !== '23505') throw error;
 }
 
+/** Deshace un bloqueo propio. La RLS solo deja borrar los que yo puse. */
+export async function unblockUser(blockerId: string, blockedId: string) {
+  const { error } = await supabase
+    .from('blocks')
+    .delete()
+    .eq('blocker_id', blockerId)
+    .eq('blocked_id', blockedId);
+  if (error) throw error;
+}
+
+export type BlockedProfile = {
+  id: string;
+  alias: string | null;
+  avatar_url: string | null;
+  created_at: string;
+};
+
+/**
+ * A quién he bloqueado YO (los bloqueos que puedo deshacer). No incluye a
+ * quien me haya bloqueado a mí: eso no es asunto mío ni puedo levantarlo.
+ */
+export async function fetchMyBlocks(userId: string): Promise<BlockedProfile[]> {
+  const { data, error } = await supabase
+    .from('blocks')
+    .select('blocked_id, created_at, profiles!blocks_blocked_id_fkey(alias, avatar_url)')
+    .eq('blocker_id', userId)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return (data ?? []).map((row) => {
+    const profile = row.profiles as unknown as {
+      alias: string | null;
+      avatar_url: string | null;
+    } | null;
+    return {
+      id: row.blocked_id as string,
+      alias: profile?.alias ?? null,
+      avatar_url: profile?.avatar_url ?? null,
+      created_at: row.created_at as string,
+    };
+  });
+}
+
 /**
  * Ids de usuarios con los que hay bloqueo en cualquier dirección.
  * Los feeds excluyen a estos usuarios y a sus mesas.
