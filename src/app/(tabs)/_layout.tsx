@@ -7,6 +7,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Tabs } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View, type PressableProps, type StyleProp, type ViewStyle } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Rolder, RolderFonts } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
@@ -78,6 +79,7 @@ function FeedButton({ focused }: { focused: boolean }) {
 
 export default function TabsLayout() {
   const session = useSession();
+  const insets = useSafeAreaInsets();
   const [unread, setUnread] = useState(0);
 
   // Badge de chats: al montar, refresco suave cada minuto y AL INSTANTE
@@ -106,7 +108,11 @@ export default function TabsLayout() {
       screenOptions={{
         headerShown: false,
         tabBarShowLabel: false,
-        tabBarStyle: styles.bar,
+        // altura fija en tabBarStyle: la libreria NO le suma el inset
+        // inferior sola (solo lo hace si la altura queda "auto"), así que
+        // en Android con gestos lo sumamos a mano o la pill del sistema
+        // tapa la barra.
+        tabBarStyle: [styles.bar, { height: 74 + insets.bottom, paddingBottom: 12 + insets.bottom }],
         tabBarItemStyle: styles.item,
         tabBarButton: BarButton,
       }}>
@@ -156,9 +162,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     borderTopWidth: 0,
     elevation: 0,
-    height: 74,
     paddingTop: 10,
-    paddingBottom: 12,
   },
   item: {
     overflow: 'visible',
