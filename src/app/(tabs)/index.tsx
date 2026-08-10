@@ -106,18 +106,24 @@ export default function HomeScreen() {
 
   const [onboarded, setOnboarded] = useState<boolean | undefined>(undefined);
 
-  // Primera visita con perfil completo → tutorial de bienvenida (una vez;
-  // el propio tutorial marca el flag al montarse, así no hay bucle)
+  // Quien aún no tiene perfil pasa primero por el tutorial (dos pantallas) y
+  // de ahí al alta: explicar la app DESPUÉS de rellenar cuatro pasos era
+  // cobrar por adelantado. El propio tutorial marca el flag al montarse.
+  const [tutorialPending, setTutorialPending] = useState<boolean | undefined>(undefined);
   useEffect(() => {
-    if (onboarded !== true) return;
+    if (onboarded !== false) return;
     shouldShowTutorial()
-      .then((show) => {
-        if (show) router.push('/tutorial');
-      })
-      .catch(() => {});
+      .then(setTutorialPending)
+      .catch(() => setTutorialPending(false));
   }, [onboarded]);
   const [items, setItems] = useState<FeedItem[] | undefined>(undefined);
   const [myAvailability, setMyAvailability] = useState<Set<string>>(new Set());
+  const [filteredOut, setFilteredOut] = useState({
+    total: 0,
+    schedule: 0,
+    system: 0,
+    language: 0,
+  });
   const [loadError, setLoadError] = useState(false);
   // el mensaje real del fallo, visible en pantalla: sin él es imposible
   // diagnosticar problemas que solo pasan en el dispositivo de alguien
@@ -166,6 +172,7 @@ export default function HomeScreen() {
           setMyAvailability(
             new Set(feed.myAvailability.map((a) => availabilityCellKey(a.weekday, a.slot)))
           );
+          setFilteredOut(feed.filteredOut);
         })
         .catch((error) => {
           setLoadError(true);
@@ -182,6 +189,40 @@ export default function HomeScreen() {
   );
 
   const reload = useCallback(() => load({ force: true }), [load]);
+
+  // Un feed vacío que solo dice «no hay nada» deja al usuario sin saber qué
+  // tocar. Si hay mesas que se han caído por un filtro duro, lo decimos y
+  // mandamos justo a ese ajuste.
+  const emptyReason = (() => {
+    const { total, schedule, system, language } = filteredOut;
+    if (total === 0) {
+      return {
+        headline: 'No hay mesas ni jugadores nuevos por ahora.',
+        hint: 'Con la comunidad aún pequeña esto pasa: vuelve a barajar lo que descartaste, o monta tú la mesa y que te encuentren.',
+        action: '⚙️ Ajustar mi perfil',
+      };
+    }
+    const mesas = total === 1 ? '1 mesa se ha quedado' : `${total} mesas se han quedado`;
+    if (schedule >= system && schedule >= language) {
+      return {
+        headline: `${mesas} fuera por horario.`,
+        hint: 'Marca más franjas en tu disponibilidad y vuelven a aparecer.',
+        action: '🕒 Ampliar mi disponibilidad',
+      };
+    }
+    if (system >= language) {
+      return {
+        headline: `${mesas} fuera por sistema de juego.`,
+        hint: 'Añade sistemas, o marca «abierto a cualquiera» y las verás todas.',
+        action: '🎲 Añadir sistemas',
+      };
+    }
+    return {
+      headline: `${mesas} fuera por idioma.`,
+      hint: 'Añade los idiomas en los que te apañas para verlas.',
+      action: '🗣️ Ajustar mi perfil',
+    };
+  })();
 
   // Feed agotado: es el peor primer momento posible para alguien nuevo y no
   // deja rastro en ninguna tabla, así que se registra aquí.
@@ -551,7 +592,11 @@ export default function HomeScreen() {
   };
 
   if (onboarded === false) {
-    return <Redirect href="/onboarding" />;
+    // esperamos a saber si toca tutorial para no mandarlo dos veces de ruta
+    if (tutorialPending === undefined) return null;
+    return (
+      <Redirect href={tutorialPending ? '/tutorial?siguiente=onboarding' : '/onboarding'} />
+    );
   }
 
   return (
@@ -580,9 +625,13 @@ export default function HomeScreen() {
           <View style={styles.centerBox}>
             <Text style={styles.centerEmoji}>🃏</Text>
             <ThemedText style={styles.centerText}>
-              No hay más mesas ni candidatos compatibles por ahora. Amplía tu
-              disponibilidad y sistemas, o vuelve a barajar lo que descartaste.
+              {emptyReason.headline}
             </ThemedText>
+            {emptyReason.hint && (
+              <ThemedText type="small" style={styles.centerText} themeColor="textSecondary">
+                {emptyReason.hint}
+              </ThemedText>
+            )}
             <Pressable
               style={styles.retryButton}
               onPress={() => {
@@ -593,8 +642,13 @@ export default function HomeScreen() {
               <Text style={styles.retryLabel}>🔄 Volver a barajar los pases</Text>
             </Pressable>
             <Pressable onPress={() => router.push('/onboarding')}>
-              <ThemedText type="small" themeColor="textSecondary">
-                Ajustar mi perfil
+              <ThemedText type="small" style={styles.emptyAction}>
+                {emptyReason.action}
+              </ThemedText>
+            </Pressable>
+            <Pressable onPress={() => router.push('/groups/new')}>
+              <ThemedText type="small" style={styles.emptyAction}>
+                🛡️ Crear mi propia mesa
               </ThemedText>
             </Pressable>
           </View>
@@ -748,6 +802,11 @@ const styles = StyleSheet.create({
   retryLabel: {
     color: Rolder.violetSofter,
     fontSize: 15,
+    fontFamily: RolderFonts.semibold,
+    fontWeight: '600',
+  },
+  emptyAction: {
+    color: Rolder.violetSoft,
     fontFamily: RolderFonts.semibold,
     fontWeight: '600',
   },
