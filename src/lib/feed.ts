@@ -97,7 +97,7 @@ function toMatchPlayer(row: Awaited<ReturnType<typeof fetchMatchPlayer>>): Match
 /** Recuento de por qué se cayó cada mesa, para poder explicar un feed vacío. */
 export type FilteredOut = { total: number; schedule: number; system: number; language: number };
 
-function tallyFilteredOut(results: MatchResult[]): FilteredOut {
+export function tallyFilteredOut(results: MatchResult[]): FilteredOut {
   const tally: FilteredOut = { total: 0, schedule: 0, system: 0, language: 0 };
   for (const result of results) {
     if (result.pass) continue;
