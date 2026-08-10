@@ -4,7 +4,7 @@ Cosas identificadas en barridos de mejoras que se decidió NO hacer todavía,
 con el porqué y la señal que indicaría que ha llegado su momento. Antes de
 proponer una mejora, mirar aquí: si ya está listada, no es un hallazgo nuevo.
 
-Última revisión: 2026-08-12.
+Última revisión: 2026-08-13.
 
 ## Operativo (bloquea funcionalidad ya mergeada)
 
@@ -71,6 +71,25 @@ proponer una mejora, mirar aquí: si ya está listada, no es un hallazgo nuevo.
   hay acción real: no existe `is_suspended` ni forma de apartar a un usuario
   tóxico sin SQL Editor. Flag de suspensión + excluir del feed + pantalla de
   «cuenta suspendida». Señal: el primer reporte que requiera actuar.
+
+## Esperando a la estrategia de marca (decisión de 2026-08)
+
+Los tres van juntos: hasta que la encargada de marketing fije nombre final
+y estrategia, no se toca. Señal de activación común: marca decidida
+(previsiblemente antes de la beta).
+
+- **Actualizar el PRD y AGENTS.md a la marca final.** El PRD aún dice
+  «RolMatch (nombre provisional)» y AGENTS.md no menciona Google ni que el
+  email es magic link. Se actualiza todo junto cuando haya nombre.
+- **Dominio propio.** Rompe coste 0 (~10-15 €/año): decisión explícita de
+  Chris pospuesta a la marca. Cuando llegue: cambiar `APP_URL` en
+  `src/lib/config.ts` y en `api/og.ts` (las dos únicas copias), y configurar
+  el dominio en Vercel.
+- **SMTP propio para los magic links.** El SMTP integrado de Supabase free
+  va capado (~2-4 emails/hora): puede tragarse logins por email ya con 15
+  testers. Resend/Brevo free tier + config en Auth del dashboard — es
+  configuración, no código. Hacerlo ANTES de abrir la beta aunque la marca
+  se retrase.
 
 ## Cómo mantener esto
 
