@@ -8,11 +8,13 @@ proponer una mejora, mirar aquí: si ya está listada, no es un hallazgo nuevo.
 
 ## Operativo (bloquea funcionalidad ya mergeada)
 
-- **Aplicar migraciones 00044 y 00045** en el SQL Editor. Verificado por REST:
-  el bucket `chat-media` no existe (00044) y `reports.message_excerpt` /
-  `is_moderator()` dan 400/404 (00045). La 00046 SÍ está aplicada. Hasta
-  entonces: las fotos de chat siguen yendo al bucket público `avatars` y la
-  bandeja de moderación (`/moderation`) sale vacía con aviso.
+- **Aplicar migraciones 00044, 00045, 00047 y 00048** en el SQL Editor.
+  Verificado por REST: el bucket `chat-media` no existe (00044) y
+  `reports.message_excerpt` / `is_moderator()` dan 400/404 (00045). La 00046
+  SÍ está aplicada. Hasta entonces: las fotos de chat siguen yendo al bucket
+  público `avatars`, la bandeja de moderación (`/moderation`) sale vacía con
+  aviso, las vistas `kpi_*` no existen (00047) y el toggle de pausar la
+  búsqueda no aparece en Opciones (00048).
 - **Migrar las fotos de chat viejas** del bucket público `avatars` a
   `chat-media` (privado). No se puede desde SQL: script contra la API de
   Storage, objeto a objeto. El cliente ya distingue ambas formas (URL completa
