@@ -75,6 +75,9 @@ const DECK_MAX_WIDTH = 420;
 // Tweak del handoff rolder: el % de compatibilidad va oculto por defecto
 const SHOW_SCORE = false;
 
+/** Ventana en la que el feed se considera fresco al volver a la pestaña. */
+const FEED_FRESH_MS = 2 * 60 * 1000;
+
 const ROLE_LABELS: Record<string, string> = {
   player: 'Jugador/a',
   gm: 'GM',
@@ -128,40 +131,56 @@ export default function HomeScreen() {
   const [myAvatar, setMyAvatar] = useState<string | null>(null);
   const [premium, setPremium] = useState(false);
   const [lastSwiped, setLastSwiped] = useState<FeedItem | null>(null);
+  /** cuándo y para quién se cargó el feed (para no rehacerlo en cada focus) */
+  const lastLoad = useRef<{ userId: string; at: number } | null>(null);
 
-  const load = useCallback(() => {
-    if (!session) return;
-    setLoadError(false);
-    setLoadErrorDetail(null);
-    setItems(undefined);
-    setIndex(0);
-    setProposedId(null);
-    setLastSwiped(null);
-    hasCompletedOnboarding(session.user.id)
-      .then(setOnboarded)
-      .catch(() => setOnboarded(true));
-    registerPushToken(session.user.id);
-    fetchPremiumStatus(session.user.id)
-      .then((status) => setPremium(status.active))
-      .catch(() => {});
-    fetchUnifiedFeed(session.user.id)
-      .then((feed) => {
-        setItems(feed.items);
-        setMyAvailability(
-          new Set(feed.myAvailability.map((a) => availabilityCellKey(a.weekday, a.slot)))
-        );
-      })
-      .catch((error) => {
-        setLoadError(true);
-        setLoadErrorDetail(error instanceof Error ? error.message : String(error));
-      });
-    fetchMyCharacters(session.user.id)
-      .then((all) => setMyCharacters(all.filter((c) => c.status === 'looking')))
-      .catch(() => {});
-    fetchProfileData(session.user.id)
-      .then((p) => setMyAvatar(p.avatar_url))
-      .catch(() => {});
-  }, [session]);
+  // Volver de un perfil o de un chat NO debe rehacer el feed: era la consulta
+  // más cara de la app, dejaba la pantalla en la rueda y devolvía el mazo a la
+  // primera tarjeta, perdiendo por dónde ibas. Refrescamos solo si los datos
+  // ya están viejos; «Reintentar» y «volver a barajar» fuerzan.
+  const load = useCallback(
+    (options?: { force?: boolean }) => {
+      if (!session) return;
+      const fresh =
+        lastLoad.current?.userId === session.user.id &&
+        Date.now() - lastLoad.current.at < FEED_FRESH_MS;
+      if (!options?.force && fresh) return;
+      setLoadError(false);
+      setLoadErrorDetail(null);
+      setItems(undefined);
+      setIndex(0);
+      setProposedId(null);
+      setLastSwiped(null);
+      hasCompletedOnboarding(session.user.id)
+        .then(setOnboarded)
+        .catch(() => setOnboarded(true));
+      registerPushToken(session.user.id);
+      fetchPremiumStatus(session.user.id)
+        .then((status) => setPremium(status.active))
+        .catch(() => {});
+      fetchUnifiedFeed(session.user.id)
+        .then((feed) => {
+          lastLoad.current = { userId: session.user.id, at: Date.now() };
+          setItems(feed.items);
+          setMyAvailability(
+            new Set(feed.myAvailability.map((a) => availabilityCellKey(a.weekday, a.slot)))
+          );
+        })
+        .catch((error) => {
+          setLoadError(true);
+          setLoadErrorDetail(error instanceof Error ? error.message : String(error));
+        });
+      fetchMyCharacters(session.user.id)
+        .then((all) => setMyCharacters(all.filter((c) => c.status === 'looking')))
+        .catch(() => {});
+      fetchProfileData(session.user.id)
+        .then((p) => setMyAvatar(p.avatar_url))
+        .catch(() => {});
+    },
+    [session]
+  );
+
+  const reload = useCallback(() => load({ force: true }), [load]);
 
   useFocusEffect(load);
 
@@ -533,7 +552,7 @@ export default function HomeScreen() {
           <View style={styles.centerBox}>
             <Text style={styles.centerEmoji}>📡</Text>
             <ThemedText style={styles.centerText}>No se pudo cargar el feed.</ThemedText>
-            <Pressable style={styles.retryButton} onPress={load}>
+            <Pressable style={styles.retryButton} onPress={reload}>
               <ThemedText>Reintentar</ThemedText>
             </Pressable>
             {loadErrorDetail && (
@@ -558,7 +577,7 @@ export default function HomeScreen() {
               onPress={() => {
                 if (!session) return;
                 // borra solo los «pass»: lo descartado vuelve a la baraja
-                resetPasses(session.user.id).then(load).catch(load);
+                resetPasses(session.user.id).then(reload).catch(reload);
               }}>
               <Text style={styles.retryLabel}>🔄 Volver a barajar los pases</Text>
             </Pressable>
