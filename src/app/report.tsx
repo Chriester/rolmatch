@@ -8,15 +8,19 @@ import { AppHeader } from '@/components/app-header';
 import { Chip } from '@/components/chip';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { MaxContentWidth, Rolder, Spacing } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
 import { REPORT_REASONS, blockUser, submitReport } from '@/lib/moderation';
 
 export default function ReportScreen() {
-  const { kind, id, name } = useLocalSearchParams<{
-    kind: 'user' | 'group';
+  const { kind, id, name, excerpt, authorId } = useLocalSearchParams<{
+    kind: 'user' | 'group' | 'message';
     id: string;
     name?: string;
+    /** texto del mensaje reportado: se guarda como prueba (migr. 00045) */
+    excerpt?: string;
+    /** quién lo escribió, para poder actuar sobre la persona */
+    authorId?: string;
   }>();
   const session = useSession();
   const [reason, setReason] = useState<string | null>(null);
@@ -28,9 +32,14 @@ export default function ReportScreen() {
     if (!session || !kind || !id || !reason) return;
     setBusy(true);
     try {
-      await submitReport(session.user.id, { kind, id }, reason, details.trim() || null);
-      if (alsoBlock && kind === 'user') {
-        await blockUser(session.user.id, id);
+      const target =
+        kind === 'message'
+          ? ({ kind, id, excerpt: excerpt ?? null, authorId: authorId ?? null } as const)
+          : ({ kind, id } as const);
+      await submitReport(session.user.id, target, reason, details.trim() || null);
+      const blockTarget = kind === 'user' ? id : kind === 'message' ? authorId : null;
+      if (alsoBlock && blockTarget) {
+        await blockUser(session.user.id, blockTarget);
       }
       showAlert(
         'Reporte enviado',
@@ -55,9 +64,14 @@ export default function ReportScreen() {
             onBack={() => (router.canGoBack() ? router.back() : router.replace('/'))}
           />
           <ThemedText type="title">
-            Reportar {kind === 'group' ? 'mesa' : 'usuario'}
+            Reportar {kind === 'group' ? 'mesa' : kind === 'message' ? 'mensaje' : 'usuario'}
           </ThemedText>
           {name && <ThemedText>{name}</ThemedText>}
+          {kind === 'message' && excerpt && (
+            <ThemedText style={styles.excerpt} numberOfLines={6}>
+              «{excerpt}»
+            </ThemedText>
+          )}
 
           <ThemedText type="small">¿Qué ha pasado?</ThemedText>
           <View style={styles.chipRow}>
@@ -66,7 +80,7 @@ export default function ReportScreen() {
             ))}
           </View>
 
-          {kind === 'user' && (
+          {(kind === 'user' || (kind === 'message' && authorId)) && (
             <View style={styles.blockRow}>
               <View style={styles.blockLabel}>
                 <ThemedText>Bloquear también</ThemedText>
@@ -120,6 +134,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: Spacing.two,
+  },
+  excerpt: {
+    fontStyle: 'italic',
+    borderLeftWidth: 2,
+    borderLeftColor: Rolder.violetSoft,
+    paddingLeft: 10,
   },
   blockRow: {
     flexDirection: 'row',

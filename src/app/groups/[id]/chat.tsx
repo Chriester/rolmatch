@@ -55,6 +55,7 @@ import {
   sendMessage,
   sendRollMessage,
   markChatRead,
+  messagePreview,
   subscribeToMessages,
   subscribeToReactions,
   toggleMessageReaction,
@@ -693,6 +694,24 @@ export default function GroupChatScreen() {
           setActionsFor(null);
         }}
         onDelete={() => actionsFor && handleDeleteMessage(actionsFor)}
+        onReport={
+          actionsFor && actionsFor.sender_id !== userId
+            ? () => {
+                const message = actionsFor;
+                setActionsFor(null);
+                router.push({
+                  pathname: '/report',
+                  params: {
+                    kind: 'message',
+                    id: message.id,
+                    authorId: message.sender_id,
+                    name: message.profiles?.alias ?? '',
+                    excerpt: messagePreview(message),
+                  },
+                });
+              }
+            : undefined
+        }
         onClose={() => setActionsFor(null)}
       />
 

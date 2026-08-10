@@ -16,6 +16,7 @@ export function MessageActions({
   onEdit,
   onDelete,
   onReact,
+  onReport,
   onClose,
 }: {
   visible: boolean;
@@ -30,6 +31,8 @@ export function MessageActions({
   onDelete: () => void;
   /** reacción rápida (si la pantalla las soporta) */
   onReact?: (emoji: string) => void;
+  /** reportar un mensaje ajeno (migr. 00045) */
+  onReport?: () => void;
   onClose: () => void;
 }) {
   return (
@@ -67,6 +70,13 @@ export function MessageActions({
               style={({ pressed }) => [styles.action, pressed && styles.pressed]}
               onPress={onDelete}>
               <Text style={[styles.actionLabel, styles.deleteLabel]}>🗑️ Borrar</Text>
+            </Pressable>
+          )}
+          {onReport && (
+            <Pressable
+              style={({ pressed }) => [styles.action, pressed && styles.pressed]}
+              onPress={onReport}>
+              <Text style={styles.actionLabel}>🚩 Reportar</Text>
             </Pressable>
           )}
           <Pressable
