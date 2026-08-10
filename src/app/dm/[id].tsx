@@ -163,11 +163,11 @@ export default function DmChatScreen() {
         return next;
       });
     };
-    const channel = subscribeToDmReactions(`dm:${id}`, {
+    const reactions = subscribeToDmReactions(id, {
       onAdd: (e) => apply(e, 1),
       onRemove: (e) => apply(e, -1),
     });
-    return () => unsubscribeFromDmMessages(channel);
+    return () => reactions.close();
   }, [id, userId]);
 
   const handleToggleReaction = async (message: DmMessage, emoji: string) => {

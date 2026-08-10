@@ -1,7 +1,12 @@
 import type { RealtimeChannel } from '@supabase/supabase-js';
 
 import { rollSummary, type DiceRoll } from '@/lib/dice';
-import { supabase, uniqueChannel } from '@/lib/supabase';
+import {
+  subscribeScoped,
+  supabase,
+  uniqueChannel,
+  type Subscription,
+} from '@/lib/supabase';
 import { emitUnreadChanged } from '@/lib/unread-events';
 
 export type MessageKind = 'text' | 'gif' | 'sticker' | 'roll' | 'image';
@@ -41,6 +46,17 @@ export type ChatSummary = {
   unread: number;
 };
 
+type GroupRef = { id: string; name: string; image_url: string | null };
+
+/** Con mensajes primero (el más reciente arriba); vacíos al final por nombre. */
+function byLastActivity(a: ChatSummary, b: ChatSummary) {
+  if (a.lastMessage && b.lastMessage)
+    return b.lastMessage.created_at.localeCompare(a.lastMessage.created_at);
+  if (a.lastMessage) return -1;
+  if (b.lastMessage) return 1;
+  return a.name.localeCompare(b.name);
+}
+
 /** Mesas donde soy miembro, con el último mensaje de cada una (para «Mis chats»). */
 export async function fetchMyChats(userId: string): Promise<ChatSummary[]> {
   const { data: memberships, error } = await supabase
@@ -50,12 +66,58 @@ export async function fetchMyChats(userId: string): Promise<ChatSummary[]> {
   if (error) throw error;
 
   const groups = (memberships ?? [])
-    .map((m) => m.groups as unknown as { id: string; name: string; image_url: string | null } | null)
-    .filter((g): g is { id: string; name: string; image_url: string | null } => g !== null);
+    .map((m) => m.groups as unknown as GroupRef | null)
+    .filter((g): g is GroupRef => g !== null);
   if (groups.length === 0) return [];
 
-  // Últimos mensajes de todas mis mesas de una tacada; el primero por mesa
-  // es su último mensaje (con 200 sobra para una lista de chats de alpha).
+  // Último mensaje y no leídos EXACTOS por mesa, en una consulta (migr. 00041)
+  const { data: rows, error: rpcError } = await supabase.rpc('chat_summaries');
+  if (!rpcError && rows) {
+    const byGroup = new Map(
+      (rows as ChatSummaryRow[]).map((row) => [row.group_id, row])
+    );
+    return groups
+      .map((g) => {
+        const row = byGroup.get(g.id);
+        return {
+          groupId: g.id,
+          name: g.name,
+          imageUrl: g.image_url,
+          lastMessage: row?.last_created_at
+            ? {
+                body: messagePreview({ body: row.last_body, kind: row.last_kind }),
+                sender: row.last_sender,
+                created_at: row.last_created_at,
+              }
+            : null,
+          unread: Math.min(row?.unread ?? 0, 99),
+        };
+      })
+      .sort(byLastActivity);
+  }
+
+  return fetchMyChatsLegacy(userId, groups);
+}
+
+type ChatSummaryRow = {
+  group_id: string;
+  last_body: string | null;
+  last_kind: MessageKind;
+  last_sender: string | null;
+  last_created_at: string | null;
+  unread: number;
+};
+
+/**
+ * Camino viejo, por si la migración 00041 aún no está aplicada: los 200
+ * mensajes más recientes de todas mis mesas juntas. El límite es GLOBAL, así
+ * que una mesa muy activa puede dejar a las demás sin último mensaje y con
+ * cero no leídos. Se puede borrar en cuanto 00041 esté en producción.
+ */
+async function fetchMyChatsLegacy(
+  userId: string,
+  groups: GroupRef[]
+): Promise<ChatSummary[]> {
   const [{ data: recent, error: msgError }, { data: reads, error: readsError }] =
     await Promise.all([
       supabase
@@ -101,14 +163,7 @@ export async function fetchMyChats(userId: string): Promise<ChatSummary[]> {
       lastMessage: lastByGroup.get(g.id) ?? null,
       unread: readsError ? 0 : Math.min(unreadByGroup.get(g.id) ?? 0, 99),
     }))
-    .sort((a, b) => {
-      // con mensajes primero (más reciente arriba); vacíos al final por nombre
-      if (a.lastMessage && b.lastMessage)
-        return b.lastMessage.created_at.localeCompare(a.lastMessage.created_at);
-      if (a.lastMessage) return -1;
-      if (b.lastMessage) return 1;
-      return a.name.localeCompare(b.name);
-    });
+    .sort(byLastActivity);
 }
 
 /** Total de no-leídos entre mesas e hilos 1-a-1 (punto del avatar y tab). */
@@ -302,30 +357,33 @@ export async function toggleMessageReaction(
 }
 
 /**
- * Reacciones en vivo. Sin filtro (message_id no es filtrable por mesa): el
- * caller descarta los eventos de mensajes que no tenga cargados.
+ * Reacciones en vivo de UNA mesa. Antes esto escuchaba la tabla entera —cada
+ * cliente con un chat abierto recibía las reacciones de toda la plataforma y
+ * descartaba las que no eran suyas—; con group_id (migr. 00042) el filtro lo
+ * aplica el servidor. Sin esa migración se sigue escuchando todo, como antes.
  */
 export function subscribeToReactions(
-  key: string,
+  groupId: string,
   handlers: { onAdd: (e: ReactionEvent) => void; onRemove: (e: ReactionEvent) => void }
-): RealtimeChannel {
-  return uniqueChannel(`reactions:${key}`)
-    .on(
-      'postgres_changes',
-      { event: 'INSERT', schema: 'public', table: 'message_reactions' },
-      (payload) => handlers.onAdd(payload.new as ReactionEvent)
-    )
-    .on(
-      'postgres_changes',
-      { event: 'DELETE', schema: 'public', table: 'message_reactions' },
-      (payload) => {
+): Subscription {
+  return subscribeScoped('message_reactions', 'group_id', (filtered) => {
+    const scope = {
+      schema: 'public',
+      table: 'message_reactions',
+      ...(filtered ? { filter: `group_id=eq.${groupId}` } : {}),
+    };
+    return uniqueChannel(`reactions:group:${groupId}`)
+      .on('postgres_changes', { ...scope, event: 'INSERT' }, (payload) =>
+        handlers.onAdd(payload.new as ReactionEvent)
+      )
+      .on('postgres_changes', { ...scope, event: 'DELETE' }, (payload) => {
         const old = payload.old as Partial<ReactionEvent>;
         if (old.message_id && old.user_id && old.emoji) {
           handlers.onRemove(old as ReactionEvent);
         }
-      }
-    )
-    .subscribe();
+      })
+      .subscribe();
+  });
 }
 
 /** Edita un mensaje propio (la RLS rechaza los ajenos). */

@@ -8,7 +8,12 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
 import { rollSummary, type DiceRoll } from '@/lib/dice';
 import { messagePreview, type ChatSummary, type MessageKind } from '@/lib/messages';
 import { fetchBlockRelations } from '@/lib/moderation';
-import { supabase, uniqueChannel } from '@/lib/supabase';
+import {
+  subscribeScoped,
+  supabase,
+  uniqueChannel,
+  type Subscription,
+} from '@/lib/supabase';
 import { emitUnreadChanged } from '@/lib/unread-events';
 
 export type DmMessage = {
@@ -251,31 +256,32 @@ export async function toggleDmReaction(
   }
 }
 
+/** Reacciones en vivo de UN hilo (mismo cambio que en el chat de mesa). */
 export function subscribeToDmReactions(
-  key: string,
+  threadId: string,
   handlers: {
     onAdd: (e: { message_id: string; user_id: string; emoji: string }) => void;
     onRemove: (e: { message_id: string; user_id: string; emoji: string }) => void;
   }
-): RealtimeChannel {
-  return uniqueChannel(`dm-reactions:${key}`)
-    .on(
-      'postgres_changes',
-      { event: 'INSERT', schema: 'public', table: 'dm_message_reactions' },
-      (payload) =>
+): Subscription {
+  return subscribeScoped('dm_message_reactions', 'thread_id', (filtered) => {
+    const scope = {
+      schema: 'public',
+      table: 'dm_message_reactions',
+      ...(filtered ? { filter: `thread_id=eq.${threadId}` } : {}),
+    };
+    return uniqueChannel(`dm-reactions:${threadId}`)
+      .on('postgres_changes', { ...scope, event: 'INSERT' }, (payload) =>
         handlers.onAdd(payload.new as { message_id: string; user_id: string; emoji: string })
-    )
-    .on(
-      'postgres_changes',
-      { event: 'DELETE', schema: 'public', table: 'dm_message_reactions' },
-      (payload) => {
+      )
+      .on('postgres_changes', { ...scope, event: 'DELETE' }, (payload) => {
         const old = payload.old as Partial<{ message_id: string; user_id: string; emoji: string }>;
         if (old.message_id && old.user_id && old.emoji) {
           handlers.onRemove(old as { message_id: string; user_id: string; emoji: string });
         }
-      }
-    )
-    .subscribe();
+      })
+      .subscribe();
+  });
 }
 
 /** Edita un mensaje propio (la RLS rechaza los ajenos). */
@@ -349,6 +355,17 @@ export async function markDmRead(threadId: string, userId: string) {
 }
 
 /** Mis hilos 1-a-1 con último mensaje y no-leídos. [] si la migración falta. */
+type DmSummaryRow = {
+  thread_id: string;
+  other_id: string;
+  other_alias: string | null;
+  other_avatar_url: string | null;
+  last_body: string | null;
+  last_kind: MessageKind;
+  last_created_at: string | null;
+  unread: number;
+};
+
 export async function fetchMyDmChats(userId: string): Promise<DmSummary[]> {
   try {
     const [{ data: allThreads, error }, blocked] = await Promise.all([
@@ -364,6 +381,28 @@ export async function fetchMyDmChats(userId: string): Promise<DmSummary[]> {
       (t) => !blocked.has(t.user_lo === userId ? t.user_hi : t.user_lo)
     );
     if (threads.length === 0) return [];
+
+    // Último mensaje y no leídos EXACTOS por hilo, en una consulta (migr. 00041)
+    const { data: rows, error: rpcError } = await supabase.rpc('dm_summaries');
+    if (!rpcError && rows) {
+      const visible = new Set(threads.map((t) => t.id));
+      return (rows as DmSummaryRow[])
+        .filter((row) => visible.has(row.thread_id))
+        .map((row) => ({
+          threadId: row.thread_id,
+          otherId: row.other_id,
+          name: row.other_alias ?? 'Jugador/a',
+          imageUrl: row.other_avatar_url,
+          lastMessage: row.last_created_at
+            ? {
+                body: messagePreview({ body: row.last_body, kind: row.last_kind }),
+                sender: null, // en un 1-a-1 el nombre del emisor sobra
+                created_at: row.last_created_at,
+              }
+            : null,
+          unread: Math.min(row.unread ?? 0, 99),
+        }));
+    }
 
     const threadIds = threads.map((t) => t.id);
     const otherIds = threads.map((t) => (t.user_lo === userId ? t.user_hi : t.user_lo));
