@@ -121,6 +121,7 @@ export default function RootLayout() {
           <Stack.Screen name="settings" />
           <Stack.Screen name="blocked" />
           <Stack.Screen name="moderation" />
+          <Stack.Screen name="novedades" />
           <Stack.Screen name="xp" />
           <Stack.Screen name="players/[id]" />
           <Stack.Screen name="dm/[id]" />

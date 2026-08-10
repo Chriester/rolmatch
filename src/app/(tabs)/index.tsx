@@ -602,7 +602,16 @@ export default function HomeScreen() {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        <AppHeader />
+        <AppHeader
+          extra={
+            <Pressable
+              accessibilityLabel="Novedades"
+              onPress={() => router.push('/novedades')}
+              style={({ pressed }) => pressed && styles.bellPressed}>
+              <Text style={styles.bell}>🔔</Text>
+            </Pressable>
+          }
+        />
 
         {loadError ? (
           <View style={styles.centerBox}>
@@ -804,6 +813,12 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontFamily: RolderFonts.semibold,
     fontWeight: '600',
+  },
+  bell: {
+    fontSize: 20,
+  },
+  bellPressed: {
+    opacity: 0.6,
   },
   emptyAction: {
     color: Rolder.violetSoft,
