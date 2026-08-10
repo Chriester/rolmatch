@@ -141,6 +141,35 @@ export async function fetchGroup(groupId: string): Promise<GroupDetail> {
   return data as unknown as GroupDetail;
 }
 
+/** Lo que ve alguien SIN cuenta que llega por un enlace de invitación. */
+export type PublicGroupCard = {
+  id: string;
+  name: string;
+  description: string | null;
+  image_url: string | null;
+  format: GroupFormat;
+  frequency: string | null;
+  session_weekday: number | null;
+  session_slot: number | null;
+  timezone: string;
+  system_name: string | null;
+  max_players: number;
+  taken_seats: number;
+  owner_alias: string | null;
+  owner_avatar_url: string | null;
+};
+
+/**
+ * Ficha mínima de una mesa activa, sin sesión (migr. 00046). null si no
+ * existe o está disuelta.
+ */
+export async function fetchPublicGroupCard(groupId: string): Promise<PublicGroupCard | null> {
+  const { data, error } = await supabase.rpc('public_group_card', { p_group_id: groupId });
+  if (error) throw error;
+  const rows = (data ?? []) as PublicGroupCard[];
+  return rows[0] ?? null;
+}
+
 export const WEEKDAY_LABELS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 export const SLOT_LABELS = ['Mañana', 'Tarde', 'Noche', 'Madrugada'];
 // Franjas de 6 h alineadas con el algoritmo de matching (src/lib/matching.ts)

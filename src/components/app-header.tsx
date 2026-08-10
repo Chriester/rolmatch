@@ -19,9 +19,11 @@ type AppHeaderProps = {
   onBack?: () => void;
   /** sustituye el hueco derecho (por defecto: avatar que abre el menú) */
   right?: ReactNode;
+  /** se añade a la izquierda del avatar, sin quitarlo */
+  extra?: ReactNode;
 };
 
-export function AppHeader({ onBack, right }: AppHeaderProps) {
+export function AppHeader({ onBack, right, extra }: AppHeaderProps) {
   const session = useSession();
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [unread, setUnread] = useState(0);
@@ -50,24 +52,28 @@ export function AppHeader({ onBack, right }: AppHeaderProps) {
         </Pressable>
       </View>
 
-      {right ??
-        (session ? (
-          <Pressable
-            onPress={() => router.push('/profile')}
-            accessibilityLabel="Ir a mi perfil"
-            style={styles.menuButton}>
-            {avatarUrl ? (
-              <Image source={{ uri: avatarUrl }} style={styles.avatar} />
-            ) : (
-              <View style={[styles.avatar, styles.avatarFallback]}>
-                <Text style={styles.avatarGlyph}>👤</Text>
-              </View>
-            )}
-            {unread > 0 && <View style={styles.unreadDot} />}
-          </Pressable>
-        ) : (
-          <View style={styles.spacer} />
-        ))}
+      <View style={styles.right}>
+        {/* el hueco extra NO pisa al avatar: es la navegación principal */}
+        {extra}
+        {right ??
+          (session ? (
+            <Pressable
+              onPress={() => router.push('/profile')}
+              accessibilityLabel="Ir a mi perfil"
+              style={styles.menuButton}>
+              {avatarUrl ? (
+                <Image source={{ uri: avatarUrl }} style={styles.avatar} />
+              ) : (
+                <View style={[styles.avatar, styles.avatarFallback]}>
+                  <Text style={styles.avatarGlyph}>👤</Text>
+                </View>
+              )}
+              {unread > 0 && <View style={styles.unreadDot} />}
+            </Pressable>
+          ) : (
+            <View style={styles.spacer} />
+          ))}
+      </View>
     </View>
   );
 }
@@ -78,6 +84,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingVertical: Spacing.two,
+  },
+  right: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
   },
   left: {
     flexDirection: 'row',

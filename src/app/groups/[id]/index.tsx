@@ -18,6 +18,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { confirmAction, showAlert } from '@/lib/alert';
 import { DISCORD_ENABLED } from '@/lib/config';
 import { AppHeader } from '@/components/app-header';
+import { PublicGroupInvite } from '@/components/public-group-invite';
 import { CardChip, CardChipRow } from '@/components/swipe/card-shell';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -64,7 +65,29 @@ function formatSessionDate(iso: string) {
 }
 
 
-export default function GroupDetailScreen() {
+/**
+ * Esta ruta vive FUERA del bloque protegido: es el destino de los enlaces
+ * compartidos y quien llega sin cuenta tiene que poder ver de qué va la mesa
+ * antes de registrarse. Sin sesión se pinta la ficha pública (migr. 00046);
+ * con ella, la pantalla completa de siempre. Son dos componentes distintos a
+ * propósito: la de abajo asume sesión en media docena de hooks.
+ */
+export default function GroupDetailRoute() {
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const session = useSession();
+
+  if (session === undefined) {
+    return (
+      <ThemedView style={[styles.container, styles.loading]}>
+        <ActivityIndicator />
+      </ThemedView>
+    );
+  }
+  if (session === null) return <PublicGroupInvite groupId={id} />;
+  return <GroupDetailScreen />;
+}
+
+function GroupDetailScreen() {
   const { id, invitacion } = useLocalSearchParams<{ id: string; invitacion?: string }>();
   const session = useSession();
   // arranca con lo último visto (comparte caché con el chat de la mesa)

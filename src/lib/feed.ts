@@ -94,8 +94,25 @@ function toMatchPlayer(row: Awaited<ReturnType<typeof fetchMatchPlayer>>): Match
   };
 }
 
+/** Recuento de por qué se cayó cada mesa, para poder explicar un feed vacío. */
+export type FilteredOut = { total: number; schedule: number; system: number; language: number };
+
+function tallyFilteredOut(results: MatchResult[]): FilteredOut {
+  const tally: FilteredOut = { total: 0, schedule: 0, system: 0, language: 0 };
+  for (const result of results) {
+    if (result.pass) continue;
+    tally.total += 1;
+    if (result.reasons.includes('availability')) tally.schedule += 1;
+    if (result.reasons.includes('system')) tally.system += 1;
+    if (result.reasons.includes('language')) tally.language += 1;
+  }
+  return tally;
+}
+
 /** Mesas activas con plazas que pasan los filtros duros para este jugador, ordenadas por score. */
-export async function fetchPlayerFeed(userId: string): Promise<GroupCandidate[]> {
+export async function fetchPlayerFeed(
+  userId: string
+): Promise<{ candidates: GroupCandidate[]; filteredOut: FilteredOut }> {
   const me = toMatchPlayer(await fetchMatchPlayer(userId));
 
   const [{ data: myMemberships }, { data: mySwipes }, blocked] = await Promise.all([
@@ -139,8 +156,7 @@ export async function fetchPlayerFeed(userId: string): Promise<GroupCandidate[]>
     ])
   );
 
-  return visible
-    .map((g) => {
+  const scored = visible.map((g) => {
       // plazas derivadas: límite menos miembros sin contar al GM
       const memberRows = (g.group_members ?? []) as { user_id: string }[];
       const players = memberRows.filter((m) => m.user_id !== g.owner_id).length;
@@ -156,12 +172,17 @@ export async function fetchPlayerFeed(userId: string): Promise<GroupCandidate[]>
         group: { ...g, full, owner } as unknown as GroupCandidate['group'],
         result: matchPlayerToGroup(me, g as unknown as MatchGroup),
       };
-    })
-    .filter((c) => c.result.pass)
-    // llenas al final; dentro de cada bloque, por score
-    .sort(
-      (a, b) => Number(a.group.full) - Number(b.group.full) || b.result.score - a.result.score
-    );
+  });
+
+  return {
+    candidates: scored
+      .filter((c) => c.result.pass)
+      // llenas al final; dentro de cada bloque, por score
+      .sort(
+        (a, b) => Number(a.group.full) - Number(b.group.full) || b.result.score - a.result.score
+      ),
+    filteredOut: tallyFilteredOut(scored.map((c) => c.result)),
+  };
 }
 
 // Columnas de un candidato para la tarjeta y el score. La disponibilidad se
@@ -375,6 +396,12 @@ export type UnifiedFeed = {
   items: FeedItem[];
   /** mi disponibilidad, para pintar el mini-grid en los detalles de mesas */
   myAvailability: { weekday: number; slot: number }[];
+  /**
+   * Mesas que existen y NO han pasado los filtros duros, por motivo. El feed
+   * vacío puede así decir por qué lo está, en vez de un «no hay nada» que
+   * deja al usuario sin saber qué tocar.
+   */
+  filteredOut: { total: number; schedule: number; system: number; language: number };
 };
 
 export async function fetchUnifiedFeed(userId: string): Promise<UnifiedFeed> {
@@ -382,9 +409,17 @@ export async function fetchUnifiedFeed(userId: string): Promise<UnifiedFeed> {
   const role = meRow.role as 'player' | 'gm' | 'both';
   const items: FeedItem[] = [];
 
+  let filteredOut: FilteredOut = { total: 0, schedule: 0, system: 0, language: 0 };
   if (role === 'player' || role === 'both') {
     const groups = await fetchPlayerFeed(userId);
-    items.push(...groups.map((g) => ({ kind: 'group' as const, group: g.group, result: g.result })));
+    filteredOut = groups.filteredOut;
+    items.push(
+      ...groups.candidates.map((g) => ({
+        kind: 'group' as const,
+        group: g.group,
+        result: g.result,
+      }))
+    );
   }
 
   if (role === 'gm' || role === 'both') {
@@ -455,5 +490,5 @@ export async function fetchUnifiedFeed(userId: string): Promise<UnifiedFeed> {
       liked(b) - liked(a) || boosted(b) - boosted(a) || full(a) - full(b) || score(b) - score(a)
   );
 
-  return { items, myAvailability: meRow.availability_slots };
+  return { items, myAvailability: meRow.availability_slots, filteredOut };
 }
