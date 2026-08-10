@@ -42,3 +42,53 @@ export function uniqueChannel(topic: string): RealtimeChannel {
   channelSeq += 1;
   return supabase.channel(`${topic}:${channelSeq}`);
 }
+
+const columnProbes = new Map<string, Promise<boolean>>();
+
+/**
+ * ¿Existe ya esta columna? Una vez por sesión y cacheado.
+ *
+ * Los filtros de Realtime dependen de que la migración esté aplicada, y un
+ * filtro sobre una columna que no existe deja el canal en error: la pantalla
+ * se queda sin tiempo real y en silencio. Preguntando primero, el mismo
+ * código funciona antes y después de aplicarla.
+ */
+export function hasColumn(table: string, column: string): Promise<boolean> {
+  const key = `${table}.${column}`;
+  const cached = columnProbes.get(key);
+  if (cached) return cached;
+  const probe = Promise.resolve(supabase.from(table).select(column).limit(1)).then(
+    ({ error }) => !error
+  );
+  columnProbes.set(key, probe);
+  return probe;
+}
+
+/** Suscripción viva que se puede cerrar aunque aún no se haya abierto. */
+export type Subscription = { close: () => void };
+
+/**
+ * Abre un canal cuando se sabe si el filtro por `column` es aplicable.
+ * `open` recibe true si puede filtrar y false si toca escuchar sin filtro
+ * (comportamiento viejo). Cerrar antes de que resuelva la sonda no deja el
+ * canal huérfano.
+ */
+export function subscribeScoped(
+  table: string,
+  column: string,
+  open: (filtered: boolean) => RealtimeChannel
+): Subscription {
+  let channel: RealtimeChannel | null = null;
+  let closed = false;
+  hasColumn(table, column).then((filtered) => {
+    if (closed) return;
+    channel = open(filtered);
+  });
+  return {
+    close() {
+      closed = true;
+      if (channel) supabase.removeChannel(channel);
+      channel = null;
+    },
+  };
+}

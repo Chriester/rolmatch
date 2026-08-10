@@ -203,11 +203,11 @@ export default function GroupChatScreen() {
         return next;
       });
     };
-    const channel = subscribeToReactions(`group:${id}`, {
+    const reactions = subscribeToReactions(id, {
       onAdd: (e) => apply(e, 1),
       onRemove: (e) => apply(e, -1),
     });
-    return () => unsubscribeFromMessages(channel);
+    return () => reactions.close();
   }, [id, userId]);
 
   const handleToggleReaction = async (message: ChatMessage, emoji: string) => {
