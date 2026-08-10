@@ -5,7 +5,7 @@
 import Constants from 'expo-constants';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { confirmAction, showAlert } from '@/lib/alert';
@@ -16,6 +16,7 @@ import { ListRow, OutlineButton, ScreenBlurb, ScreenTitle } from '@/components/u
 import { MaxContentWidth, Rolder, RolderFonts, Spacing } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
 import { amIModerator } from '@/lib/moderation';
+import { fetchSearching, setSearching } from '@/lib/profile';
 import { enableWebPush, webPushState, type WebPushState } from '@/lib/web-push';
 
 const OPTIONS: { icon: string; label: string; detail: string; route: string }[] = [
@@ -38,6 +39,55 @@ const OPTIONS: { icon: string; label: string; detail: string; route: string }[] 
     route: '/blocked',
   },
 ];
+
+// Pausar la búsqueda (migr. 00048): dejar de salir en el feed de los GMs sin
+// borrar nada. Si la columna aún no existe, la sección no aparece.
+function SearchingSection() {
+  const session = useSession();
+  // undefined = cargando; null = migración sin aplicar (sección oculta)
+  const [searching, setSearchingState] = useState<boolean | null | undefined>(undefined);
+
+  useEffect(() => {
+    if (!session) return;
+    fetchSearching(session.user.id)
+      .then(setSearchingState)
+      .catch(() => setSearchingState(null));
+  }, [session]);
+
+  if (searching === undefined || searching === null) return null;
+
+  const toggle = async (value: boolean) => {
+    if (!session) return;
+    setSearchingState(value); // optimista: un switch no puede ir con retardo
+    try {
+      await setSearching(session.user.id, value);
+    } catch (error) {
+      setSearchingState(!value);
+      showAlert('No se pudo cambiar', error instanceof Error ? error.message : String(error));
+    }
+  };
+
+  return (
+    <View style={styles.pushBox}>
+      <View style={styles.searchingRow}>
+        <View style={styles.searchingText}>
+          <Text style={styles.pushTitle}>🔍 En búsqueda de mesa</Text>
+          <Text style={styles.pushDetail}>
+            {searching
+              ? 'Los GMs te ven entre los candidatos. Apágalo si ya tienes mesa: dejarás de salir en su feed (tus mesas y chats siguen igual).'
+              : 'Pausado: no apareces en el feed de nadie. Enciéndelo cuando vuelvas a buscar.'}
+          </Text>
+        </View>
+        <Switch
+          value={searching}
+          onValueChange={toggle}
+          accessibilityLabel="En búsqueda de mesa"
+          trackColor={{ true: Rolder.like, false: 'rgba(255,255,255,0.15)' }}
+        />
+      </View>
+    </View>
+  );
+}
 
 // Estado del web push en frases que entienda cualquiera. Solo aparece en web:
 // en el APK las notificaciones nativas ya van solas.
@@ -125,6 +175,7 @@ export default function SettingsScreen() {
           <ScreenTitle>⚙️ Opciones</ScreenTitle>
           <ScreenBlurb>Ajustes y utilidades de tu cuenta.</ScreenBlurb>
 
+          <SearchingSection />
           <WebPushSection />
 
           {OPTIONS.map((option) => (
@@ -233,6 +284,15 @@ const styles = StyleSheet.create({
     fontSize: 12.5,
     fontFamily: RolderFonts.regular,
     lineHeight: 18,
+  },
+  searchingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
+  },
+  searchingText: {
+    flex: 1,
+    gap: Spacing.two,
   },
   deleteAccount: {
     color: Rolder.pass,

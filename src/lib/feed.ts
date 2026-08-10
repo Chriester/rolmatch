@@ -1,7 +1,7 @@
 import { matchPlayerToGroup, type MatchGroup, type MatchPlayer, type MatchResult } from '@/lib/matching';
 import { fetchBlockRelations } from '@/lib/moderation';
 import { fetchReliability } from '@/lib/ratings';
-import { supabase } from '@/lib/supabase';
+import { hasColumn, supabase } from '@/lib/supabase';
 import { fetchXpTotals, levelFromXp } from '@/lib/xp';
 import type { GroupFormat } from '@/lib/groups';
 import type { VttType } from '@/lib/profile';
@@ -275,6 +275,11 @@ async function fetchCandidatePool(applicantIds?: string[]): Promise<CandidateRow
     : supabase
         .from('profiles')
         .select(`${CANDIDATE_COLUMNS}, availability_slots!inner(weekday, slot)`);
+  // Pausados fuera del DESCUBRIMIENTO, pero no de los aspirantes: quien
+  // pidió sitio antes de pausarse sigue en la bandeja del GM (migr. 00048).
+  if (!applicantIds && (await hasColumn('profiles', 'is_searching'))) {
+    query.eq('is_searching', true);
+  }
   const { data, error } = await query;
   if (error) throw error;
   return (data ?? []) as unknown as CandidateRow[];

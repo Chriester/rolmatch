@@ -1,5 +1,5 @@
 import { normalizeTimezone } from '@/lib/matching';
-import { supabase } from '@/lib/supabase';
+import { hasColumn, supabase } from '@/lib/supabase';
 
 export type UserRole = 'player' | 'gm' | 'both';
 export type Gender = 'male' | 'female' | 'other';
@@ -100,6 +100,31 @@ export async function fetchProfileAlias(userId: string): Promise<string | null> 
     .single();
   if (error) throw error;
   return data?.alias ?? null;
+}
+
+// ——— Pausar la búsqueda (migr. 00048) ———
+//
+// Ambas degradan si la columna no existe aún: null = «la función no está
+// disponible» (Opciones esconde el toggle) y el feed no filtra.
+
+/** true = visible en el feed; null si la migración no está aplicada. */
+export async function fetchSearching(userId: string): Promise<boolean | null> {
+  if (!(await hasColumn('profiles', 'is_searching'))) return null;
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('is_searching')
+    .eq('id', userId)
+    .single();
+  if (error) throw error;
+  return data?.is_searching ?? true;
+}
+
+export async function setSearching(userId: string, searching: boolean): Promise<void> {
+  const { error } = await supabase
+    .from('profiles')
+    .update({ is_searching: searching })
+    .eq('id', userId);
+  if (error) throw error;
 }
 
 export async function fetchSystems(): Promise<System[]> {
