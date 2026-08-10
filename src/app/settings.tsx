@@ -15,8 +15,12 @@ import { ThemedView } from '@/components/themed-view';
 import { ListRow, OutlineButton, ScreenBlurb, ScreenTitle } from '@/components/ui';
 import { MaxContentWidth, Rolder, RolderFonts, Spacing } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
+import { track } from '@/lib/analytics';
+import { APP_URL } from '@/lib/config';
+import { fetchMyOwnedGroups } from '@/lib/groups';
 import { amIModerator } from '@/lib/moderation';
 import { fetchSearching, setSearching } from '@/lib/profile';
+import { shareLink } from '@/lib/share';
 import { enableWebPush, webPushState, type WebPushState } from '@/lib/web-push';
 
 const OPTIONS: { icon: string; label: string; detail: string; route: string }[] = [
@@ -31,6 +35,12 @@ const OPTIONS: { icon: string; label: string; detail: string; route: string }[] 
     label: 'Canjear código promocional',
     detail: 'Códigos de premium y regalos de la beta',
     route: '/promo',
+  },
+  {
+    icon: '💬',
+    label: 'Enviar sugerencia',
+    detail: 'Ideas y cosas que fallan, directas al equipo',
+    route: '/feedback',
   },
   {
     icon: '🚫',
@@ -143,6 +153,32 @@ function WebPushSection() {
   );
 }
 
+/** Invitar a alguien a rolder (no a una mesa concreta): boca a boca puro. */
+function ShareAppRow() {
+  const session = useSession();
+  return (
+    <ListRow
+      onPress={async () => {
+        const via = await shareLink({
+          title: 'rolder — encuentra tu mesa de rol',
+          text: 'Estoy en rolder buscando gente para jugar rol 🎲 Échale un ojo:',
+          url: APP_URL,
+        });
+        if (!via) return;
+        if (via === 'clipboard')
+          showAlert('🔗 Enlace copiado', 'Pégalo donde quieras para invitar a alguien a rolder.');
+        track(session?.user.id, 'share_app', { via });
+      }}>
+      <Text style={styles.icon}>🎲</Text>
+      <View style={styles.body}>
+        <Text style={styles.label}>Invitar a rolder</Text>
+        <Text style={styles.detail}>Comparte la app con quien le falte mesa (o jugadores)</Text>
+      </View>
+      <Text style={styles.chevron}>›</Text>
+    </ListRow>
+  );
+}
+
 /** La bandeja de moderación solo existe para quien modera. */
 function ModerationRow() {
   const session = useSession();
@@ -167,6 +203,7 @@ function ModerationRow() {
 }
 
 export default function SettingsScreen() {
+  const session = useSession();
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
@@ -189,10 +226,28 @@ export default function SettingsScreen() {
             </ListRow>
           ))}
 
+          <ShareAppRow />
           <ModerationRow />
 
           <Pressable
             onPress={async () => {
+              // Si es GM de mesas con gente, el borrado las disuelve para
+              // TODOS: eso merece un aviso con nombres, no la frase genérica.
+              const owned = session
+                ? await fetchMyOwnedGroups(session.user.id).catch(() => [])
+                : [];
+              const withPeople = owned.filter((g) => g.members > 0);
+              if (withPeople.length > 0) {
+                const names = withPeople
+                  .map((g) => `«${g.name}» (${g.members === 1 ? '1 persona' : `${g.members} personas`})`)
+                  .join(', ');
+                const proceed = await confirmAction(
+                  '⚠️ Tus mesas se disuelven',
+                  `Eres GM de ${names}. Al borrar tu cuenta, esas mesas desaparecen para todos sus miembros: chat, diario y calendario. Puedes traspasarlas antes desde la ficha de cada mesa («👑 Traspasar mesa»).`,
+                  'Continuar igualmente'
+                );
+                if (!proceed) return;
+              }
               const ok = await confirmAction(
                 '¿Eliminar tu cuenta?',
                 'Se borran tu perfil, personajes, mesas, chats y todo lo demás. No se puede deshacer.',

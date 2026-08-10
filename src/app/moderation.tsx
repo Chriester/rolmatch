@@ -14,6 +14,7 @@ import { ScreenBlurb, ScreenTitle } from '@/components/ui';
 import { MaxContentWidth, Rolder, RolderFonts, Spacing } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
 import { showAlert } from '@/lib/alert';
+import { FEEDBACK_KINDS, fetchFeedback, setFeedbackStatus, type FeedbackItem } from '@/lib/feedback';
 import {
   fetchReports,
   setReportStatus,
@@ -45,25 +46,40 @@ function formatDate(iso: string) {
 
 export default function ModerationScreen() {
   const session = useSession();
+  const [tab, setTab] = useState<'reports' | 'feedback'>('reports');
   const [filter, setFilter] = useState<ReportStatus | 'all'>('open');
   const [reports, setReports] = useState<ModerationReport[] | undefined>(undefined);
+  const [feedback, setFeedback] = useState<FeedbackItem[] | undefined>(undefined);
   const [denied, setDenied] = useState(false);
 
   // Al cambiar de filtro se mantiene la lista anterior mientras llega la
   // nueva: mejor eso que un parpadeo de rueda cada vez que se toca un chip.
   const load = useCallback(() => {
     if (!session) return;
-    fetchReports(filter)
-      .then((rows) => {
-        setDenied(false);
-        setReports(rows);
-      })
-      // sin ser moderador la RLS no devuelve nada; es un estado, no un fallo
-      .catch(() => {
-        setDenied(true);
-        setReports([]);
-      });
-  }, [session, filter]);
+    if (tab === 'reports') {
+      fetchReports(filter)
+        .then((rows) => {
+          setDenied(false);
+          setReports(rows);
+        })
+        // sin ser moderador la RLS no devuelve nada; es un estado, no un fallo
+        .catch(() => {
+          setDenied(true);
+          setReports([]);
+        });
+    } else {
+      fetchFeedback(filter)
+        .then((rows) => {
+          setDenied(false);
+          setFeedback(rows);
+        })
+        // ídem, o migración 00050 sin aplicar: bandeja vacía con aviso
+        .catch(() => {
+          setDenied(true);
+          setFeedback([]);
+        });
+    }
+  }, [session, tab, filter]);
 
   useEffect(load, [load]);
 
@@ -86,6 +102,20 @@ export default function ModerationScreen() {
     }
   };
 
+  const markFeedback = async (item: FeedbackItem, status: ReportStatus) => {
+    const previous = item.status;
+    setFeedback((list) => list?.map((f) => (f.id === item.id ? { ...f, status } : f)));
+    try {
+      await setFeedbackStatus(item.id, status);
+      if (filter !== 'all' && filter !== status) {
+        setFeedback((list) => list?.filter((f) => f.id !== item.id));
+      }
+    } catch (error) {
+      setFeedback((list) => list?.map((f) => (f.id === item.id ? { ...f, status: previous } : f)));
+      showAlert('No se pudo marcar', error instanceof Error ? error.message : String(error));
+    }
+  };
+
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
@@ -95,9 +125,28 @@ export default function ModerationScreen() {
           />
           <ScreenTitle>🛡️ Moderación</ScreenTitle>
           <ScreenBlurb>
-            Reportes de la comunidad. Marca cada uno cuando lo hayas mirado para que el resto del
-            equipo no lo repase dos veces.
+            Reportes y sugerencias de la comunidad. Marca cada uno cuando lo hayas mirado para que
+            el resto del equipo no lo repase dos veces.
           </ScreenBlurb>
+
+          <View style={styles.tabRow}>
+            {(
+              [
+                { key: 'reports', label: '🚨 Reportes' },
+                { key: 'feedback', label: '💬 Sugerencias' },
+              ] as const
+            ).map((option) => (
+              <Pressable
+                key={option.key}
+                accessibilityLabel={option.label}
+                style={[styles.tab, tab === option.key && styles.tabActive]}
+                onPress={() => setTab(option.key)}>
+                <Text style={[styles.tabLabel, tab === option.key && styles.tabLabelActive]}>
+                  {option.label}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
 
           <View style={styles.filterRow}>
             {FILTERS.map((option) => (
@@ -114,7 +163,49 @@ export default function ModerationScreen() {
             ))}
           </View>
 
-          {reports === undefined ? (
+          {tab === 'feedback' ? (
+            feedback === undefined ? (
+              <ActivityIndicator style={styles.loading} />
+            ) : denied ? (
+              <ThemedText type="small" style={styles.empty}>
+                Esta bandeja es para el equipo de moderación.
+              </ThemedText>
+            ) : feedback.length === 0 ? (
+              <ThemedText type="small" style={styles.empty}>
+                Sin sugerencias en este estado.
+              </ThemedText>
+            ) : (
+              feedback.map((item) => (
+                <View key={item.id} style={styles.card}>
+                  <View style={styles.cardHead}>
+                    <Text style={styles.reason}>
+                      {FEEDBACK_KINDS.find((k) => k.key === item.kind)?.emoji}{' '}
+                      {FEEDBACK_KINDS.find((k) => k.key === item.kind)?.label}
+                    </Text>
+                    <Text style={styles.status}>{STATUS_LABELS[item.status]}</Text>
+                  </View>
+                  <Text style={styles.target}>
+                    {item.authorAlias ? `👤 ${item.authorAlias}` : 'Cuenta borrada'}
+                    {' · '}
+                    {formatDate(item.created_at)}
+                  </Text>
+                  <Text style={styles.details}>{item.body}</Text>
+                  <View style={styles.actions}>
+                    {item.status !== 'reviewed' && (
+                      <Pressable onPress={() => markFeedback(item, 'reviewed')}>
+                        <Text style={styles.link}>Marcar revisado</Text>
+                      </Pressable>
+                    )}
+                    {item.status !== 'actioned' && (
+                      <Pressable onPress={() => markFeedback(item, 'actioned')}>
+                        <Text style={styles.link}>Marcar con acción</Text>
+                      </Pressable>
+                    )}
+                  </View>
+                </View>
+              ))
+            )
+          ) : reports === undefined ? (
             <ActivityIndicator style={styles.loading} />
           ) : denied ? (
             <ThemedText type="small" style={styles.empty}>
@@ -184,6 +275,19 @@ const styles = StyleSheet.create({
   scroll: { padding: 20, gap: Spacing.three },
   loading: { marginTop: Spacing.four },
   empty: { textAlign: 'center', marginTop: Spacing.four },
+  tabRow: { flexDirection: 'row', gap: Spacing.two },
+  tab: {
+    flex: 1,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: Rolder.surfaceBorder,
+    borderRadius: 14,
+    paddingVertical: 10,
+    backgroundColor: Rolder.surface,
+  },
+  tabActive: { borderColor: Rolder.violetSoft, backgroundColor: 'rgba(139,108,255,0.18)' },
+  tabLabel: { color: Rolder.textSecondary, fontSize: 13.5, fontFamily: RolderFonts.semibold },
+  tabLabelActive: { color: '#fff' },
   filterRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
   filter: {
     borderWidth: 1,

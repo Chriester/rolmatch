@@ -8,7 +8,6 @@ import {
   Platform,
   Pressable,
   ScrollView,
-  Share,
   StyleSheet,
   Text,
   View,
@@ -17,7 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { confirmAction, showAlert } from '@/lib/alert';
 import { track } from '@/lib/analytics';
-import { DISCORD_ENABLED } from '@/lib/config';
+import { APP_URL, DISCORD_ENABLED } from '@/lib/config';
 import { AppHeader } from '@/components/app-header';
 import { PublicGroupInvite } from '@/components/public-group-invite';
 import { CardChip, CardChipRow } from '@/components/swipe/card-shell';
@@ -35,6 +34,7 @@ import {
   fetchGroup,
   freeSeats,
   removeGroupMember,
+  transferGroup,
   type GroupDetail,
 } from '@/lib/groups';
 import { fetchGroupMatches, matchChannelUrl, type GroupMatch } from '@/lib/matches';
@@ -42,6 +42,7 @@ import { boostGroup, isBoostActive } from '@/lib/premium';
 import { hasCompletedOnboarding } from '@/lib/profile';
 import { cacheGet, cacheSet } from '@/lib/screen-cache';
 import { fetchRatedSince } from '@/lib/ratings';
+import { shareLink } from '@/lib/share';
 import { fetchMySwipeOnGroup, swipeOnGroup, undoSwipeOnGroup } from '@/lib/swipes';
 import {
   SESSION_CONFIRM_QUORUM,
@@ -102,6 +103,8 @@ function GroupDetailScreen() {
   const [ratedSince, setRatedSince] = useState<Set<string>>(new Set());
   const [boostedUntil, setBoostedUntil] = useState<string | null>(null);
   const [boostBusy, setBoostBusy] = useState(false);
+  /** abierta la lista de miembros para elegir nuevo GM */
+  const [transferOpen, setTransferOpen] = useState(false);
   // «pedir sitio» para quien llega sin ser miembro (p. ej. enlace compartido)
   const [mySwipe, setMySwipe] = useState<'like' | 'pass' | null | undefined>(undefined);
   const [applyBusy, setApplyBusy] = useState(false);
@@ -125,33 +128,15 @@ function GroupDetailScreen() {
 
   const handleShare = async (name: string) => {
     if (!id) return;
-    const url = `https://rolmatch.vercel.app/groups/${id}?invitacion=1`;
-    try {
-      if (Platform.OS === 'web') {
-        const nav = navigator as { share?: (data: object) => Promise<void>; clipboard?: { writeText: (t: string) => Promise<void> } };
-        if (nav.share) {
-          // texto SIN la URL: con ella en ambos campos muchos destinos
-          // (WhatsApp incluido) pegaban el enlace dos veces
-          await nav.share({
-            title: `«${name}» en rolder`,
-            text: `Únete a mi mesa «${name}» en rolder 🎲`,
-            url,
-          });
-          track(session?.user.id, 'share_group_link', { via: 'web-share' });
-        } else {
-          await nav.clipboard?.writeText(url);
-          showAlert('🔗 Enlace copiado', 'Pégalo donde quieras para invitar gente a la mesa.');
-          track(session?.user.id, 'share_group_link', { via: 'clipboard' });
-        }
-      } else {
-        const result = await Share.share({ message: `Únete a mi mesa «${name}» en rolder 🎲 ${url}` });
-        // en iOS cerrar la hoja también resuelve; solo cuenta si se compartió
-        if (result.action === Share.sharedAction)
-          track(session?.user.id, 'share_group_link', { via: 'native' });
-      }
-    } catch {
-      // compartir cancelado por el usuario
-    }
+    const via = await shareLink({
+      title: `«${name}» en rolder`,
+      text: `Únete a mi mesa «${name}» en rolder 🎲`,
+      url: `${APP_URL}/groups/${id}?invitacion=1`,
+    });
+    if (!via) return;
+    if (via === 'clipboard')
+      showAlert('🔗 Enlace copiado', 'Pégalo donde quieras para invitar gente a la mesa.');
+    track(session?.user.id, 'share_group_link', { via });
   };
 
   const handleBoost = async () => {
@@ -724,6 +709,52 @@ function GroupDetailScreen() {
               />
             ))}
 
+          {/* Traspasar la mesa: que irse el GM no la mate (migr. 00051) */}
+          {isOwner && group.group_members.some((m) => m.user_id !== session!.user.id) && (
+            <>
+              <OutlineButton
+                label={transferOpen ? '✖️ Cancelar traspaso' : '👑 Traspasar mesa'}
+                onPress={() => setTransferOpen((open) => !open)}
+              />
+              {transferOpen &&
+                group.group_members
+                  .filter((m) => m.user_id !== session!.user.id)
+                  .map((member) => (
+                    <Pressable
+                      key={member.user_id}
+                      style={styles.transferRow}
+                      accessibilityLabel={`Traspasar la mesa a ${member.profiles?.alias ?? 'este miembro'}`}
+                      onPress={async () => {
+                        const alias = member.profiles?.alias ?? 'este miembro';
+                        const ok = await confirmAction(
+                          `¿Traspasar la mesa a ${alias}?`,
+                          'Pasará a ser GM con todos los mandos; tú te quedas dentro como jugador. No se puede deshacer (salvo que te la devuelva).',
+                          'Sí, traspasar'
+                        );
+                        if (!ok) return;
+                        try {
+                          await transferGroup(group.id, member.user_id);
+                          setTransferOpen(false);
+                          const fresh = await fetchGroup(group.id);
+                          cacheSet(`group:${group.id}`, fresh);
+                          setGroup(fresh);
+                          showAlert('👑 Mesa traspasada', `${alias} es GM a partir de ahora.`);
+                        } catch (error) {
+                          showAlert(
+                            'No se pudo traspasar',
+                            error instanceof Error ? error.message : String(error)
+                          );
+                        }
+                      }}>
+                      <Text style={styles.transferAlias}>
+                        👤 {member.profiles?.alias ?? 'Sin alias'}
+                      </Text>
+                      <Text style={styles.transferHint}>Hacer GM ›</Text>
+                    </Pressable>
+                  ))}
+            </>
+          )}
+
           {session &&
             session.user.id !== group.owner_id &&
             group.group_members.some((m) => m.user_id === session.user.id) && (
@@ -1038,6 +1069,27 @@ const styles = StyleSheet.create({
   },
   boostActive: {
     color: '#F5A623',
+  },
+  transferRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: Rolder.surface,
+    borderWidth: 1,
+    borderColor: Rolder.surfaceBorder,
+    borderRadius: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+  },
+  transferAlias: {
+    color: '#fff',
+    fontSize: 14,
+    fontFamily: RolderFonts.semibold,
+  },
+  transferHint: {
+    color: Rolder.violetSoft,
+    fontSize: 13,
+    fontFamily: RolderFonts.semibold,
   },
   reportLink: {
     color: Rolder.pass,
