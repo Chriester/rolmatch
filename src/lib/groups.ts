@@ -104,6 +104,37 @@ export async function deleteGroup(groupId: string) {
   if (error) throw error;
 }
 
+/**
+ * Traspasa la mesa a otro miembro (migr. 00051): el nuevo pasa a GM y el
+ * actual se queda de jugador. Solo el dueño (lo valida el RPC).
+ */
+export async function transferGroup(groupId: string, newOwnerId: string) {
+  const { error } = await supabase.rpc('transfer_group', {
+    p_group_id: groupId,
+    p_new_owner: newOwnerId,
+  });
+  if (error) throw error;
+}
+
+/** Mesas de las que soy dueño y cuánta gente hay dentro (sin contarme). */
+export type OwnedGroup = { id: string; name: string; members: number };
+
+export async function fetchMyOwnedGroups(userId: string): Promise<OwnedGroup[]> {
+  const { data, error } = await supabase
+    .from('groups')
+    .select('id, name, group_members(user_id)')
+    .eq('owner_id', userId)
+    .eq('is_active', true);
+  if (error) throw error;
+  return (data ?? []).map((row) => ({
+    id: row.id as string,
+    name: row.name as string,
+    members: ((row.group_members as { user_id: string }[]) ?? []).filter(
+      (m) => m.user_id !== userId
+    ).length,
+  }));
+}
+
 /** Saca a un miembro de la mesa (uno mismo, o el dueño a cualquiera — RLS). */
 export async function removeGroupMember(groupId: string, userId: string) {
   const { error } = await supabase

@@ -22,7 +22,9 @@ export type AnalyticsEvent =
   | 'swipe'
   /** enlace de invitación de mesa compartido; props: { via } — el motor de
    *  crecimiento nº1 y hasta ahora invisible */
-  | 'share_group_link';
+  | 'share_group_link'
+  /** la app en sí compartida desde Opciones; props: { via } */
+  | 'share_app';
 
 export function track(
   userId: string | null | undefined,

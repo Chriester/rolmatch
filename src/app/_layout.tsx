@@ -119,6 +119,7 @@ export default function RootLayout() {
           <Stack.Screen name="report" />
           <Stack.Screen name="rate" />
           <Stack.Screen name="settings" />
+          <Stack.Screen name="feedback" />
           <Stack.Screen name="blocked" />
           <Stack.Screen name="moderation" />
           <Stack.Screen name="novedades" />
