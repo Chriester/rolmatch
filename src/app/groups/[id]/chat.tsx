@@ -26,6 +26,7 @@ import { Image } from 'expo-image';
 
 import { confirmAction, showAlert } from '@/lib/alert';
 import { AppHeader } from '@/components/app-header';
+import { ChatImage } from '@/components/chat-image';
 import { ChatInfoPanel } from '@/components/chat-info-panel';
 import { ChatPollBanner } from '@/components/chat-poll-banner';
 import { DiceRoller } from '@/components/dice-roller';
@@ -54,6 +55,7 @@ import {
   sendMessage,
   sendRollMessage,
   markChatRead,
+  messagePreview,
   subscribeToMessages,
   subscribeToReactions,
   toggleMessageReaction,
@@ -336,6 +338,7 @@ export default function GroupChatScreen() {
     if (!id || !session || sending) return;
     try {
       const url = await pickAndUploadImage(session.user.id, 'chat', [4, 3], {
+        chatTarget: { kind: 'group', id },
         allowsEditing: false,
       });
       if (!url) return; // cancelado
@@ -427,11 +430,7 @@ export default function GroupChatScreen() {
           const media =
             item.kind === 'image' && item.media_url ? (
               <Pressable onPress={() => setViewingImage(item.media_url)}>
-                <Image
-                  source={{ uri: item.media_url }}
-                  style={styles.photoMessage}
-                  contentFit="cover"
-                />
+                <ChatImage mediaUrl={item.media_url} style={styles.photoMessage} />
               </Pressable>
             ) : item.kind === 'gif' && item.media_url ? (
               <Image source={{ uri: item.media_url }} style={styles.gifMessage} contentFit="cover" />
@@ -695,6 +694,24 @@ export default function GroupChatScreen() {
           setActionsFor(null);
         }}
         onDelete={() => actionsFor && handleDeleteMessage(actionsFor)}
+        onReport={
+          actionsFor && actionsFor.sender_id !== userId
+            ? () => {
+                const message = actionsFor;
+                setActionsFor(null);
+                router.push({
+                  pathname: '/report',
+                  params: {
+                    kind: 'message',
+                    id: message.id,
+                    authorId: message.sender_id,
+                    name: message.profiles?.alias ?? '',
+                    excerpt: messagePreview(message),
+                  },
+                });
+              }
+            : undefined
+        }
         onClose={() => setActionsFor(null)}
       />
 
@@ -708,7 +725,7 @@ export default function GroupChatScreen() {
         onRequestClose={() => setViewingImage(null)}>
         <Pressable style={styles.viewerBackdrop} onPress={() => setViewingImage(null)}>
           {viewingImage && (
-            <Image source={{ uri: viewingImage }} style={styles.viewerImage} contentFit="contain" />
+            <ChatImage mediaUrl={viewingImage} style={styles.viewerImage} contentFit="contain" />
           )}
         </Pressable>
       </Modal>
