@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Linking,
@@ -39,6 +39,7 @@ import { fetchGroupMatches, matchChannelUrl, type GroupMatch } from '@/lib/match
 import { boostGroup, isBoostActive } from '@/lib/premium';
 import { hasCompletedOnboarding } from '@/lib/profile';
 import { cacheGet, cacheSet } from '@/lib/screen-cache';
+import { fetchRatedSince } from '@/lib/ratings';
 import { fetchMySwipeOnGroup, swipeOnGroup, undoSwipeOnGroup } from '@/lib/swipes';
 import {
   SESSION_CONFIRM_QUORUM,
@@ -74,6 +75,7 @@ export default function GroupDetailScreen() {
   const [sessions, setSessions] = useState<GameSession[]>([]);
   const [recentSessions, setRecentSessions] = useState<GameSession[]>([]);
   const [confirmations, setConfirmations] = useState<Map<string, SessionConfirmState>>(new Map());
+  const [ratedSince, setRatedSince] = useState<Set<string>>(new Set());
   const [boostedUntil, setBoostedUntil] = useState<string | null>(null);
   const [boostBusy, setBoostBusy] = useState(false);
   // «pedir sitio» para quien llega sin ser miembro (p. ej. enlace compartido)
@@ -200,6 +202,19 @@ export default function GroupDetailScreen() {
       .catch(() => {});
   }, [id, session]);
 
+  // Quién me falta por valorar de la última partida. Se relee al volver a la
+  // pantalla (p. ej. justo después de valorar a alguien), no solo al montar.
+  const lastPlayedAt = recentSessions[0]?.starts_at ?? null;
+  const viewerId = session?.user.id ?? null;
+  useFocusEffect(
+    useCallback(() => {
+      if (!id || !viewerId || !lastPlayedAt) return;
+      fetchRatedSince(viewerId, id, lastPlayedAt)
+        .then(setRatedSince)
+        .catch(() => {});
+    }, [id, viewerId, lastPlayedAt])
+  );
+
   useEffect(() => {
     if (!id || !session || group?.owner_id !== session.user.id) return;
     fetchGroupMatches(id)
@@ -245,6 +260,17 @@ export default function GroupDetailScreen() {
 
   const isOwner = session?.user.id === group.owner_id;
   const isMember = group.group_members.some((m) => m.user_id === session?.user.id);
+
+  // Última partida jugada y a quién me falta valorar de ella. La fiabilidad
+  // solo se llena si se pide en caliente; escondida en un enlace de la lista
+  // de plazas no la usaba nadie.
+  const lastPlayed = recentSessions[0] ?? null;
+  const pendingToRate =
+    isMember && lastPlayed
+      ? group.group_members.filter(
+          (m) => m.user_id !== session?.user.id && !ratedSince.has(m.user_id)
+        )
+      : [];
 
   const schedule =
     group.session_weekday !== null && group.session_slot !== null
@@ -377,6 +403,38 @@ export default function GroupDetailScreen() {
                 disabled={applyBusy || mySwipe === undefined}
               />
             )
+          )}
+
+          {lastPlayed && pendingToRate.length > 0 && (
+            <View style={styles.rateBox}>
+              <Text style={styles.rateBoxTitle}>🎲 ¿Qué tal la partida?</Text>
+              <Text style={styles.rateBoxHelp}>
+                {formatSessionDate(lastPlayed.starts_at)} · valora a quien jugó contigo. Es lo
+                que construye la fiabilidad que ve el resto.
+              </Text>
+              <View style={styles.rateChips}>
+                {pendingToRate.map((member) => (
+                  <Pressable
+                    key={member.user_id}
+                    style={styles.rateChip}
+                    accessibilityLabel={`Valorar a ${member.profiles?.alias ?? 'este miembro'}`}
+                    onPress={() =>
+                      router.push({
+                        pathname: '/rate',
+                        params: {
+                          userId: member.user_id,
+                          alias: member.profiles?.alias ?? '',
+                          groupId: group.id,
+                        },
+                      })
+                    }>
+                    <Text style={styles.rateChipText}>
+                      {member.profiles?.alias ?? 'Sin alias'}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
           )}
 
           {group.description && (
@@ -789,6 +847,45 @@ const styles = StyleSheet.create({
     color: Rolder.violetSoft,
     fontSize: 10,
     fontFamily: RolderFonts.regular,
+  },
+  rateBox: {
+    backgroundColor: Rolder.surface,
+    borderWidth: 1,
+    borderColor: Rolder.violet,
+    borderRadius: 16,
+    padding: 14,
+    gap: Spacing.two,
+  },
+  rateBoxTitle: {
+    color: '#fff',
+    fontSize: 15,
+    fontFamily: RolderFonts.semibold,
+    fontWeight: '600',
+  },
+  rateBoxHelp: {
+    color: Rolder.textSecondary,
+    fontSize: 12.5,
+    fontFamily: RolderFonts.regular,
+    lineHeight: 18,
+  },
+  rateChips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.two,
+  },
+  rateChip: {
+    backgroundColor: 'rgba(139,108,255,0.18)',
+    borderWidth: 1,
+    borderColor: Rolder.violetSoft,
+    borderRadius: 999,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+  },
+  rateChipText: {
+    color: '#fff',
+    fontSize: 12.5,
+    fontFamily: RolderFonts.semibold,
+    fontWeight: '600',
   },
   kickHint: {
     color: Rolder.pass,
