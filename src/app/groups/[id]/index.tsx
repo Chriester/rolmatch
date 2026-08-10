@@ -481,12 +481,17 @@ export default function GroupDetailScreen() {
                 );
               })}
               {Array.from({ length: openSeats }).map((_, i) => (
-                <View key={`hole-${i}`} style={styles.seat}>
+                <Pressable
+                  key={`hole-${i}`}
+                  style={styles.seat}
+                  accessibilityLabel="Invitar a esta plaza libre"
+                  onPress={() => handleShare(group.name)}>
                   <View style={[styles.seatAvatar, styles.seatHole]}>
                     <Text style={styles.seatHolePlus}>+</Text>
                   </View>
                   <Text style={styles.seatName}>Libre</Text>
-                </View>
+                  <Text style={styles.rateHint}>🔗 invitar</Text>
+                </Pressable>
               ))}
             </View>
             {group.experience_wanted && (
