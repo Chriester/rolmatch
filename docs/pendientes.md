@@ -4,7 +4,7 @@ Cosas identificadas en barridos de mejoras que se decidió NO hacer todavía,
 con el porqué y la señal que indicaría que ha llegado su momento. Antes de
 proponer una mejora, mirar aquí: si ya está listada, no es un hallazgo nuevo.
 
-Última revisión: 2026-08-10.
+Última revisión: 2026-08-12.
 
 ## Operativo (bloquea funcionalidad ya mergeada)
 
@@ -51,9 +51,26 @@ proponer una mejora, mirar aquí: si ya está listada, no es un hallazgo nuevo.
   existen con default `'es'` y el matching los aplica, pero ninguna UI los
   edita: hoy es un filtro que nunca filtra. Activarlo cuando haya usuarios
   no hispanohablantes… o quitarlo del scoring.
-- **Reglas de negocio solo en el cliente.** Límites (mensajes, swipes/día si
-  se añade, tamaños) viven en el cliente; un cliente modificado se los salta.
-  Endurecer en RLS/triggers cuando haya señales de abuso.
+- **Reglas de negocio solo en el cliente.** Límites (mensajes, tamaños,
+  frecuencia) viven en el cliente; un cliente modificado se los salta.
+  Primera pieza cuando toque: rate limiting por trigger en las tablas
+  calientes (messages, reports, swipes — cada mensaje dispara un webhook de
+  push, así que hoy una cuenta hostil puede inundar de notificaciones a una
+  mesa). Señal: primer episodio de spam o abuso real.
+- **Crashes sin lector.** `client_errors` (00037) se inserta desde el
+  ErrorBoundary y no se lee desde la app: los pantallazos de los testers
+  solo se ven en el SQL Editor. Salida natural: sección «Crashes» en
+  `/moderation` (la pantalla y el gate ya existen). Señal: al aplicar la
+  00045 y empezar a usar la bandeja de verdad.
+- **Silenciar chats.** No existe mute: cada mensaje de cada mesa dispara
+  push, y la defensa del usuario será desactivar las notificaciones del
+  sistema entero (perdemos el canal completo). Tabla `chat_mutes` + toggle
+  en la cabecera del chat + check en push-notify. Señal: primera mesa
+  charlatana de verdad o primera queja de exceso de avisos.
+- **Moderar no tiene dientes.** La bandeja (00045) marca reportes pero no
+  hay acción real: no existe `is_suspended` ni forma de apartar a un usuario
+  tóxico sin SQL Editor. Flag de suspensión + excluir del feed + pantalla de
+  «cuenta suspendida». Señal: el primer reporte que requiera actuar.
 
 ## Cómo mantener esto
 
