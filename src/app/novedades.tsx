@@ -13,7 +13,7 @@ import { ThemedView } from '@/components/themed-view';
 import { ScreenBlurb, ScreenTitle } from '@/components/ui';
 import { MaxContentWidth, Rolder, RolderFonts, Spacing } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
-import { fetchActivity, type ActivityItem } from '@/lib/activity';
+import { fetchActivity, markActivitySeen, type ActivityItem } from '@/lib/activity';
 
 export default function NovedadesScreen() {
   const session = useSession();
@@ -23,7 +23,11 @@ export default function NovedadesScreen() {
   const load = useCallback(() => {
     if (!userId) return;
     fetchActivity(userId)
-      .then(setItems)
+      .then((activity) => {
+        setItems(activity);
+        // todo lo que se enseña queda visto: apaga el punto de la campana
+        markActivitySeen(activity);
+      })
       .catch(() => setItems([]));
   }, [userId]);
 

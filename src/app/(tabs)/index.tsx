@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { hasUnseenActivity } from '@/lib/activity';
 import { showAlert } from '@/lib/alert';
 import { track } from '@/lib/analytics';
 import { AppHeader } from '@/components/app-header';
@@ -138,6 +139,8 @@ export default function HomeScreen() {
   const [myAvatar, setMyAvatar] = useState<string | null>(null);
   const [premium, setPremium] = useState(false);
   const [lastSwiped, setLastSwiped] = useState<FeedItem | null>(null);
+  /** enciende el punto de la campana: hay novedades sin ver */
+  const [hasNews, setHasNews] = useState(false);
   /** cuándo y para quién se cargó el feed (para no rehacerlo en cada focus) */
   const lastLoad = useRef<{ userId: string; at: number } | null>(null);
 
@@ -148,6 +151,9 @@ export default function HomeScreen() {
   const load = useCallback(
     (options?: { force?: boolean }) => {
       if (!session) return;
+      // el punto de la campana se recalcula en CADA focus, fuera del
+      // throttle del feed: al volver de Novedades tiene que apagarse ya
+      hasUnseenActivity(session.user.id).then(setHasNews);
       const fresh =
         lastLoad.current?.userId === session.user.id &&
         Date.now() - lastLoad.current.at < FEED_FRESH_MS;
@@ -228,7 +234,16 @@ export default function HomeScreen() {
   // deja rastro en ninguna tabla, así que se registra aquí.
   const exhausted = items !== undefined && index >= items.length;
   useEffect(() => {
-    if (exhausted) track(session?.user.id, 'feed_empty', { cards: items?.length ?? 0 });
+    // el desglose de filtros duros es el dato que decide si hay que
+    // relajarlos (pendientes.md, B1): sin él el evento solo dice «vacío»
+    if (exhausted)
+      track(session?.user.id, 'feed_empty', {
+        cards: items?.length ?? 0,
+        filtered_total: filteredOut.total,
+        filtered_schedule: filteredOut.schedule,
+        filtered_system: filteredOut.system,
+        filtered_language: filteredOut.language,
+      });
     // solo al quedarse vacío, no en cada render
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [exhausted]);
@@ -609,6 +624,7 @@ export default function HomeScreen() {
               onPress={() => router.push('/novedades')}
               style={({ pressed }) => pressed && styles.bellPressed}>
               <Text style={styles.bell}>🔔</Text>
+              {hasNews && <View style={styles.bellDot} />}
             </Pressable>
           }
         />
@@ -819,6 +835,18 @@ const styles = StyleSheet.create({
   },
   bellPressed: {
     opacity: 0.6,
+  },
+  // mismo lenguaje que el punto de no-leídos del avatar (app-header)
+  bellDot: {
+    position: 'absolute',
+    top: -2,
+    right: -4,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: Rolder.coral,
+    borderWidth: 2,
+    borderColor: Rolder.page,
   },
   emptyAction: {
     color: Rolder.violetSoft,

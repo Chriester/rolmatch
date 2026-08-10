@@ -8,6 +8,8 @@
 // Todo son consultas acotadas a MIS mesas; nada aquí es tiempo real, se
 // recalcula al abrir la pantalla.
 
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
 import { supabase } from '@/lib/supabase';
 
 export type ActivityKind = 'match' | 'applicant' | 'poll' | 'session';
@@ -66,7 +68,7 @@ export async function fetchActivity(userId: string): Promise<ActivityItem[]> {
   if (memberGroupIds.length === 0 && myGroupIds.length === 0) return [];
 
   const since = daysAgo(RECENT_DAYS);
-  const [matches, applicants, polls, myVotes, sessions] = await Promise.all([
+  const [matches, applicants, decided, roster, polls, myVotes, sessions] = await Promise.all([
     supabase
       .from('matches')
       .select('id, group_id, created_at')
@@ -80,6 +82,14 @@ export async function fetchActivity(userId: string): Promise<ActivityItem[]> {
           .eq('origin', 'user')
           .eq('direction', 'like')
           .gte('created_at', since)
+      : Promise.resolve({ data: [] }),
+    // lo ya decidido por el GM (like o pass): resuelto, fuera de novedades
+    myGroupIds.length > 0
+      ? supabase.from('swipes').select('user_id, group_id').in('group_id', myGroupIds).eq('origin', 'group')
+      : Promise.resolve({ data: [] }),
+    // quien ya está dentro tampoco «pide sitio»
+    myGroupIds.length > 0
+      ? supabase.from('group_members').select('user_id, group_id').in('group_id', myGroupIds)
       : Promise.resolve({ data: [] }),
     memberGroupIds.length > 0
       ? supabase
@@ -115,9 +125,17 @@ export async function fetchActivity(userId: string): Promise<ActivityItem[]> {
     });
   }
 
-  // Solicitudes de sitio: quien ha pedido entrar y aún no es miembro
+  // Solicitudes de sitio: solo las PENDIENTES. Si el GM ya decidió (swipe de
+  // la mesa, en cualquier dirección) o la persona ya es miembro, está
+  // resuelta y no es una novedad — antes se quedaba ahí 14 días.
+  const resolved = new Set(
+    [...(decided.data ?? []), ...(roster.data ?? [])].map(
+      (row) => `${row.group_id}:${row.user_id}`
+    )
+  );
   const applicantsByGroup = new Map<string, { count: number; at: string }>();
   for (const swipe of applicants.data ?? []) {
+    if (resolved.has(`${swipe.group_id}:${swipe.user_id}`)) continue;
     const previous = applicantsByGroup.get(swipe.group_id);
     applicantsByGroup.set(swipe.group_id, {
       count: (previous?.count ?? 0) + 1,
@@ -183,4 +201,39 @@ export async function fetchActivity(userId: string): Promise<ActivityItem[]> {
 
   // lo más reciente (o lo más inminente) arriba
   return items.sort((a, b) => b.at.localeCompare(a.at));
+}
+
+// ——— Punto de la campana: «hay algo que no has visto» ———
+//
+// Local por dispositivo (mismo criterio que tutorial.ts: verlo dos veces no
+// hace daño y nos ahorra una columna). No vale guardar un timestamp-marca:
+// las partidas próximas llevan `at` en el FUTURO y taparían novedades reales
+// posteriores. Se guarda la huella de cada item ya visto; `at` va dentro
+// para que una solicitud nueva sobre un grupo con solicitudes viejas
+// (mismo id agregado, fecha distinta) vuelva a encender el punto.
+
+const SEEN_KEY = 'rolder-novedades-vistas';
+
+const fingerprints = (items: ActivityItem[]) => items.map((item) => `${item.id}@${item.at}`);
+
+/** true si hay items de novedades que este dispositivo aún no ha visto. */
+export async function hasUnseenActivity(userId: string): Promise<boolean> {
+  try {
+    const items = await fetchActivity(userId);
+    if (items.length === 0) return false;
+    const stored = await AsyncStorage.getItem(SEEN_KEY);
+    const seen = new Set<string>(stored ? (JSON.parse(stored) as string[]) : []);
+    return fingerprints(items).some((mark) => !seen.has(mark));
+  } catch {
+    return false;
+  }
+}
+
+/** Novedades abierta: todo lo que se enseñó queda como visto. */
+export async function markActivitySeen(items: ActivityItem[]): Promise<void> {
+  try {
+    await AsyncStorage.setItem(SEEN_KEY, JSON.stringify(fingerprints(items)));
+  } catch {
+    // sin storage: el punto se verá otra vez, no pasa nada
+  }
 }

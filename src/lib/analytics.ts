@@ -19,7 +19,10 @@ export type AnalyticsEvent =
   /** el feed se quedó sin tarjetas que enseñar */
   | 'feed_empty'
   /** swipe en el feed; props: { direction, kind } */
-  | 'swipe';
+  | 'swipe'
+  /** enlace de invitación de mesa compartido; props: { via } — el motor de
+   *  crecimiento nº1 y hasta ahora invisible */
+  | 'share_group_link';
 
 export function track(
   userId: string | null | undefined,
