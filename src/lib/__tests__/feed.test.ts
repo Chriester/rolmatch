@@ -2,8 +2,8 @@
 // los candidatos. Es la lógica que se reescribió al sacar la consulta del
 // bucle por mesa, y hasta ahora no tenía red de seguridad.
 
-import { buildCandidates } from '@/lib/feed';
-import type { MatchGroup } from '@/lib/matching';
+import { buildCandidates, tallyFilteredOut } from '@/lib/feed';
+import type { MatchGroup, MatchResult } from '@/lib/matching';
 
 const TZ = 'UTC';
 const MONDAY = 0;
@@ -132,5 +132,41 @@ describe('buildCandidates', () => {
     ];
     const result = build([poolMember('a', { characters })], exclusions, true);
     expect(result[0].proposal?.name).toBe('Vex');
+  });
+});
+
+// El recuento que explica el feed vacío (y que ahora viaja en feed_empty):
+// si miente, mandamos al usuario a ajustar lo que no era.
+describe('tallyFilteredOut', () => {
+  const result = (pass: boolean, reasons: string[] = []): MatchResult => ({
+    pass,
+    reasons,
+    score: pass ? 50 : 0,
+    overlapHours: 0,
+    breakdown: { availability: 0, style: 0, system: 0, tech: 0, reliability: 0 },
+  });
+
+  it('solo cuenta lo que NO pasa, motivo a motivo', () => {
+    const tally = tallyFilteredOut([
+      result(true),
+      result(false, ['availability']),
+      result(false, ['system', 'language']),
+    ]);
+    expect(tally).toEqual({ total: 2, schedule: 1, system: 1, language: 1 });
+  });
+
+  it('una mesa caída por varios motivos suma en cada uno pero una vez en total', () => {
+    const tally = tallyFilteredOut([result(false, ['availability', 'system', 'language'])]);
+    expect(tally.total).toBe(1);
+    expect(tally.schedule + tally.system + tally.language).toBe(3);
+  });
+
+  it('todo pasa: todo a cero (el vacío se explica por falta de inventario)', () => {
+    expect(tallyFilteredOut([result(true), result(true)])).toEqual({
+      total: 0,
+      schedule: 0,
+      system: 0,
+      language: 0,
+    });
   });
 });

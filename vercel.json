@@ -1,5 +1,18 @@
 {
   "buildCommand": "npx expo export -p web",
   "outputDirectory": "dist",
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+  "rewrites": [
+    {
+      "source": "/groups/:id",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*([bB]ot|facebookexternalhit|WhatsApp|Slack|Twitterbot|Discordbot|TelegramBot|LinkedIn|Pinterest|Embedly|SkypeUriPreview|iframely|vkShare).*"
+        }
+      ],
+      "destination": "/api/og?id=:id"
+    },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
 }

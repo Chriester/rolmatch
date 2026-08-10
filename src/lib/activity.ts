@@ -27,6 +27,29 @@ export type ActivityItem = {
 
 const RECENT_DAYS = 14;
 
+export type ApplicantSwipe = { user_id: string; group_id: string; created_at: string };
+
+/**
+ * Agrupa por mesa las solicitudes de sitio PENDIENTES. `resolved` lleva
+ * claves `group:user` de lo ya zanjado (swipe del GM en cualquier dirección,
+ * o miembro actual): eso no es una novedad. Pura para poder testearla.
+ */
+export function pendingApplicants(
+  likes: ApplicantSwipe[],
+  resolved: Set<string>
+): Map<string, { count: number; at: string }> {
+  const byGroup = new Map<string, { count: number; at: string }>();
+  for (const swipe of likes) {
+    if (resolved.has(`${swipe.group_id}:${swipe.user_id}`)) continue;
+    const previous = byGroup.get(swipe.group_id);
+    byGroup.set(swipe.group_id, {
+      count: (previous?.count ?? 0) + 1,
+      at: previous && previous.at > swipe.created_at ? previous.at : swipe.created_at,
+    });
+  }
+  return byGroup;
+}
+
 function daysAgo(days: number) {
   return new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
 }
@@ -125,23 +148,14 @@ export async function fetchActivity(userId: string): Promise<ActivityItem[]> {
     });
   }
 
-  // Solicitudes de sitio: solo las PENDIENTES. Si el GM ya decidió (swipe de
-  // la mesa, en cualquier dirección) o la persona ya es miembro, está
-  // resuelta y no es una novedad — antes se quedaba ahí 14 días.
+  // Solicitudes de sitio: solo las pendientes (antes lo resuelto se quedaba
+  // 14 días como si nadie lo hubiera atendido).
   const resolved = new Set(
     [...(decided.data ?? []), ...(roster.data ?? [])].map(
       (row) => `${row.group_id}:${row.user_id}`
     )
   );
-  const applicantsByGroup = new Map<string, { count: number; at: string }>();
-  for (const swipe of applicants.data ?? []) {
-    if (resolved.has(`${swipe.group_id}:${swipe.user_id}`)) continue;
-    const previous = applicantsByGroup.get(swipe.group_id);
-    applicantsByGroup.set(swipe.group_id, {
-      count: (previous?.count ?? 0) + 1,
-      at: previous && previous.at > swipe.created_at ? previous.at : swipe.created_at,
-    });
-  }
+  const applicantsByGroup = pendingApplicants(applicants.data ?? [], resolved);
   for (const [groupId, info] of applicantsByGroup) {
     items.push({
       id: `applicants-${groupId}`,
@@ -214,7 +228,9 @@ export async function fetchActivity(userId: string): Promise<ActivityItem[]> {
 
 const SEEN_KEY = 'rolder-novedades-vistas';
 
-const fingerprints = (items: ActivityItem[]) => items.map((item) => `${item.id}@${item.at}`);
+/** Exportada para test: la clave de «visto» es id+fecha, no un timestamp. */
+export const fingerprints = (items: Pick<ActivityItem, 'id' | 'at'>[]) =>
+  items.map((item) => `${item.id}@${item.at}`);
 
 /** true si hay items de novedades que este dispositivo aún no ha visto. */
 export async function hasUnseenActivity(userId: string): Promise<boolean> {
