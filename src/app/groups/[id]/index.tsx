@@ -16,6 +16,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { confirmAction, showAlert } from '@/lib/alert';
+import { track } from '@/lib/analytics';
 import { DISCORD_ENABLED } from '@/lib/config';
 import { AppHeader } from '@/components/app-header';
 import { PublicGroupInvite } from '@/components/public-group-invite';
@@ -136,12 +137,17 @@ function GroupDetailScreen() {
             text: `Únete a mi mesa «${name}» en rolder 🎲`,
             url,
           });
+          track(session?.user.id, 'share_group_link', { via: 'web-share' });
         } else {
           await nav.clipboard?.writeText(url);
           showAlert('🔗 Enlace copiado', 'Pégalo donde quieras para invitar gente a la mesa.');
+          track(session?.user.id, 'share_group_link', { via: 'clipboard' });
         }
       } else {
-        await Share.share({ message: `Únete a mi mesa «${name}» en rolder 🎲 ${url}` });
+        const result = await Share.share({ message: `Únete a mi mesa «${name}» en rolder 🎲 ${url}` });
+        // en iOS cerrar la hoja también resuelve; solo cuenta si se compartió
+        if (result.action === Share.sharedAction)
+          track(session?.user.id, 'share_group_link', { via: 'native' });
       }
     } catch {
       // compartir cancelado por el usuario
