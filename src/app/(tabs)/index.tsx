@@ -15,6 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { showAlert } from '@/lib/alert';
+import { track } from '@/lib/analytics';
 import { AppHeader } from '@/components/app-header';
 import { Chip } from '@/components/chip';
 import { ActionBar } from '@/components/swipe/action-bar';
@@ -182,6 +183,15 @@ export default function HomeScreen() {
 
   const reload = useCallback(() => load({ force: true }), [load]);
 
+  // Feed agotado: es el peor primer momento posible para alguien nuevo y no
+  // deja rastro en ninguna tabla, así que se registra aquí.
+  const exhausted = items !== undefined && index >= items.length;
+  useEffect(() => {
+    if (exhausted) track(session?.user.id, 'feed_empty', { cards: items?.length ?? 0 });
+    // solo al quedarse vacío, no en cada render
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [exhausted]);
+
   useFocusEffect(load);
 
   // Teclado en web: ← pass · → like (handoff rolder §2)
@@ -205,6 +215,7 @@ export default function HomeScreen() {
     setTopFace(0);
 
     const direction = choice === 'like' ? ('like' as const) : ('pass' as const);
+    track(session.user.id, 'swipe', { direction, kind: item.kind });
     const request =
       item.kind === 'group'
         ? swipeOnGroup(session.user.id, item.group.id, direction, proposal)

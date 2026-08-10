@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { Modal, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 
 import { showAlert } from '@/lib/alert';
+import { track } from '@/lib/analytics';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AvailabilityGrid, availabilityKey } from '@/components/availability-grid';
@@ -85,6 +86,8 @@ export default function OnboardingScreen() {
   const [busy, setBusy] = useState(false);
   // primera vez que se completa el perfil → pantalla de celebración
   const [wasComplete, setWasComplete] = useState(false);
+  /** el perfil ya se leyó: hasta entonces no sabemos si esto es un alta */
+  const [profileLoaded, setProfileLoaded] = useState(false);
   const [celebrate, setCelebrate] = useState(false);
 
   // Paso 1 — quién eres
@@ -148,8 +151,9 @@ export default function OnboardingScreen() {
         setCameraOk(profile.camera_ok);
         setVtt(profile.preferred_vtt);
         setSafetyTools(new Set(profile.safety_tools));
+        setProfileLoaded(true);
       })
-      .catch(() => {});
+      .catch(() => setProfileLoaded(true));
   }, [session]);
 
   const toggleAvailability = (weekday: number, slot: number) => {
@@ -202,6 +206,13 @@ export default function OnboardingScreen() {
     }
   };
 
+  // Embudo de alta: dónde se queda la gente que aún no tiene perfil. No se
+  // registra a quien vuelve a editarlo (wasComplete), que no es un alta.
+  useEffect(() => {
+    if (!session || !profileLoaded || wasComplete) return;
+    track(session.user.id, 'onboarding_step', { step });
+  }, [session, profileLoaded, wasComplete, step]);
+
   const handleFinish = async () => {
     if (!session) return;
     setBusy(true);
@@ -234,6 +245,8 @@ export default function OnboardingScreen() {
       if (wasComplete) {
         router.replace(nextRouteAfterOnboarding() as never);
       } else {
+        // solo la primera vez: esto es el numerador de «% perfiles completos»
+        track(session.user.id, 'onboarding_completed');
         setCelebrate(true);
       }
     } catch (error) {
