@@ -24,7 +24,8 @@ Lee la documentación versionada exacta en https://docs.expo.dev/versions/v57.0.
 
 ## Skills del proyecto (cargar la que toque antes de trabajar)
 
-- **nueva-feature** — flujo completo rama→PR→merge→tablero y convenciones. Usar SIEMPRE.
+- **nueva-feature** — comprobar que la feature no exista ya (somos dos en el
+  repo) y flujo completo rama→PR→merge→tablero. Usar SIEMPRE.
 - **migracion-db** — cambios de esquema, RLS, orden migración↔merge y helpers existentes.
 - **qa-visual** — capturas headless (rig, cuenta QA, gotchas) antes de mergear UI.
 - **ui-rolder** — inventario del design system: tokens, primitivas y componentes.

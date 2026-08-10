@@ -1,9 +1,32 @@
 ---
 name: nueva-feature
-description: Flujo completo para construir y entregar una feature en RolMatch — rama, verificación, commit, PR, merge y tablero. Usar SIEMPRE al empezar o cerrar cualquier trabajo de código.
+description: Flujo completo para construir y entregar una feature en RolMatch — comprobar que no está hecha ya, rama, verificación, commit, PR, merge y tablero. Usar SIEMPRE al empezar o cerrar cualquier trabajo de código.
 ---
 
 # Flujo de feature en RolMatch
+
+## Antes de nada: ¿ya existe?
+
+El repo lo tocan dos personas: lo que te acaban de pedir puede estar ya hecho,
+a medias, o en una rama del otro sin mergear. Comprobarlo ANTES de escribir
+código ni crear la rama.
+
+```
+git fetch --all --prune
+git log --oneline -30                        # lo que ya está en main
+git branch -r --sort=-committerdate | head   # ramas vivas del otro
+"C:/Program Files/GitHub CLI/gh.exe" pr list --state all --limit 20
+```
+- Buscar en el código los sustantivos de la feature antes de crear nada:
+  `src/app/` (pantallas), `src/components/` (UI), `src/lib/` (lógica),
+  `supabase/migrations/` (esquema). Media feature suele estar ya ahí con otro
+  nombre; la skill **ui-rolder** cubre el inventario de UI.
+- Mirar también los issues abiertos del tablero y `docs/PRD-rolmatch.md`: puede
+  estar especificada o pedida con otras palabras.
+- Si aparece algo igual o parecido, **parar y avisar al usuario antes de tocar
+  código**: qué hay, dónde, y en qué estado (en main / en una PR abierta / en
+  una rama sin mergear). Que decida él si se extiende, se termina lo del otro,
+  o se sigue igualmente. No decidirlo por tu cuenta ni empezar "por si acaso".
 
 ## Empezar
 1. `git checkout main && git pull` y rama nueva: `feature/nombre-corto` (o `fix/`, `chore/`).
@@ -34,7 +57,11 @@ npm run typecheck 2>&1 | tail -4; npm run lint 2>&1 | tail -4; npm test 2>&1 | t
   (PowerShell rompe los here-strings con `"` embebidas).
 - Cuerpo del PR: qué hace + cómo probarlo + `Closes #N` — **en inglés**;
   "Cierra #N" NO cierra issues.
-- `gh.exe` está en `C:\Program Files\GitHub CLI\gh.exe` (no en PATH).
+- `gh.exe` no está en PATH: invocarlo como `"C:/Program Files/GitHub CLI/gh.exe"`
+  (barras normales, entre comillas). Esa grafía exacta es la que casa con la
+  allowlist de `.claude/settings.json`; con otra, el comando cae al clasificador
+  y el merge se bloquea.
+
 
 ## Merge
 - `gh pr merge N --squash --admin --delete-branch` — el `--delete-branch` es
