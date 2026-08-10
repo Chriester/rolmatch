@@ -129,7 +129,6 @@ export default function RootLayout() {
           <Stack.Screen name="characters/new" />
           <Stack.Screen name="characters/[id]" />
           <Stack.Screen name="groups/new" />
-          <Stack.Screen name="groups/[id]/index" />
           <Stack.Screen name="groups/[id]/candidates" />
           <Stack.Screen name="groups/[id]/edit" />
           <Stack.Screen name="groups/[id]/chat" />
@@ -138,6 +137,10 @@ export default function RootLayout() {
           <Stack.Protected guard={!session}>
             <Stack.Screen name="login" />
           </Stack.Protected>
+          {/* Fuera de los dos guardas: es el destino de los enlaces
+              compartidos y la propia pantalla decide qué enseñar según haya
+              sesión o no. Es la única ruta con parte pública. */}
+          <Stack.Screen name="groups/[id]/index" />
         </Stack>
         {updating && <UpdateOverlay />}
         {webUpdateReady && <UpdateBanner />}
