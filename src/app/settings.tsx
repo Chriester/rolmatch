@@ -30,6 +30,12 @@ const OPTIONS: { icon: string; label: string; detail: string; route: string }[] 
     detail: 'Códigos de premium y regalos de la beta',
     route: '/promo',
   },
+  {
+    icon: '🚫',
+    label: 'Bloqueados',
+    detail: 'Quién no te ve ni te escribe, y cómo deshacerlo',
+    route: '/blocked',
+  },
 ];
 
 // Estado del web push en frases que entienda cualquiera. Solo aparece en web:
