@@ -265,6 +265,13 @@ async function fetchGroupExclusions(
  * exige disponibilidad: quien pide sitio entra aunque tenga el perfil a
  * medias, que esa decisión es del GM.
  */
+// Tope del pool de descubrimiento: sin él, el feed del GM se baja TODOS los
+// perfiles en búsqueda con sus personajes (ya fue la consulta más cara de la
+// app una vez, #138). Los más recientes primero — el score se calcula en el
+// cliente, así que con más de este número de perfiles buscando, los antiguos
+// dejan de concursar: revisar el corte cuando la comunidad se acerque.
+const CANDIDATE_POOL_LIMIT = 120;
+
 async function fetchCandidatePool(applicantIds?: string[]): Promise<CandidateRow[]> {
   if (applicantIds && applicantIds.length === 0) return [];
   const query = applicantIds
@@ -274,7 +281,9 @@ async function fetchCandidatePool(applicantIds?: string[]): Promise<CandidateRow
         .in('id', applicantIds)
     : supabase
         .from('profiles')
-        .select(`${CANDIDATE_COLUMNS}, availability_slots!inner(weekday, slot)`);
+        .select(`${CANDIDATE_COLUMNS}, availability_slots!inner(weekday, slot)`)
+        .order('created_at', { ascending: false })
+        .limit(CANDIDATE_POOL_LIMIT);
   // Pausados fuera del DESCUBRIMIENTO, pero no de los aspirantes: quien
   // pidió sitio antes de pausarse sigue en la bandeja del GM (migr. 00048).
   if (!applicantIds && (await hasColumn('profiles', 'is_searching'))) {

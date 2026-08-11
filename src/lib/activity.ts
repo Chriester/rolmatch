@@ -10,9 +10,9 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import { supabase } from '@/lib/supabase';
+import { hasColumn, supabase } from '@/lib/supabase';
 
-export type ActivityKind = 'match' | 'applicant' | 'poll' | 'session';
+export type ActivityKind = 'match' | 'applicant' | 'poll' | 'session' | 'warning';
 
 export type ActivityItem = {
   id: string;
@@ -197,6 +197,27 @@ export async function fetchActivity(userId: string): Promise<ActivityItem[]> {
         detail: poll.title ? `${poll.title} · ${relative(poll.created_at)}` : 'Elegid fecha',
         at: poll.created_at,
         route: { pathname: '/groups/[id]/schedule', params: { id: poll.group_id } },
+      });
+    }
+  }
+
+  // Mesas mías al borde del archivo (migr. 00052): es la novedad más urgente
+  // que puede tener un GM — un toque y la mesa sigue viva.
+  if (myGroupIds.length > 0 && (await hasColumn('groups', 'inactivity_warned_at'))) {
+    const { data: warned } = await supabase
+      .from('groups')
+      .select('id, name, inactivity_warned_at')
+      .in('id', myGroupIds)
+      .not('inactivity_warned_at', 'is', null);
+    for (const group of warned ?? []) {
+      items.push({
+        id: `warning-${group.id}`,
+        kind: 'warning',
+        emoji: '⏳',
+        title: `«${group.name}» se archivará pronto`,
+        detail: 'Sin actividad en semanas · confirma que seguís jugando',
+        at: group.inactivity_warned_at as string,
+        route: { pathname: '/groups/[id]', params: { id: group.id } },
       });
     }
   }

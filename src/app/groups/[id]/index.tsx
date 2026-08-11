@@ -31,11 +31,15 @@ import {
   SLOT_LABELS,
   VTT_LABELS,
   WEEKDAY_LABELS,
+  confirmGroupAlive,
   fetchGroup,
+  fetchGroupVitality,
   freeSeats,
   removeGroupMember,
+  reopenGroup,
   transferGroup,
   type GroupDetail,
+  type GroupVitality,
 } from '@/lib/groups';
 import { fetchGroupMatches, matchChannelUrl, type GroupMatch } from '@/lib/matches';
 import { boostGroup, isBoostActive } from '@/lib/premium';
@@ -105,6 +109,9 @@ function GroupDetailScreen() {
   const [boostBusy, setBoostBusy] = useState(false);
   /** abierta la lista de miembros para elegir nuevo GM */
   const [transferOpen, setTransferOpen] = useState(false);
+  /** aviso de inactividad (migr. 00052): null = sin aviso o sin migración */
+  const [vitality, setVitality] = useState<GroupVitality | null>(null);
+  const [aliveBusy, setAliveBusy] = useState(false);
   // «pedir sitio» para quien llega sin ser miembro (p. ej. enlace compartido)
   const [mySwipe, setMySwipe] = useState<'like' | 'pass' | null | undefined>(undefined);
   const [applyBusy, setApplyBusy] = useState(false);
@@ -172,6 +179,9 @@ function GroupDetailScreen() {
       .catch(() => setGroup((current) => current ?? null));
     fetchUpcomingSessions(id)
       .then(setSessions)
+      .catch(() => {});
+    fetchGroupVitality(id)
+      .then(setVitality)
       .catch(() => {});
   }, [id]);
 
@@ -298,6 +308,68 @@ function GroupDetailScreen() {
           <AppHeader
             onBack={() => (router.canGoBack() ? router.back() : router.replace('/groups'))}
           />
+
+          {/* Mesa parada (migr. 00052): el cron avisó y, sin señales de vida
+              en 7 días, la archiva. El GM la rescata con un toque. */}
+          {isOwner && group.is_active && vitality?.warnedAt && (
+            <View style={styles.vitalityBanner}>
+              <Text style={styles.vitalityTitle}>⏳ ¿Seguís jugando?</Text>
+              <Text style={styles.vitalityBody}>
+                La mesa lleva parada desde el{' '}
+                {new Date(vitality.lastActivityAt).toLocaleDateString('es-ES', {
+                  day: 'numeric',
+                  month: 'long',
+                })}
+                . Si nadie da señales, se archivará sola y dejará de salir en el feed.
+              </Text>
+              <OutlineButton
+                label={aliveBusy ? 'Confirmando…' : '🔄 ¡Seguimos jugando!'}
+                disabled={aliveBusy}
+                onPress={async () => {
+                  setAliveBusy(true);
+                  try {
+                    await confirmGroupAlive(group.id);
+                    setVitality((v) => (v ? { ...v, warnedAt: null } : v));
+                  } catch (error) {
+                    showAlert(
+                      'No se pudo confirmar',
+                      error instanceof Error ? error.message : String(error)
+                    );
+                  } finally {
+                    setAliveBusy(false);
+                  }
+                }}
+              />
+            </View>
+          )}
+
+          {isOwner && !group.is_active && (
+            <View style={styles.vitalityBanner}>
+              <Text style={styles.vitalityTitle}>💤 Mesa archivada</Text>
+              <Text style={styles.vitalityBody}>
+                No sale en el feed ni recibe candidatos. Todo lo demás (chat, diario, miembros)
+                sigue intacto.
+              </Text>
+              <OutlineButton
+                label={aliveBusy ? 'Reabriendo…' : '☀️ Reabrir mesa'}
+                disabled={aliveBusy}
+                onPress={async () => {
+                  setAliveBusy(true);
+                  try {
+                    await reopenGroup(group.id);
+                    setGroup((g) => (g ? { ...g, is_active: true } : g));
+                  } catch (error) {
+                    showAlert(
+                      'No se pudo reabrir',
+                      error instanceof Error ? error.message : String(error)
+                    );
+                  } finally {
+                    setAliveBusy(false);
+                  }
+                }}
+              />
+            </View>
+          )}
 
           <View style={styles.hero}>
             {group.image_url ? (
@@ -1069,6 +1141,26 @@ const styles = StyleSheet.create({
   },
   boostActive: {
     color: '#F5A623',
+  },
+  vitalityBanner: {
+    backgroundColor: 'rgba(245,166,35,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(245,166,35,0.4)',
+    borderRadius: 16,
+    padding: 14,
+    gap: Spacing.two,
+    marginBottom: Spacing.three,
+  },
+  vitalityTitle: {
+    color: '#F5A623',
+    fontSize: 15,
+    fontFamily: RolderFonts.semibold,
+    fontWeight: '700',
+  },
+  vitalityBody: {
+    color: Rolder.textSecondary,
+    fontSize: 13,
+    lineHeight: 19,
   },
   transferRow: {
     flexDirection: 'row',

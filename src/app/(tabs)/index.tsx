@@ -640,13 +640,23 @@ export default function HomeScreen() {
       <SafeAreaView style={styles.safeArea}>
         <AppHeader
           extra={
-            <Pressable
-              accessibilityLabel="Novedades"
-              onPress={() => router.push('/novedades')}
-              style={({ pressed }) => pressed && styles.bellPressed}>
-              <Text style={styles.bell}>🔔</Text>
-              {hasNews && <View style={styles.bellDot} />}
-            </Pressable>
+            <>
+              {/* refresco manual: sin esto solo refrescaba al volver con el
+                  feed viejo (>2 min) — «acabo de crear mi mesa, mírala» */}
+              <Pressable
+                accessibilityLabel="Actualizar el feed"
+                onPress={reload}
+                style={({ pressed }) => pressed && styles.bellPressed}>
+                <Text style={styles.refreshGlyph}>↻</Text>
+              </Pressable>
+              <Pressable
+                accessibilityLabel="Novedades"
+                onPress={() => router.push('/novedades')}
+                style={({ pressed }) => pressed && styles.bellPressed}>
+                <Text style={styles.bell}>🔔</Text>
+                {hasNews && <View style={styles.bellDot} />}
+              </Pressable>
+            </>
           }
         />
 
@@ -867,6 +877,13 @@ const styles = StyleSheet.create({
   },
   bell: {
     fontSize: 20,
+  },
+  refreshGlyph: {
+    color: Rolder.violetSoft,
+    fontSize: 24,
+    fontFamily: RolderFonts.semibold,
+    fontWeight: '700',
+    marginTop: -2,
   },
   bellPressed: {
     opacity: 0.6,
