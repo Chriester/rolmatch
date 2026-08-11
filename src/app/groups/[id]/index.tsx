@@ -14,11 +14,15 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { pendingApplicants } from '@/lib/activity';
 import { confirmAction, humanizeError, showAlert } from '@/lib/alert';
 import { track } from '@/lib/analytics';
+import { fetchMyChats } from '@/lib/messages';
+import { supabase } from '@/lib/supabase';
 import { APP_URL, DISCORD_ENABLED } from '@/lib/config';
 import { AppHeader } from '@/components/app-header';
 import { PublicGroupInvite } from '@/components/public-group-invite';
+import { TableTabs } from '@/components/table-tabs';
 import { CardChip, CardChipRow } from '@/components/swipe/card-shell';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -31,6 +35,7 @@ import {
   SLOT_LABELS,
   VTT_LABELS,
   WEEKDAY_LABELS,
+  archiveGroup,
   confirmGroupAlive,
   fetchGroup,
   fetchGroupVitality,
@@ -112,6 +117,10 @@ function GroupDetailScreen() {
   /** aviso de inactividad (migr. 00052): null = sin aviso o sin migración */
   const [vitality, setVitality] = useState<GroupVitality | null>(null);
   const [aliveBusy, setAliveBusy] = useState(false);
+  /** badge de la pestaña Chat (miembros) */
+  const [chatUnread, setChatUnread] = useState(0);
+  /** solicitudes pendientes (solo GM): la bandeja destacada del hub */
+  const [applicantsCount, setApplicantsCount] = useState(0);
   // «pedir sitio» para quien llega sin ser miembro (p. ej. enlace compartido)
   const [mySwipe, setMySwipe] = useState<'like' | 'pass' | null | undefined>(undefined);
   const [applyBusy, setApplyBusy] = useState(false);
@@ -244,7 +253,35 @@ function GroupDetailScreen() {
     fetchGroupMatches(id)
       .then(setMatches)
       .catch(() => setMatches([]));
+    // solicitudes pendientes: likes de jugador sin decisión del GM ni plaza
+    Promise.all([
+      supabase
+        .from('swipes')
+        .select('user_id, group_id, created_at')
+        .eq('group_id', id)
+        .eq('origin', 'user')
+        .eq('direction', 'like'),
+      supabase.from('swipes').select('user_id, group_id').eq('group_id', id).eq('origin', 'group'),
+      supabase.from('group_members').select('user_id, group_id').eq('group_id', id),
+    ])
+      .then(([likes, decided, roster]) => {
+        const resolved = new Set(
+          [...(decided.data ?? []), ...(roster.data ?? [])].map(
+            (r) => `${r.group_id}:${r.user_id}`
+          )
+        );
+        setApplicantsCount(pendingApplicants(likes.data ?? [], resolved).get(id)?.count ?? 0);
+      })
+      .catch(() => {});
   }, [id, session, group?.owner_id]);
+
+  // badge del chat en las pestañas del hub (solo con plaza en la mesa)
+  useEffect(() => {
+    if (!id || !session) return;
+    fetchMyChats(session.user.id)
+      .then((chats) => setChatUnread(chats.find((c) => c.groupId === id)?.unread ?? 0))
+      .catch(() => {});
+  }, [id, session]);
   const handleConfirmSession = async (s: GameSession) => {
     if (!session) return;
     try {
@@ -284,6 +321,7 @@ function GroupDetailScreen() {
 
   const isOwner = session?.user.id === group.owner_id;
   const isMember = group.group_members.some((m) => m.user_id === session?.user.id);
+  const isMemberOrOwner = isMember || isOwner;
 
   // Última partida jugada y a quién me falta valorar de ella. La fiabilidad
   // solo se llena si se pide en caliente; escondida en un enlace de la lista
@@ -423,49 +461,94 @@ function GroupDetailScreen() {
             </View>
           </View>
 
-          {isMember && (
-            <View style={styles.actionsRow}>
-              <Pressable
-                accessibilityLabel="Chat de la mesa"
-                style={({ pressed }) => pressed && styles.actionPressed}
-                onPress={() =>
-                  router.push({ pathname: '/groups/[id]/chat', params: { id: group.id } })
-                }>
-                <LinearGradient
-                  colors={[Rolder.violet, Rolder.discord]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.actionButton}>
-                  <Text style={styles.actionIcon}>💬</Text>
-                </LinearGradient>
-              </Pressable>
-              <Pressable
-                accessibilityLabel="Organizar partida"
-                style={({ pressed }) => [styles.actionButton, styles.actionOutline, pressed && styles.actionPressed]}
-                onPress={() =>
-                  router.push({ pathname: '/groups/[id]/schedule', params: { id: group.id } })
-                }>
-                <Text style={styles.actionIcon}>📅</Text>
-              </Pressable>
-              <Pressable
-                accessibilityLabel="Histórico de la mesa"
-                style={({ pressed }) => [styles.actionButton, styles.actionOutline, pressed && styles.actionPressed]}
-                onPress={() =>
-                  router.push({ pathname: '/groups/[id]/journal', params: { id: group.id } })
-                }>
-                <Text style={styles.actionIcon}>📖</Text>
-              </Pressable>
-              {isOwner && (
+          {/* El hub (entregable §1): pestañas con etiqueta en vez de círculos
+              mudos. El visitante las ve con candado — el candado vende. */}
+          {session && (
+            <TableTabs
+              groupId={group.id}
+              active="mesa"
+              unread={chatUnread}
+              locked={!isMember && !isOwner}
+            />
+          )}
+          {session && !isMember && !isOwner && (
+            <Text style={styles.lockedNote}>
+              Chat, agenda y diario se desbloquean cuando el GM te acepte.
+            </Text>
+          )}
+
+          {/* Quién dirige (2a): la decisión de pedir sitio se apoya en el GM */}
+          {session &&
+            !isMember &&
+            !isOwner &&
+            (() => {
+              const gm = group.group_members.find((m) => m.user_id === group.owner_id);
+              if (!gm) return null;
+              return (
                 <Pressable
-                  accessibilityLabel="Ver candidatos"
-                  style={({ pressed }) => [styles.actionButton, styles.actionOutline, pressed && styles.actionPressed]}
+                  accessibilityLabel={`Ver el perfil del GM ${gm.profiles?.alias ?? ''}`}
+                  style={({ pressed }) => [styles.gmRow, pressed && styles.actionPressed]}
                   onPress={() =>
-                    router.push({ pathname: '/groups/[id]/candidates', params: { id: group.id } })
+                    router.push({ pathname: '/players/[id]', params: { id: gm.user_id } })
                   }>
-                  <Text style={styles.actionIcon}>⚔️</Text>
+                  {gm.profiles?.avatar_url ? (
+                    <Image source={{ uri: gm.profiles.avatar_url }} style={styles.gmAvatar} />
+                  ) : (
+                    <View style={[styles.gmAvatar, styles.gmAvatarFallback]}>
+                      <Text>🧙‍♂️</Text>
+                    </View>
+                  )}
+                  <View style={styles.gmBody}>
+                    <Text style={styles.gmName} numberOfLines={1}>
+                      Dirige {gm.profiles?.alias ?? 'Sin alias'}
+                    </Text>
+                    <Text style={styles.gmHint}>Ver su perfil ›</Text>
+                  </View>
                 </Pressable>
-              )}
-            </View>
+              );
+            })()}
+
+          {/* Candidatos como bandeja destacada, no icono escondido (1a) */}
+          {isOwner && applicantsCount > 0 && (
+            <Pressable
+              accessibilityLabel={`${applicantsCount} candidatos piden sitio`}
+              style={({ pressed }) => [styles.candidatesCard, pressed && styles.actionPressed]}
+              onPress={() =>
+                router.push({ pathname: '/groups/[id]/candidates', params: { id: group.id } })
+              }>
+              <Text style={styles.candidatesText} numberOfLines={1}>
+                ⚔️{' '}
+                {applicantsCount === 1
+                  ? '1 aventurero pide sitio'
+                  : `${applicantsCount} aventureros piden sitio`}
+              </Text>
+              <Text style={styles.candidatesChevron}>›</Text>
+            </Pressable>
+          )}
+
+          {/* Próxima partida a la vista sin ir a la agenda (1a) */}
+          {isMemberOrOwner && sessions[0] && (
+            <Pressable
+              accessibilityLabel="Próxima partida"
+              style={({ pressed }) => [styles.nextSession, pressed && styles.actionPressed]}
+              onPress={() =>
+                router.replace({ pathname: '/groups/[id]/schedule', params: { id: group.id } })
+              }>
+              <Text style={styles.nextSessionIcon}>📅</Text>
+              <View style={styles.nextSessionBody}>
+                <Text style={styles.nextSessionTitle} numberOfLines={1}>
+                  Próxima partida: {formatSessionDate(sessions[0].starts_at)}
+                </Text>
+                {confirmations.get(sessions[0].id) && (
+                  <Text style={styles.nextSessionMeta}>
+                    {confirmations.get(sessions[0].id)!.count} de {group.group_members.length}{' '}
+                    confirmados
+                    {confirmations.get(sessions[0].id)!.mine ? ' · tú ya estás 💪' : ''}
+                  </Text>
+                )}
+              </View>
+              <Text style={styles.candidatesChevron}>Ver</Text>
+            </Pressable>
           )}
 
           {/* visitante (p. ej. enlace compartido): pedir sitio desde aquí mismo */}
@@ -769,31 +852,65 @@ function GroupDetailScreen() {
             </View>
           )}
 
-          {session?.user.id === group.owner_id &&
-            (isBoostActive(boostedUntil) ? (
-              <Text style={styles.boostActive}>
-                🚀 Mesa destacada hasta el{' '}
-                {new Date(boostedUntil!).toLocaleDateString('es-ES', {
-                  day: 'numeric',
-                  month: 'short',
-                })}
-              </Text>
-            ) : (
-              <OutlineButton
-                label="🚀 Destacar mesa 7 días (premium)"
-                tone="gold"
-                onPress={handleBoost}
-                disabled={boostBusy}
-              />
-            ))}
-
-          {/* Traspasar la mesa: que irse el GM no la mate (migr. 00051) */}
-          {isOwner && group.group_members.some((m) => m.user_id !== session!.user.id) && (
-            <>
-              <OutlineButton
-                label={transferOpen ? '✖️ Cancelar traspaso' : '👑 Traspasar mesa'}
-                onPress={() => setTransferOpen((open) => !open)}
-              />
+          {/* Gestionar mesa (1a): todas las acciones de GM en una sección,
+              no repartidas por la pantalla */}
+          {isOwner && (
+            <View style={styles.block}>
+              <SectionLabel>⚙️ Gestionar mesa</SectionLabel>
+              <View style={styles.manageGrid}>
+                <OutlineButton
+                  label="✏️ Editar"
+                  style={styles.manageButton}
+                  onPress={() =>
+                    router.push({ pathname: '/groups/[id]/edit', params: { id: group.id } })
+                  }
+                />
+                {group.group_members.some((m) => m.user_id !== session!.user.id) && (
+                  <OutlineButton
+                    label={transferOpen ? '✖️ Cancelar' : '👑 Traspasar'}
+                    style={styles.manageButton}
+                    onPress={() => setTransferOpen((open) => !open)}
+                  />
+                )}
+                {isBoostActive(boostedUntil) ? (
+                  <Text style={[styles.boostActive, styles.manageButton]}>
+                    🚀 Destacada hasta el{' '}
+                    {new Date(boostedUntil!).toLocaleDateString('es-ES', {
+                      day: 'numeric',
+                      month: 'short',
+                    })}
+                  </Text>
+                ) : (
+                  <OutlineButton
+                    label="🚀 Destacar ✦"
+                    tone="gold"
+                    style={styles.manageButton}
+                    onPress={handleBoost}
+                    disabled={boostBusy}
+                  />
+                )}
+                {group.is_active && (
+                  <OutlineButton
+                    label="💤 Archivar"
+                    tone="white"
+                    style={styles.manageButton}
+                    onPress={async () => {
+                      const ok = await confirmAction(
+                        '¿Archivar la mesa?',
+                        'Deja de salir en el feed y de recibir candidatos. Chat, diario y miembros quedan intactos, y puedes reabrirla cuando quieras.',
+                        'Sí, archivar'
+                      );
+                      if (!ok) return;
+                      try {
+                        await archiveGroup(group.id);
+                        setGroup((g) => (g ? { ...g, is_active: false } : g));
+                      } catch (error) {
+                        showAlert('No se pudo archivar', humanizeError(error));
+                      }
+                    }}
+                  />
+                )}
+              </View>
               {transferOpen &&
                 group.group_members
                   .filter((m) => m.user_id !== session!.user.id)
@@ -830,7 +947,7 @@ function GroupDetailScreen() {
                       <Text style={styles.transferHint}>Hacer GM ›</Text>
                     </Pressable>
                   ))}
-            </>
+            </View>
           )}
 
           {session &&
@@ -1147,6 +1264,112 @@ const styles = StyleSheet.create({
   },
   boostActive: {
     color: '#F5A623',
+  },
+  lockedNote: {
+    color: Rolder.textTertiary,
+    fontSize: 12,
+    fontFamily: RolderFonts.regular,
+    textAlign: 'center',
+    marginTop: -6,
+  },
+  candidatesCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+    backgroundColor: 'rgba(139,108,255,0.14)',
+    borderWidth: 1,
+    borderColor: 'rgba(139,108,255,0.5)',
+    borderRadius: 14,
+    paddingVertical: 13,
+    paddingHorizontal: 14,
+  },
+  candidatesText: {
+    flex: 1,
+    color: '#fff',
+    fontSize: 14,
+    fontFamily: RolderFonts.semibold,
+    fontWeight: '700',
+  },
+  candidatesChevron: {
+    color: Rolder.violetSoft,
+    fontSize: 14,
+    fontFamily: RolderFonts.semibold,
+    fontWeight: '700',
+  },
+  nextSession: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+    backgroundColor: Rolder.surface,
+    borderWidth: 1,
+    borderColor: Rolder.surfaceBorder,
+    borderRadius: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+  },
+  nextSessionIcon: {
+    fontSize: 20,
+  },
+  nextSessionBody: {
+    flex: 1,
+    gap: 2,
+  },
+  nextSessionTitle: {
+    color: '#fff',
+    fontSize: 13.5,
+    fontFamily: RolderFonts.semibold,
+    fontWeight: '600',
+  },
+  nextSessionMeta: {
+    color: Rolder.textSecondary,
+    fontSize: 12,
+    fontFamily: RolderFonts.regular,
+  },
+  gmRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+    backgroundColor: Rolder.surface,
+    borderWidth: 1,
+    borderColor: Rolder.surfaceBorder,
+    borderRadius: 14,
+    padding: 12,
+  },
+  gmAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: Rolder.gold,
+  },
+  gmAvatarFallback: {
+    backgroundColor: 'rgba(245,166,35,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  gmBody: {
+    flex: 1,
+    gap: 1,
+  },
+  gmName: {
+    color: '#fff',
+    fontSize: 13.5,
+    fontFamily: RolderFonts.semibold,
+    fontWeight: '600',
+  },
+  gmHint: {
+    color: Rolder.violetSoft,
+    fontSize: 12,
+    fontFamily: RolderFonts.regular,
+  },
+  manageGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  manageButton: {
+    flexGrow: 1,
+    flexBasis: '47%',
   },
   vitalityBanner: {
     backgroundColor: 'rgba(245,166,35,0.08)',
