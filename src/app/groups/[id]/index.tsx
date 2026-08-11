@@ -710,9 +710,9 @@ function GroupDetailScreen() {
                       <Pressable
                         onPress={async () => {
                           const ok = await confirmAction(
-                            '¿Quitar esta sesión?',
-                            'Se borra del calendario de la mesa para todos.',
-                            'Sí, quitar'
+                            '¿Cancelar esta partida?',
+                            'Se borra del calendario de la mesa y le llega un aviso a cada miembro.',
+                            'Sí, cancelar'
                           );
                           if (!ok) return;
                           try {
@@ -720,13 +720,13 @@ function GroupDetailScreen() {
                             setSessions((list) => list.filter((x) => x.id !== s.id));
                           } catch (error) {
                             showAlert(
-                              'No se pudo borrar',
+                              'No se pudo cancelar',
                               humanizeError(error)
                             );
                           }
                         }}>
                         <ThemedText type="small" style={styles.deleteLink}>
-                          Quitar
+                          Cancelar
                         </ThemedText>
                       </Pressable>
                     )}
