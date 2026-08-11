@@ -65,44 +65,73 @@ export function PublicGroupInvite({ groupId }: { groupId: string }) {
       ? `${WEEKDAY_LABELS[card.session_weekday]} · ${SLOT_LABELS[card.session_slot]}`
       : 'Horario por definir';
 
+  // Una sola pieza que ES la invitación (entregable 2b): el hero dentro de
+  // la tarjeta, GM y plazas como mini-tarjetas gemelas, y todo en un
+  // viewport — cero razones para irse antes del botón.
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.content}>
           <AppHeader right={<View />} />
 
-          <Text style={styles.invite}>Te han invitado a una mesa</Text>
+          <Text style={styles.invite}>🎲 Te han invitado a una mesa</Text>
 
-          {card.image_url && (
-            <Image source={{ uri: card.image_url }} style={styles.hero} contentFit="cover" />
-          )}
-          <ThemedText type="title">{card.name}</ThemedText>
+          <View style={styles.card}>
+            <View style={styles.hero}>
+              {card.image_url ? (
+                <Image
+                  source={{ uri: card.image_url }}
+                  style={StyleSheet.absoluteFill}
+                  contentFit="cover"
+                />
+              ) : (
+                <View style={[StyleSheet.absoluteFill, styles.heroFallback]}>
+                  <Text style={styles.heroEmoji}>🎲</Text>
+                </View>
+              )}
+              <View style={styles.heroScrim} />
+              <Text style={styles.heroName} numberOfLines={2}>
+                {card.name}
+              </Text>
+            </View>
 
-          <CardChipRow>
-            {card.system_name && <CardChip label={card.system_name} />}
-            <CardChip label={FORMAT_LABELS[card.format]} />
-            <CardChip label={schedule} />
-            {card.frequency && <CardChip label={card.frequency} />}
-          </CardChipRow>
+            <View style={styles.cardBody}>
+              <CardChipRow>
+                {card.system_name && <CardChip label={card.system_name} />}
+                <CardChip label={FORMAT_LABELS[card.format]} />
+                <CardChip label={schedule} />
+                {card.frequency && <CardChip label={card.frequency} />}
+              </CardChipRow>
 
-          {card.description && <Text style={styles.description}>{card.description}</Text>}
+              {card.description && (
+                <Text style={styles.description} numberOfLines={3}>
+                  {card.description}
+                </Text>
+              )}
 
-          <View style={styles.metaBox}>
-            <Text style={styles.meta}>
-              🧙 Dirige {card.owner_alias ?? 'un GM'}
-            </Text>
-            <Text style={styles.meta}>
-              {free > 0
-                ? `🪑 ${free} ${free === 1 ? 'plaza libre' : 'plazas libres'} de ${card.max_players}`
-                : '🪑 Sin plazas libres ahora mismo'}
-            </Text>
+              <View style={styles.miniRow}>
+                <View style={styles.miniCard}>
+                  <Text style={styles.miniEmoji}>🧙</Text>
+                  <Text style={styles.miniLabel}>Dirige</Text>
+                  <Text style={styles.miniValue} numberOfLines={1}>
+                    {card.owner_alias ?? 'un GM'}
+                  </Text>
+                </View>
+                <View style={styles.miniCard}>
+                  <Text style={styles.miniEmoji}>🪑</Text>
+                  <Text style={styles.miniLabel}>Plazas</Text>
+                  <Text style={styles.miniValue} numberOfLines={1}>
+                    {free > 0 ? `${free} de ${card.max_players} libres` : 'Completa · pide sitio'}
+                  </Text>
+                </View>
+              </View>
+
+              <PrimaryButton label="Entrar y pedir sitio 🎲" onPress={goToLogin} />
+              <ThemedText type="small" style={styles.footnote}>
+                Se tarda un minuto y la cuenta te sirve para todas las mesas.
+              </ThemedText>
+            </View>
           </View>
-
-          <PrimaryButton label="Entrar y pedir sitio 🎲" onPress={goToLogin} />
-          <ThemedText type="small" style={styles.footnote}>
-            Necesitas una cuenta para pedir sitio. Se tarda un minuto y te sirve para todas las
-            mesas.
-          </ThemedText>
         </View>
       </SafeAreaView>
     </ThemedView>
@@ -124,16 +153,72 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
-  hero: { width: '100%', height: 170, borderRadius: 18 },
-  description: { color: Rolder.textSecondary, fontSize: 14, lineHeight: 21 },
-  metaBox: {
+  card: {
     backgroundColor: Rolder.surface,
     borderWidth: 1,
     borderColor: Rolder.surfaceBorder,
-    borderRadius: 16,
-    padding: 14,
-    gap: Spacing.one,
+    borderRadius: 20,
+    overflow: 'hidden',
   },
-  meta: { color: '#fff', fontSize: 14 },
+  hero: {
+    height: 150,
+    justifyContent: 'flex-end',
+  },
+  heroFallback: {
+    backgroundColor: 'rgba(139,108,255,0.25)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heroEmoji: { fontSize: 44 },
+  heroScrim: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(10,10,18,0.35)',
+  },
+  heroName: {
+    color: '#fff',
+    fontSize: 22,
+    fontFamily: RolderFonts.bold,
+    fontWeight: '800',
+    padding: 14,
+  },
+  cardBody: {
+    padding: 16,
+    gap: Spacing.three,
+  },
+  description: { color: Rolder.textSecondary, fontSize: 13.5, lineHeight: 20 },
+  miniRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  miniCard: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 2,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderWidth: 1,
+    borderColor: Rolder.surfaceBorder,
+    borderRadius: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+  },
+  miniEmoji: { fontSize: 20 },
+  miniLabel: {
+    color: Rolder.textTertiary,
+    fontSize: 10.5,
+    fontFamily: RolderFonts.semibold,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+  },
+  miniValue: {
+    color: '#fff',
+    fontSize: 13.5,
+    fontFamily: RolderFonts.semibold,
+    fontWeight: '600',
+  },
   footnote: { textAlign: 'center' },
 });

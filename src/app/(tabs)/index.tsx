@@ -371,17 +371,19 @@ export default function HomeScreen() {
               </View>
             ) : undefined
           }
-          banner={
+          topLeft={
+            // chips compactos, no bandas: la banda a todo lo ancho competía
+            // con los sellos ¡CRÍTICO!/PIFIA (entregable 2c)
             isBoostActive(g.boosted_until) ? (
-              <View style={styles.boostBanner}>
-                <Text style={styles.boostText} numberOfLines={1}>
-                  🚀 Mesa destacada
+              <View style={[styles.cornerChip, styles.cornerChipGold]}>
+                <Text style={styles.cornerChipTextGold} numberOfLines={1}>
+                  🚀 Destacada
                 </Text>
               </View>
             ) : g.format === 'oneshot' ? (
-              <View style={styles.oneshotBanner}>
-                <Text style={styles.oneshotText} numberOfLines={1}>
-                  🎬 One-shot — la primera cita perfecta
+              <View style={[styles.cornerChip, styles.cornerChipGreen]}>
+                <Text style={styles.cornerChipTextGreen} numberOfLines={1}>
+                  🎬 One-shot · primera cita
                 </Text>
               </View>
             ) : undefined
@@ -408,6 +410,13 @@ export default function HomeScreen() {
                     g.session_slot
                   ].toLowerCase()} · coincidís ${item.result.overlapHours} h`
                 : `📅 Horario por definir · coincidís ${item.result.overlapHours} h`}
+            </Text>
+            {/* lo que decide un swipe: con quién y cuántos sitios (2c) */}
+            <Text style={cardText.soft}>
+              🧙 Dirige {g.owner.alias}
+              {g.full
+                ? ' · 🈵 completa'
+                : ` · 🪑 ${g.seatsFree} ${g.seatsFree === 1 ? 'plaza libre' : 'plazas libres'}`}
             </Text>
           </CardBlurb>
         </CardShell>
@@ -930,29 +939,29 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 16,
   },
-  oneshotBanner: {
-    backgroundColor: 'rgba(59,209,111,0.88)',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
+  // chips de esquina (2c): compactos, sin competir con los sellos del swipe
+  cornerChip: {
+    borderRadius: 999,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
   },
-  boostBanner: {
-    backgroundColor: 'rgba(245,166,35,0.92)',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
+  cornerChipGreen: {
+    backgroundColor: 'rgba(59,209,111,0.92)',
   },
-  oneshotText: {
+  cornerChipGold: {
+    backgroundColor: 'rgba(245,166,35,0.94)',
+  },
+  cornerChipTextGreen: {
     color: Rolder.onLike,
     fontFamily: RolderFonts.extrabold,
     fontWeight: '800',
-    fontSize: 13.5,
-    textAlign: 'center',
+    fontSize: 12,
   },
-  boostText: {
+  cornerChipTextGold: {
     color: Rolder.onGold,
     fontFamily: RolderFonts.extrabold,
     fontWeight: '800',
-    fontSize: 13.5,
-    textAlign: 'center',
+    fontSize: 12,
   },
   likedText: {
     color: '#fff',
