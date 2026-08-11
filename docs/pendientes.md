@@ -83,13 +83,16 @@ y estrategia, no se toca. Señal de activación común: marca decidida
   email es magic link. Se actualiza todo junto cuando haya nombre.
 - **Dominio propio.** Rompe coste 0 (~10-15 €/año): decisión explícita de
   Chris pospuesta a la marca. Cuando llegue: cambiar `APP_URL` en
-  `src/lib/config.ts` y en `api/og.ts` (las dos únicas copias), y configurar
-  el dominio en Vercel.
-- **SMTP propio para los magic links.** El SMTP integrado de Supabase free
-  va capado (~2-4 emails/hora): puede tragarse logins por email ya con 15
-  testers. Resend/Brevo free tier + config en Auth del dashboard — es
-  configuración, no código. Hacerlo ANTES de abrir la beta aunque la marca
-  se retrase.
+  `src/lib/config.ts` y en `api/og.ts` (las dos únicas copias), configurar
+  el dominio en Vercel, y **autenticarlo en Brevo** (SPF/DKIM): eso quita la
+  reescritura del remitente de los emails de login (hoy salen como
+  `...@NNN.brevosend.com` — política DMARC de Brevo para dominios públicos,
+  no un fallo de config).
+
+Hecho por el camino (2026-08-13): **SMTP propio vía Brevo** — remitente
+verificado, plantillas de Magic Link y Confirm signup en español, límite de
+emails/hora subido. El muro de ~2-4 emails/hora del SMTP integrado ya no
+existe.
 
 ## Cómo mantener esto
 
