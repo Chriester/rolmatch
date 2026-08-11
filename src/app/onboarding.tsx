@@ -2,7 +2,7 @@ import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Modal, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 
-import { showAlert } from '@/lib/alert';
+import { humanizeError, showAlert } from '@/lib/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AvailabilityGrid, availabilityKey } from '@/components/availability-grid';
@@ -237,7 +237,7 @@ export default function OnboardingScreen() {
         setCelebrate(true);
       }
     } catch (error) {
-      showAlert('No se pudo guardar', error instanceof Error ? error.message : String(error));
+      showAlert('No se pudo guardar', humanizeError(error));
     } finally {
       setBusy(false);
     }

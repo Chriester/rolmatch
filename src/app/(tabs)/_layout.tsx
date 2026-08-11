@@ -13,7 +13,10 @@ import { Rolder, RolderFonts } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
 import { hapticTap } from '@/lib/haptics';
 import { setAppBadge } from '@/lib/badge';
+import { onLikesSeenChanged } from '@/lib/likes-events';
+import { getLastSeenLikesAt } from '@/lib/likes-seen';
 import { fetchUnreadTotal } from '@/lib/messages';
+import { countLikesSince, fetchReceivedLikes } from '@/lib/premium';
 import { onUnreadChanged } from '@/lib/unread-events';
 
 // Sin ripple de Android (el círculo se recortaba contra el borde de la
@@ -81,6 +84,7 @@ export default function TabsLayout() {
   const session = useSession();
   const insets = useSafeAreaInsets();
   const [unread, setUnread] = useState(0);
+  const [newLikes, setNewLikes] = useState(0);
 
   // Badge de chats: al montar, refresco suave cada minuto y AL INSTANTE
   // cuando se marca un chat como leído (emitUnreadChanged)
@@ -103,6 +107,28 @@ export default function TabsLayout() {
     };
   }, [session]);
 
+  // Badge de "Encuentros": mismo patrón, comparando contra la marca local
+  // de "vistos hasta" (se actualiza al abrir la pestaña, ver likes.tsx)
+  useEffect(() => {
+    if (!session) return;
+    let alive = true;
+    const refresh = () => {
+      Promise.all([fetchReceivedLikes(session.user.id), getLastSeenLikesAt()])
+        .then(([likes, seenAt]) => {
+          if (alive) setNewLikes(countLikesSince(likes, seenAt));
+        })
+        .catch(() => {});
+    };
+    refresh();
+    const timer = setInterval(refresh, 60_000);
+    const offSeen = onLikesSeenChanged(refresh);
+    return () => {
+      alive = false;
+      clearInterval(timer);
+      offSeen();
+    };
+  }, [session]);
+
   return (
     <Tabs
       screenOptions={{
@@ -120,7 +146,9 @@ export default function TabsLayout() {
         name="likes"
         options={{
           title: 'Encuentros',
-          tabBarIcon: ({ focused }) => <TabButton emoji="🔭" focused={focused} />,
+          tabBarIcon: ({ focused }) => (
+            <TabButton emoji="🔭" focused={focused} badge={newLikes} />
+          ),
         }}
       />
       <Tabs.Screen

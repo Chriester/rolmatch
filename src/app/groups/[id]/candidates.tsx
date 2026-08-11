@@ -3,7 +3,7 @@ import { useCallback, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { showAlert } from '@/lib/alert';
+import { confirmAction, humanizeError, showAlert } from '@/lib/alert';
 import { ActionBar } from '@/components/swipe/action-bar';
 import {
   AvailabilityMiniGrid,
@@ -24,7 +24,8 @@ import { getOrCreateDmThread } from '@/lib/dm';
 import { fetchGroupCandidates, type PlayerCandidate } from '@/lib/feed';
 import { fetchGroup, type GroupDetail } from '@/lib/groups';
 import { blockUser } from '@/lib/moderation';
-import { groupSwipeOnUser } from '@/lib/swipes';
+import { fetchPremiumStatus } from '@/lib/premium';
+import { groupSwipeOnUser, undoGroupSwipeOnUser } from '@/lib/swipes';
 
 const DECK_MAX_WIDTH = 420;
 
@@ -44,12 +45,15 @@ export default function GroupCandidatesScreen() {
   const [loadError, setLoadError] = useState(false);
   const [index, setIndex] = useState(0);
   const [matchWith, setMatchWith] = useState<PlayerCandidate | null>(null);
+  const [premium, setPremium] = useState(false);
+  const [lastSwiped, setLastSwiped] = useState<PlayerCandidate | null>(null);
 
   const load = useCallback(() => {
     if (!id || !session) return;
     setLoadError(false);
     setCandidates(undefined);
     setIndex(0);
+    setLastSwiped(null);
     // solo la cola de solicitudes (likes recibidos); el descubrimiento de
     // compatibles vive en el feed principal
     fetchGroupCandidates(id, session.user.id, { onlyApplicants: true })
@@ -57,6 +61,9 @@ export default function GroupCandidatesScreen() {
       .catch(() => setLoadError(true));
     fetchGroup(id)
       .then(setGroup)
+      .catch(() => {});
+    fetchPremiumStatus(session.user.id)
+      .then((status) => setPremium(status.active))
       .catch(() => {});
   }, [id, session]);
 
@@ -67,13 +74,36 @@ export default function GroupCandidatesScreen() {
   const handleSwiped = (item: PlayerCandidate, choice: SwipeChoice) => {
     if (!id) return;
     setIndex((i) => i + 1);
+    setLastSwiped(item);
     groupSwipeOnUser(id, item.player.id, choice === 'like' ? 'like' : 'pass')
       .then((matched) => {
-        if (matched) setMatchWith(item);
+        if (matched) {
+          setMatchWith(item);
+          setLastSwiped(null); // un match no se puede deshacer
+        }
       })
       .catch((error) =>
-        showAlert('No se pudo guardar el swipe', error instanceof Error ? error.message : String(error))
+        showAlert('No se pudo guardar el swipe', humanizeError(error))
       );
+  };
+
+  const handleRewind = async () => {
+    if (!id || !session) return;
+    if (!premium) {
+      showAlert(
+        '↩ Rewind es premium',
+        'Deshacer el último swipe es una función premium. Los testers de la alpha la tienen incluida — pídesela a Chris.'
+      );
+      return;
+    }
+    if (!lastSwiped || index === 0) return;
+    try {
+      await undoGroupSwipeOnUser(id, lastSwiped.player.id);
+      setLastSwiped(null);
+      setIndex((i) => Math.max(0, i - 1));
+    } catch (error) {
+      showAlert('No se pudo deshacer', humanizeError(error));
+    }
   };
 
   // Negociar antes de aceptar (p. ej. mesa llena): DM directo con el candidato
@@ -85,19 +115,25 @@ export default function GroupCandidatesScreen() {
     } catch (error) {
       showAlert(
         'No se pudo abrir el chat',
-        error instanceof Error ? error.message : String(error)
+        humanizeError(error)
       );
     }
   };
 
   const handleBlock = async () => {
     if (!session || !current) return;
+    const ok = await confirmAction(
+      `¿Bloquear a ${current.player.alias}?`,
+      'Dejaréis de veros en feeds y chats, en ambas direcciones. Se puede deshacer solo contactando con soporte.',
+      'Sí, bloquear'
+    );
+    if (!ok) return;
     try {
       const blockedId = current.player.id;
       await blockUser(session.user.id, blockedId);
       setCandidates((list) => list?.filter((c) => c.player.id !== blockedId));
     } catch (error) {
-      showAlert('Error', error instanceof Error ? error.message : String(error));
+      showAlert('No se pudo bloquear', humanizeError(error));
     }
   };
 
@@ -268,6 +304,7 @@ export default function GroupCandidatesScreen() {
               onPass={() => deckRef.current?.swipe('pass')}
               onLike={() => deckRef.current?.swipe('like')}
               onInfo={() => deckRef.current?.toggleDetails()}
+              onRewind={handleRewind}
             />
           </>
         )}

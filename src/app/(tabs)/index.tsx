@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { showAlert } from '@/lib/alert';
+import { confirmAction, humanizeError, showAlert } from '@/lib/alert';
 import { AppHeader } from '@/components/app-header';
 import { Chip } from '@/components/chip';
 import { ActionBar } from '@/components/swipe/action-bar';
@@ -200,7 +200,7 @@ export default function HomeScreen() {
         }
       })
       .catch((error) =>
-        showAlert('No se pudo guardar el swipe', error instanceof Error ? error.message : String(error))
+        showAlert('No se pudo guardar el swipe', humanizeError(error))
       );
   };
 
@@ -224,12 +224,19 @@ export default function HomeScreen() {
       setIndex((i) => Math.max(0, i - 1));
       setTopFace(0);
     } catch (error) {
-      showAlert('No se pudo deshacer', error instanceof Error ? error.message : String(error));
+      showAlert('No se pudo deshacer', humanizeError(error));
     }
   };
 
   const handleBlock = async () => {
     if (!session || !current) return;
+    const targetName = current.kind === 'group' ? current.group.name : current.candidate.player.alias;
+    const ok = await confirmAction(
+      `¿Bloquear a ${targetName}?`,
+      'Dejaréis de veros en feeds y chats, en ambas direcciones. Se puede deshacer solo contactando con soporte.',
+      'Sí, bloquear'
+    );
+    if (!ok) return;
     try {
       const blockedId =
         current.kind === 'group' ? current.group.owner_id : current.candidate.player.id;
@@ -240,7 +247,7 @@ export default function HomeScreen() {
         )
       );
     } catch (error) {
-      showAlert('Error', error instanceof Error ? error.message : String(error));
+      showAlert('No se pudo bloquear', humanizeError(error));
     }
   };
 

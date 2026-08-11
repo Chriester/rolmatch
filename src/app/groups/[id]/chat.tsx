@@ -24,7 +24,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 import { Image } from 'expo-image';
 
-import { confirmAction, showAlert } from '@/lib/alert';
+import { confirmAction, humanizeError, showAlert } from '@/lib/alert';
 import { AppHeader } from '@/components/app-header';
 import { ChatInfoPanel } from '@/components/chat-info-panel';
 import { ChatPollBanner } from '@/components/chat-poll-banner';
@@ -278,7 +278,7 @@ export default function GroupChatScreen() {
       }
       setDraft('');
     } catch (error) {
-      showAlert('No se pudo enviar', error instanceof Error ? error.message : String(error));
+      showAlert('No se pudo enviar', humanizeError(error));
     } finally {
       setSending(false);
     }
@@ -326,7 +326,7 @@ export default function GroupChatScreen() {
     try {
       await sendRollMessage(id, session.user.id, roll);
     } catch (error) {
-      showAlert('No se pudo tirar', error instanceof Error ? error.message : String(error));
+      showAlert('No se pudo tirar', humanizeError(error));
     } finally {
       setSending(false);
     }
@@ -342,7 +342,7 @@ export default function GroupChatScreen() {
       setSending(true);
       await sendImageMessage(id, session.user.id, url);
     } catch (error) {
-      showAlert('No se pudo enviar la foto', error instanceof Error ? error.message : String(error));
+      showAlert('No se pudo enviar la foto', humanizeError(error));
     } finally {
       setSending(false);
     }
@@ -371,7 +371,7 @@ export default function GroupChatScreen() {
       await deleteMessage(message.id);
       setMessages((list) => list?.filter((m) => m.id !== message.id));
     } catch (error) {
-      showAlert('No se pudo borrar', error instanceof Error ? error.message : String(error));
+      showAlert('No se pudo borrar', humanizeError(error));
     }
   };
 
@@ -382,7 +382,7 @@ export default function GroupChatScreen() {
     try {
       await sendMediaMessage(id, session.user.id, kind, content);
     } catch (error) {
-      showAlert('No se pudo enviar', error instanceof Error ? error.message : String(error));
+      showAlert('No se pudo enviar', humanizeError(error));
     } finally {
       setSending(false);
     }
