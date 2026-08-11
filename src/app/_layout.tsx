@@ -11,7 +11,7 @@ import {
 import { DarkTheme, Stack, ThemeProvider, router } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useRef } from 'react';
-import { Platform } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { Rolder } from '@/constants/theme';
@@ -19,6 +19,7 @@ import { useSession } from '@/hooks/use-session';
 import { track } from '@/lib/analytics';
 import { ensureCommunityMembership } from '@/lib/auth';
 import { DISCORD_ENABLED } from '@/lib/config';
+import { BottomNavBar } from '@/components/bottom-nav-bar';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { UpdateBanner } from '@/components/update-banner';
 import { UpdateOverlay } from '@/components/update-overlay';
@@ -109,40 +110,48 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ErrorBoundary>
       <ThemeProvider value={RolderNavTheme}>
-        <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Protected guard={!!session}>
-          <Stack.Screen name="(tabs)" />
-          <Stack.Screen name="onboarding" />
-          <Stack.Screen name="tutorial" />
-          <Stack.Screen name="matches" />
-          <Stack.Screen name="promo" />
-          <Stack.Screen name="report" />
-          <Stack.Screen name="rate" />
-          <Stack.Screen name="settings" />
-          <Stack.Screen name="feedback" />
-          <Stack.Screen name="blocked" />
-          <Stack.Screen name="moderation" />
-          <Stack.Screen name="novedades" />
-          <Stack.Screen name="xp" />
-          <Stack.Screen name="players/[id]" />
-          <Stack.Screen name="dm/[id]" />
-          <Stack.Screen name="characters/index" />
-          <Stack.Screen name="characters/new" />
-          <Stack.Screen name="characters/[id]" />
-          <Stack.Screen name="groups/new" />
-          <Stack.Screen name="groups/[id]/candidates" />
-          <Stack.Screen name="groups/[id]/edit" />
-          <Stack.Screen name="groups/[id]/chat" />
-          <Stack.Screen name="groups/[id]/schedule" />
-        </Stack.Protected>
-          <Stack.Protected guard={!session}>
-            <Stack.Screen name="login" />
-          </Stack.Protected>
-          {/* Fuera de los dos guardas: es el destino de los enlaces
-              compartidos y la propia pantalla decide qué enseñar según haya
-              sesión o no. Es la única ruta con parte pública. */}
-          <Stack.Screen name="groups/[id]/index" />
-        </Stack>
+        <View style={styles.appRoot}>
+          <View style={styles.stackArea}>
+            <Stack screenOptions={{ headerShown: false }}>
+            <Stack.Protected guard={!!session}>
+              <Stack.Screen name="(tabs)" />
+              <Stack.Screen name="onboarding" />
+              <Stack.Screen name="tutorial" />
+              <Stack.Screen name="matches" />
+              <Stack.Screen name="promo" />
+              <Stack.Screen name="report" />
+              <Stack.Screen name="rate" />
+              <Stack.Screen name="settings" />
+              <Stack.Screen name="feedback" />
+              <Stack.Screen name="blocked" />
+              <Stack.Screen name="moderation" />
+              <Stack.Screen name="novedades" />
+              <Stack.Screen name="xp" />
+              <Stack.Screen name="players/[id]" />
+              <Stack.Screen name="dm/[id]" />
+              <Stack.Screen name="characters/index" />
+              <Stack.Screen name="characters/new" />
+              <Stack.Screen name="characters/[id]" />
+              <Stack.Screen name="groups/new" />
+              <Stack.Screen name="groups/[id]/candidates" />
+              <Stack.Screen name="groups/[id]/edit" />
+              <Stack.Screen name="groups/[id]/chat" />
+              <Stack.Screen name="groups/[id]/schedule" />
+            </Stack.Protected>
+              <Stack.Protected guard={!session}>
+                <Stack.Screen name="login" />
+              </Stack.Protected>
+              {/* Fuera de los dos guardas: es el destino de los enlaces
+                  compartidos y la propia pantalla decide qué enseñar según haya
+                  sesión o no. Es la única ruta con parte pública. */}
+              <Stack.Screen name="groups/[id]/index" />
+            </Stack>
+          </View>
+          {/* Espacio real (no flotante) reservado para el escudo/dado/chat:
+              se ve en TODAS las pantallas, no solo dentro de (tabs) — la
+              propia barra decide cuándo ocultarse (sin sesión, onboarding). */}
+          <BottomNavBar />
+        </View>
         {updating && <UpdateOverlay />}
         {webUpdateReady && <UpdateBanner />}
       </ThemeProvider>
@@ -150,3 +159,12 @@ export default function RootLayout() {
     </GestureHandlerRootView>
   );
 }
+
+const styles = StyleSheet.create({
+  appRoot: {
+    flex: 1,
+  },
+  stackArea: {
+    flex: 1,
+  },
+});
