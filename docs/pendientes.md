@@ -8,13 +8,11 @@ proponer una mejora, mirar aquí: si ya está listada, no es un hallazgo nuevo.
 
 ## Operativo (bloquea funcionalidad ya mergeada)
 
-- **Aplicar migraciones 00044, 00045, 00047 y 00048** en el SQL Editor.
-  Verificado por REST: el bucket `chat-media` no existe (00044) y
-  `reports.message_excerpt` / `is_moderator()` dan 400/404 (00045). La 00046
-  SÍ está aplicada. Hasta entonces: las fotos de chat siguen yendo al bucket
-  público `avatars`, la bandeja de moderación (`/moderation`) sale vacía con
-  aviso, las vistas `kpi_*` no existen (00047) y el toggle de pausar la
-  búsqueda no aparece en Opciones (00048).
+- **Aplicar migraciones 00044 y 00052** en el SQL Editor. La 00044 (bucket
+  `chat-media` privado) lleva pendiente desde su PR — verificado por REST que
+  el bucket no existe; hasta entonces las fotos de chat siguen yendo al
+  bucket público `avatars`. La 00052 (mesas inactivas: aviso y archivo
+  automático) es de la PR #153. Las 00045-00051 están todas aplicadas ✔.
 - **Migrar las fotos de chat viejas** del bucket público `avatars` a
   `chat-media` (privado). No se puede desde SQL: script contra la API de
   Storage, objeto a objeto. El cliente ya distingue ambas formas (URL completa
@@ -45,8 +43,6 @@ proponer una mejora, mirar aquí: si ya está listada, no es un hallazgo nuevo.
 - **C3 — La pestaña de encuentros difumina nombres salvo premium.** Decisión
   de producto pendiente: el contador que no puedes abrir frustra más de lo
   que convierte.
-- **C4 — Las mesas muertas no caducan.** `is_active` es manual. Idea: aviso
-  al GM tras N semanas sin actividad y auto-archivado con un clic de rescate.
 - **Filtro de idioma inerte.** `profiles.languages` y `groups.language`
   existen con default `'es'` y el matching los aplica, pero ninguna UI los
   edita: hoy es un filtro que nunca filtra. Activarlo cuando haya usuarios
