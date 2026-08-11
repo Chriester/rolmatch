@@ -5,7 +5,11 @@
   "permissions": {
     "allow": [
       "Bash(gh pr merge *)",
-      "Bash(\"/c/Program Files/GitHub CLI/gh.exe\" pr merge *)"
+      "Bash(\"/c/Program Files/GitHub CLI/gh.exe\" pr merge *)",
+      "Bash(\"C:/Program Files/GitHub CLI/gh.exe\" pr *)",
+      "Bash(\"C:/Program Files/GitHub CLI/gh.exe\" issue *)",
+      "Bash(\"C:/Program Files/GitHub CLI/gh.exe\" project *)",
+      "Bash(\"C:/Program Files/GitHub CLI/gh.exe\" api *)"
     ]
   }
 }
