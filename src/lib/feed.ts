@@ -19,6 +19,8 @@ export type GroupCandidate = {
     systems: { name: string } | null;
     /** sin plazas abiertas: se puede pedir sitio igualmente (el GM decide) */
     full: boolean;
+    /** plazas libres derivadas (para la línea decisoria de la tarjeta) */
+    seatsFree: number;
     /** quién dirige: decide muchos likes (nivel y fiabilidad incluidos) */
     owner: {
       alias: string;
@@ -168,8 +170,9 @@ export async function fetchPlayerFeed(
         level: levelFromXp(ownerXp.get(g.owner_id) ?? 0),
         reliability: ownerReliability.get(g.owner_id) ?? null,
       };
+      const seatsFree = Math.max(0, ((g.max_players as number) ?? 5) - players);
       return {
-        group: { ...g, full, owner } as unknown as GroupCandidate['group'],
+        group: { ...g, full, seatsFree, owner } as unknown as GroupCandidate['group'],
         result: matchPlayerToGroup(me, g as unknown as MatchGroup),
       };
   });

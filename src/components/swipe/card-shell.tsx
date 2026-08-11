@@ -26,6 +26,9 @@ type CardShellProps = {
   fallbackColors?: readonly [string, string];
   /** contenido superpuesto arriba a la derecha (p. ej. badge de score) */
   topRight?: ReactNode;
+  /** chip compacto arriba a la izquierda (p. ej. «🎬 One-shot») — no compite
+   *  con los sellos ¡CRÍTICO!/PIFIA como lo hacía la banda a todo lo ancho */
+  topLeft?: ReactNode;
   /** banda superior opcional (p. ej. «💘 Le gustáis») */
   banner?: ReactNode;
   /**
@@ -44,6 +47,7 @@ export function CardShell({
   fallbackEmoji,
   fallbackColors = ['#4A55E2', '#8B6CFF'],
   topRight,
+  topLeft,
   banner,
   accessibilityLabel,
   children,
@@ -71,6 +75,7 @@ export function CardShell({
       />
 
       {banner && <View style={styles.banner}>{banner}</View>}
+      {topLeft && <View style={styles.topLeft}>{topLeft}</View>}
       {topRight && <View style={styles.topRight}>{topRight}</View>}
 
       <View style={styles.info}>{children}</View>
@@ -244,6 +249,11 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 16,
     right: 16,
+  },
+  topLeft: {
+    position: 'absolute',
+    top: 16,
+    left: 16,
   },
   info: {
     position: 'absolute',
