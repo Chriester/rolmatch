@@ -17,6 +17,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppHeader } from '@/components/app-header';
+import { TableTabs } from '@/components/table-tabs';
 import { CalendarPicker } from '@/components/calendar-picker';
 import { Chip } from '@/components/chip';
 import { OrganizarCoach } from '@/components/organizar-coach';
@@ -27,7 +28,7 @@ import { MaxContentWidth, Rolder, RolderFonts, Spacing } from '@/constants/theme
 import { useSession } from '@/hooks/use-session';
 import { confirmAction, humanizeError, showAlert } from '@/lib/alert';
 import { fetchGroup, type GroupDetail } from '@/lib/groups';
-import { markCoachSeen, shouldShowCoach } from '@/lib/tutorial';
+import { markCoachSeen } from '@/lib/tutorial';
 import {
   closePoll,
   createPoll,
@@ -135,15 +136,9 @@ export default function ScheduleScreen() {
 
   const isOwner = group !== null && session?.user.id === group.owner_id;
 
-  // guía de primeros pasos: salta sola la primera vez (cuando ya sabemos
-  // si el viewer es GM o jugador) y se reabre con el botón «?»
+  // guía de primeros pasos: ya NO salta sola (entregable 2d — el overlay
+  // bloqueaba en vez de acompañar); vive detrás del botón «?»
   const [coachOpen, setCoachOpen] = useState(false);
-  useEffect(() => {
-    if (group === null || !session) return;
-    shouldShowCoach('organizar').then((show) => {
-      if (show) setCoachOpen(true);
-    });
-  }, [group, session]);
   const closeCoach = () => {
     setCoachOpen(false);
     markCoachSeen('organizar');
@@ -334,6 +329,7 @@ export default function ScheduleScreen() {
                 : router.replace({ pathname: '/groups/[id]', params: { id: id! } })
             }
           />
+          {id && <TableTabs groupId={id} active="agenda" />}
           <View style={styles.titleRow}>
             <ScreenTitle>📅 Organizar partida</ScreenTitle>
             <Pressable

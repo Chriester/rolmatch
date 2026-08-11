@@ -23,6 +23,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { showAlert } from '@/lib/alert';
 import { AppHeader } from '@/components/app-header';
+import { InlineBanner } from '@/components/inline-banner';
+import { TableTabs } from '@/components/table-tabs';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { OutlineButton } from '@/components/ui';
@@ -194,9 +196,21 @@ export default function GroupJournalScreen() {
               : router.replace({ pathname: '/groups/[id]', params: { id: id! } })
           }
         />
+        {iAmMember && id && <TableTabs groupId={id} active="diario" />}
         <Text numberOfLines={1} style={styles.subheader}>
           📖 {group.name}
         </Text>
+
+        {/* Día de partida con la crónica en blanco: el empujón (3c) */}
+        {iAmMember &&
+          todaySession != null &&
+          !entries.some((e) => e.session_id === todaySession.id && !e.is_system) && (
+            <InlineBanner
+              tone="green"
+              title="✍️ Crónica de hoy"
+              body="La página de esta partida está en blanco. Lo que no se escribe hoy, mañana se ha olvidado — una frase basta."
+            />
+          )}
 
         {!iAmMember ? (
           <View style={styles.centerBox}>
