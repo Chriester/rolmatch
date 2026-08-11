@@ -32,6 +32,7 @@ import { ChatPollBanner } from '@/components/chat-poll-banner';
 import { DiceRoller } from '@/components/dice-roller';
 import { MessageActions } from '@/components/message-actions';
 import { RollBubble } from '@/components/roll-bubble';
+import { TableTabs } from '@/components/table-tabs';
 import { parseRoll, type DiceRoll } from '@/lib/dice';
 import { fetchPolls, subscribeToPolls, unsubscribeFromPolls, type SessionPoll } from '@/lib/polls';
 import {
@@ -88,6 +89,8 @@ export default function GroupChatScreen() {
   const [infoOpen, setInfoOpen] = useState(false);
   const [activePolls, setActivePolls] = useState<SessionPoll[]>([]);
   const [pickerTab, setPickerTab] = useState<PickerTab | 'dice' | null>(null);
+  /** ＋ abierto: enseña emoji/sticker/gif/foto (el 🎲 va siempre a la vista) */
+  const [attachOpen, setAttachOpen] = useState(false);
   const [actionsFor, setActionsFor] = useState<ChatMessage | null>(null);
   const [editing, setEditing] = useState<ChatMessage | null>(null);
   const [typingAlias, setTypingAlias] = useState<string | null>(null);
@@ -458,6 +461,10 @@ export default function GroupChatScreen() {
             }
           }
 
+          // la silla del GM brilla en oro (entregable 3b)
+          const fromGm = item.sender_id === group.owner_id;
+          const senderLabel = `${item.profiles?.alias ?? 'Jugador/a'}${fromGm ? ' 👑' : ''}`;
+
           if (isMine) {
             return media ? (
               <View style={styles.mediaWrap}>{media}</View>
@@ -470,12 +477,12 @@ export default function GroupChatScreen() {
           }
           return media ? (
             <View style={styles.mediaWrap}>
-              <Text style={styles.senderName}>{item.profiles?.alias ?? 'Jugador/a'}</Text>
+              <Text style={[styles.senderName, fromGm && styles.senderNameGm]}>{senderLabel}</Text>
               {media}
             </View>
           ) : (
             <View style={[styles.bubble, styles.bubbleTheirs]}>
-              <Text style={styles.senderName}>{item.profiles?.alias ?? 'Jugador/a'}</Text>
+              <Text style={[styles.senderName, fromGm && styles.senderNameGm]}>{senderLabel}</Text>
               <Text style={styles.bubbleText}>{item.body}</Text>
               {editedTag}
             </View>
@@ -512,6 +519,7 @@ export default function GroupChatScreen() {
               : router.replace({ pathname: '/groups/[id]', params: { id: id! } })
           }
         />
+        {iAmMember && id && <TableTabs groupId={id} active="chat" />}
         <View style={styles.subheaderRow}>
           <Text numberOfLines={1} style={styles.subheader}>
             💬 {group.name}
@@ -603,40 +611,56 @@ export default function GroupChatScreen() {
               />
             )}
             {pickerTab === 'dice' && <DiceRoller onRoll={handleSendRoll} busy={sending} />}
+            {/* Composer de DOS botones (3b): el dado siempre a la vista —
+                es identidad de producto — y ＋ agrupa el resto. Cinco
+                botones del mismo peso era ninguno importante. */}
             <View style={styles.pickerTabs}>
               <Pressable
-                style={[styles.tabButton, pickerTab === 'emoji' && styles.tabActive]}
-                onPress={() => setPickerTab(pickerTab === 'emoji' ? null : 'emoji')}
-                accessibilityLabel="Emojis">
-                <Text style={styles.tabGlyph}>😀</Text>
+                style={[styles.tabButton, attachOpen && styles.tabActive]}
+                onPress={() => {
+                  setAttachOpen((open) => !open);
+                  if (attachOpen) setPickerTab((tab) => (tab === 'dice' ? tab : null));
+                }}
+                accessibilityLabel={attachOpen ? 'Cerrar adjuntos' : 'Adjuntar'}>
+                <Text style={styles.tabGlyph}>{attachOpen ? '✕' : '＋'}</Text>
               </Pressable>
-              <Pressable
-                style={[styles.tabButton, pickerTab === 'sticker' && styles.tabActive]}
-                onPress={() => setPickerTab(pickerTab === 'sticker' ? null : 'sticker')}
-                accessibilityLabel="Stickers">
-                <Text style={styles.tabGlyph}>🎟️</Text>
-              </Pressable>
-              {gifSearchAvailable && (
-                <Pressable
-                  style={[styles.tabButton, pickerTab === 'gif' && styles.tabActive]}
-                  onPress={() => setPickerTab(pickerTab === 'gif' ? null : 'gif')}
-                  accessibilityLabel="GIFs">
-                  <Text style={styles.tabLabel}>GIF</Text>
-                </Pressable>
-              )}
               <Pressable
                 style={[styles.tabButton, pickerTab === 'dice' && styles.tabActive]}
                 onPress={() => setPickerTab(pickerTab === 'dice' ? null : 'dice')}
                 accessibilityLabel="Tirar dados">
                 <Text style={styles.tabGlyph}>🎲</Text>
               </Pressable>
-              <Pressable
-                style={styles.tabButton}
-                onPress={handleSendPhoto}
-                disabled={sending}
-                accessibilityLabel="Enviar foto">
-                <Text style={styles.tabGlyph}>📷</Text>
-              </Pressable>
+              {attachOpen && (
+                <>
+                  <Pressable
+                    style={[styles.tabButton, pickerTab === 'emoji' && styles.tabActive]}
+                    onPress={() => setPickerTab(pickerTab === 'emoji' ? null : 'emoji')}
+                    accessibilityLabel="Emojis">
+                    <Text style={styles.tabGlyph}>😀</Text>
+                  </Pressable>
+                  <Pressable
+                    style={[styles.tabButton, pickerTab === 'sticker' && styles.tabActive]}
+                    onPress={() => setPickerTab(pickerTab === 'sticker' ? null : 'sticker')}
+                    accessibilityLabel="Stickers">
+                    <Text style={styles.tabGlyph}>🎟️</Text>
+                  </Pressable>
+                  {gifSearchAvailable && (
+                    <Pressable
+                      style={[styles.tabButton, pickerTab === 'gif' && styles.tabActive]}
+                      onPress={() => setPickerTab(pickerTab === 'gif' ? null : 'gif')}
+                      accessibilityLabel="GIFs">
+                      <Text style={styles.tabLabel}>GIF</Text>
+                    </Pressable>
+                  )}
+                  <Pressable
+                    style={styles.tabButton}
+                    onPress={handleSendPhoto}
+                    disabled={sending}
+                    accessibilityLabel="Enviar foto">
+                    <Text style={styles.tabGlyph}>📷</Text>
+                  </Pressable>
+                </>
+              )}
             </View>
             <View style={styles.composerRow}>
               <TextInput
@@ -812,10 +836,14 @@ const styles = StyleSheet.create({
   messageColMine: {
     alignItems: 'flex-end',
   },
+  // colgando del borde de la burbuja, no flotando debajo (3b)
   reactionChips: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 4,
+    marginTop: -8,
+    marginLeft: 10,
+    zIndex: 1,
   },
   reactionChip: {
     backgroundColor: 'rgba(255,255,255,0.06)',
@@ -869,6 +897,9 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontFamily: RolderFonts.semibold,
     fontWeight: '600',
+  },
+  senderNameGm: {
+    color: Rolder.gold,
   },
   editedTag: {
     color: 'rgba(255,255,255,0.45)',
