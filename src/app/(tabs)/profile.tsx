@@ -8,6 +8,7 @@ import { useCallback, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { confirmAction } from '@/lib/alert';
 import { AppHeader } from '@/components/app-header';
 import { ThemedView } from '@/components/themed-view';
 import { ListRow, XpBar } from '@/components/ui';
@@ -81,7 +82,15 @@ export default function ProfileTabScreen() {
             </ListRow>
           ))}
 
-          <ListRow onPress={() => signOut()}>
+          <ListRow
+            onPress={async () => {
+              const ok = await confirmAction(
+                '¿Cerrar sesión?',
+                'Tendrás que volver a entrar para usar la app.',
+                'Sí, cerrar sesión'
+              );
+              if (ok) signOut();
+            }}>
             <Text style={styles.linkIcon}>🚪</Text>
             <Text style={[styles.linkLabel, styles.signOut]}>Cerrar sesión</Text>
           </ListRow>

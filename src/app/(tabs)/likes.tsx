@@ -13,6 +13,8 @@ import { ThemedView } from '@/components/themed-view';
 import { ListRow, OutlineButton, ScreenTitle } from '@/components/ui';
 import { Rolder, RolderFonts, Spacing } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
+import { emitLikesSeenChanged } from '@/lib/likes-events';
+import { markLikesSeenNow } from '@/lib/likes-seen';
 import { fetchPremiumStatus, fetchReceivedLikes, type ReceivedLike } from '@/lib/premium';
 
 const MAX_WIDTH = 480;
@@ -34,6 +36,8 @@ export default function LikesScreen() {
       .then(([received, status]) => {
         setLikes(received);
         setPremium(status.active);
+        // se han visto ya: el badge del tab se apaga al instante
+        markLikesSeenNow().then(emitLikesSeenChanged);
       })
       .catch(() => setLoadError(true));
   }, [session]);

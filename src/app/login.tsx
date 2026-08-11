@@ -4,7 +4,7 @@
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
-import { showAlert } from '@/lib/alert';
+import { humanizeError, showAlert } from '@/lib/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { RolderLogo, RolderWordmark } from '@/components/brand';
@@ -22,7 +22,7 @@ export default function LoginScreen() {
     try {
       await signInWithDiscord();
     } catch (error) {
-      showAlert('Error al iniciar sesión', error instanceof Error ? error.message : String(error));
+      showAlert('Error al iniciar sesión', humanizeError(error));
     } finally {
       setBusy(false);
     }
@@ -33,7 +33,7 @@ export default function LoginScreen() {
     try {
       await signInWithGoogle();
     } catch (error) {
-      showAlert('Error al iniciar sesión', error instanceof Error ? error.message : String(error));
+      showAlert('Error al iniciar sesión', humanizeError(error));
     } finally {
       setBusy(false);
     }
@@ -46,7 +46,7 @@ export default function LoginScreen() {
       await signInWithEmail(email.trim());
       setSent(true);
     } catch (error) {
-      showAlert('Error al enviar el enlace', error instanceof Error ? error.message : String(error));
+      showAlert('Error al enviar el enlace', humanizeError(error));
     } finally {
       setBusy(false);
     }

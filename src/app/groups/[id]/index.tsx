@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { confirmAction, showAlert } from '@/lib/alert';
+import { confirmAction, humanizeError, showAlert } from '@/lib/alert';
 import { track } from '@/lib/analytics';
 import { APP_URL, DISCORD_ENABLED } from '@/lib/config';
 import { AppHeader } from '@/components/app-header';
@@ -127,7 +127,7 @@ function GroupDetailScreen() {
       // el match ya solo lo cierra el GM al aceptar en Candidatos (00040)
       showAlert('🙋 Sitio pedido', 'El GM verá tu solicitud y decidirá. Te avisamos si entras.');
     } catch (error) {
-      showAlert('No se pudo pedir sitio', error instanceof Error ? error.message : String(error));
+      showAlert('No se pudo pedir sitio', humanizeError(error));
     } finally {
       setApplyBusy(false);
     }
@@ -154,7 +154,7 @@ function GroupDetailScreen() {
       setBoostedUntil(until);
       showAlert('🚀 Mesa destacada', 'Aparecerá primero en los feeds durante 7 días.');
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
+      const message = humanizeError(error);
       if (message.includes('premium')) {
         showAlert(
           '🚀 Destacar es premium',
@@ -258,7 +258,7 @@ function GroupDetailScreen() {
     } catch (error) {
       showAlert(
         'No se pudo confirmar',
-        error instanceof Error ? error.message : String(error)
+        humanizeError(error)
       );
     }
   };
@@ -614,7 +614,7 @@ function GroupDetailScreen() {
                           } catch (error) {
                             showAlert(
                               'No se pudo echar',
-                              error instanceof Error ? error.message : String(error)
+                              humanizeError(error)
                             );
                           }
                         }}>
@@ -709,13 +709,19 @@ function GroupDetailScreen() {
                     {session?.user.id === group.owner_id && (
                       <Pressable
                         onPress={async () => {
+                          const ok = await confirmAction(
+                            '¿Quitar esta sesión?',
+                            'Se borra del calendario de la mesa para todos.',
+                            'Sí, quitar'
+                          );
+                          if (!ok) return;
                           try {
                             await deleteSession(s.id);
                             setSessions((list) => list.filter((x) => x.id !== s.id));
                           } catch (error) {
                             showAlert(
                               'No se pudo borrar',
-                              error instanceof Error ? error.message : String(error)
+                              humanizeError(error)
                             );
                           }
                         }}>
@@ -846,7 +852,7 @@ function GroupDetailScreen() {
                   } catch (error) {
                     showAlert(
                       'No se pudo salir',
-                      error instanceof Error ? error.message : String(error)
+                      humanizeError(error)
                     );
                   }
                 }}

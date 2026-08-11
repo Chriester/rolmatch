@@ -8,7 +8,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { confirmAction, showAlert } from '@/lib/alert';
+import { confirmAction, humanizeError, showAlert } from '@/lib/alert';
 import { AppHeader } from '@/components/app-header';
 import {
   AvailabilityMiniGrid,
@@ -59,7 +59,7 @@ export default function PlayerProfileScreen() {
     } catch (error) {
       showAlert(
         'No se pudo abrir el chat',
-        error instanceof Error ? error.message : String(error)
+        humanizeError(error)
       );
     } finally {
       setDmBusy(false);
@@ -318,7 +318,7 @@ export default function PlayerProfileScreen() {
                   } catch (error) {
                     showAlert(
                       'No se pudo bloquear',
-                      error instanceof Error ? error.message : String(error)
+                      humanizeError(error)
                     );
                   }
                 }}>

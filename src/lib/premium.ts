@@ -57,7 +57,14 @@ export async function redeemPromoCode(code: string): Promise<{ premiumUntil: str
 // ---- Likes recibidos (Tinder Gold) ----
 
 export type ReceivedLike =
-  | { kind: 'group'; id: string; name: string; imageUrl: string | null; matched: boolean }
+  | {
+      kind: 'group';
+      id: string;
+      name: string;
+      imageUrl: string | null;
+      matched: boolean;
+      createdAt: string;
+    }
   | {
       kind: 'player';
       id: string;
@@ -65,6 +72,7 @@ export type ReceivedLike =
       imageUrl: string | null;
       groupName: string;
       matched: boolean;
+      createdAt: string;
     };
 
 export async function fetchReceivedLikes(userId: string): Promise<ReceivedLike[]> {
@@ -92,6 +100,7 @@ export async function fetchReceivedLikes(userId: string): Promise<ReceivedLike[]
       name: group?.name ?? 'Mesa',
       imageUrl: group?.image_url ?? null,
       matched: matchedPairs.has(`${userId}:${like.group_id}`),
+      createdAt: like.created_at,
     });
   }
 
@@ -117,6 +126,7 @@ export async function fetchReceivedLikes(userId: string): Promise<ReceivedLike[]
         imageUrl: profile?.avatar_url ?? null,
         groupName: groupNames.get(like.group_id) ?? 'tu mesa',
         matched: matchedPairs.has(`${like.user_id}:${like.group_id}`),
+        createdAt: like.created_at,
       });
     }
   }
@@ -124,4 +134,11 @@ export async function fetchReceivedLikes(userId: string): Promise<ReceivedLike[]
   // los likes que ya cuajaron en match sobran aquí: esa relación vive en
   // la mesa y sus chats, no en la bandeja de pendientes
   return likes.filter((like) => !like.matched);
+}
+
+/** Cuántos de estos likes llegaron después de `sinceIso` (badge del tab). */
+export function countLikesSince(likes: ReceivedLike[], sinceIso: string | null): number {
+  if (!sinceIso) return likes.length;
+  const since = new Date(sinceIso).getTime();
+  return likes.filter((like) => new Date(like.createdAt).getTime() > since).length;
 }
