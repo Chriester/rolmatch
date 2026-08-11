@@ -1,7 +1,7 @@
 import { matchPlayerToGroup, type MatchGroup, type MatchPlayer, type MatchResult } from '@/lib/matching';
 import { fetchBlockRelations } from '@/lib/moderation';
 import { fetchReliability } from '@/lib/ratings';
-import { supabase } from '@/lib/supabase';
+import { hasColumn, supabase } from '@/lib/supabase';
 import { fetchXpTotals, levelFromXp } from '@/lib/xp';
 import type { GroupFormat } from '@/lib/groups';
 import type { VttType } from '@/lib/profile';
@@ -94,8 +94,25 @@ function toMatchPlayer(row: Awaited<ReturnType<typeof fetchMatchPlayer>>): Match
   };
 }
 
+/** Recuento de por qué se cayó cada mesa, para poder explicar un feed vacío. */
+export type FilteredOut = { total: number; schedule: number; system: number; language: number };
+
+export function tallyFilteredOut(results: MatchResult[]): FilteredOut {
+  const tally: FilteredOut = { total: 0, schedule: 0, system: 0, language: 0 };
+  for (const result of results) {
+    if (result.pass) continue;
+    tally.total += 1;
+    if (result.reasons.includes('availability')) tally.schedule += 1;
+    if (result.reasons.includes('system')) tally.system += 1;
+    if (result.reasons.includes('language')) tally.language += 1;
+  }
+  return tally;
+}
+
 /** Mesas activas con plazas que pasan los filtros duros para este jugador, ordenadas por score. */
-export async function fetchPlayerFeed(userId: string): Promise<GroupCandidate[]> {
+export async function fetchPlayerFeed(
+  userId: string
+): Promise<{ candidates: GroupCandidate[]; filteredOut: FilteredOut }> {
   const me = toMatchPlayer(await fetchMatchPlayer(userId));
 
   const [{ data: myMemberships }, { data: mySwipes }, blocked] = await Promise.all([
@@ -139,8 +156,7 @@ export async function fetchPlayerFeed(userId: string): Promise<GroupCandidate[]>
     ])
   );
 
-  return visible
-    .map((g) => {
+  const scored = visible.map((g) => {
       // plazas derivadas: límite menos miembros sin contar al GM
       const memberRows = (g.group_members ?? []) as { user_id: string }[];
       const players = memberRows.filter((m) => m.user_id !== g.owner_id).length;
@@ -156,95 +172,156 @@ export async function fetchPlayerFeed(userId: string): Promise<GroupCandidate[]>
         group: { ...g, full, owner } as unknown as GroupCandidate['group'],
         result: matchPlayerToGroup(me, g as unknown as MatchGroup),
       };
-    })
-    .filter((c) => c.result.pass)
-    // llenas al final; dentro de cada bloque, por score
-    .sort(
-      (a, b) => Number(a.group.full) - Number(b.group.full) || b.result.score - a.result.score
-    );
+  });
+
+  return {
+    candidates: scored
+      .filter((c) => c.result.pass)
+      // llenas al final; dentro de cada bloque, por score
+      .sort(
+        (a, b) => Number(a.group.full) - Number(b.group.full) || b.result.score - a.result.score
+      ),
+    filteredOut: tallyFilteredOut(scored.map((c) => c.result)),
+  };
 }
 
+// Columnas de un candidato para la tarjeta y el score. La disponibilidad se
+// pide aparte porque en el pool general va con `!inner` (ver abajo).
+const CANDIDATE_COLUMNS = `id, alias, role, gender, birth_year, timezone, languages, open_to_any_system, bio, avatar_url,
+   style_combat_narrative, style_serious_humor, style_roleplay_weight, preferred_vtt,
+   user_systems(system_id, experience),
+   characters!characters_user_id_fkey(id, name, archetype, level, gender, age, concept, backstory, portrait_url, status, is_public, traits, sheet_theme, systems(name, slug))`;
+
+type CandidateRow = {
+  id: string;
+  alias: string;
+  role: string;
+  gender: string | null;
+  birth_year: number | null;
+  characters: unknown;
+  availability_slots: { weekday: number; slot: number }[];
+} & Parameters<typeof toMatchPlayer>[0];
+
+/** Lo que excluye a un candidato de UNA mesa, y quién le ha pedido sitio. */
+type GroupExclusions = { excluded: Set<string>; likesByUser: Map<string, string | null> };
+
 /**
- * Candidatos que pasan los filtros duros para esta mesa, ordenados por score.
- * Con `onlyApplicants` devuelve SOLO quienes han dado like a la mesa (la
- * cola de solicitudes de la pantalla Candidatos); el pool completo de
- * compatibles vive en el feed principal.
+ * Miembros, swipes y bloqueos de VARIAS mesas de una tacada. Antes esto eran
+ * tres consultas por mesa dentro de un bucle secuencial.
  */
-export async function fetchGroupCandidates(
-  groupId: string,
+async function fetchGroupExclusions(
+  groupIds: string[],
   viewerId: string,
-  options: { onlyApplicants?: boolean } = {}
-): Promise<PlayerCandidate[]> {
-  const { data: group, error: groupError } = await supabase
-    .from('groups')
-    .select(
-      `id, timezone, language, system_id, session_weekday, session_slot, experience_wanted,
-       style_combat_narrative, style_serious_humor, style_roleplay_weight, vtt`
-    )
-    .eq('id', groupId)
-    .single();
-  if (groupError) throw groupError;
+  onlyApplicants: boolean
+): Promise<Map<string, GroupExclusions>> {
+  const byGroup = new Map<string, GroupExclusions>();
+  if (groupIds.length === 0) return byGroup;
 
   const [{ data: members }, { data: groupSwipes }, { data: userLikes }, blocked] =
     await Promise.all([
-      supabase.from('group_members').select('user_id').eq('group_id', groupId),
+      supabase.from('group_members').select('group_id, user_id').in('group_id', groupIds),
       supabase
         .from('swipes')
-        .select('user_id, direction')
-        .eq('group_id', groupId)
+        .select('group_id, user_id, direction')
+        .in('group_id', groupIds)
         .eq('origin', 'group'),
       supabase
         .from('swipes')
-        .select('user_id, proposed_character_id')
-        .eq('group_id', groupId)
+        .select('group_id, user_id, proposed_character_id')
+        .in('group_id', groupIds)
         .eq('origin', 'user')
         .eq('direction', 'like'),
       fetchBlockRelations(viewerId),
     ]);
-  const likesByUser = new Map(
-    (userLikes ?? []).map((like) => [like.user_id, like.proposed_character_id])
-  );
+
+  for (const groupId of groupIds) {
+    byGroup.set(groupId, { excluded: new Set(blocked), likesByUser: new Map() });
+  }
+  for (const member of members ?? []) {
+    byGroup.get(member.group_id)?.excluded.add(member.user_id);
+  }
   // En la cola de solicitudes, un like previo de la mesa NO excluye: el GM
   // pudo fichar al jugador desde el feed antes de que pidiera sitio, y es
   // aquí donde acepta (su like rearmado cierra el match). Un pass sí excluye.
-  const excluded = new Set([
-    ...(members ?? []).map((m) => m.user_id),
-    ...(groupSwipes ?? [])
-      .filter((s) => (options.onlyApplicants ? s.direction === 'pass' : true))
-      .map((s) => s.user_id),
-    ...blocked,
-  ]);
+  for (const swipe of groupSwipes ?? []) {
+    if (onlyApplicants && swipe.direction !== 'pass') continue;
+    byGroup.get(swipe.group_id)?.excluded.add(swipe.user_id);
+  }
+  for (const like of userLikes ?? []) {
+    byGroup.get(like.group_id)?.likesByUser.set(like.user_id, like.proposed_character_id);
+  }
+  return byGroup;
+}
 
-  const { data: profiles, error } = await supabase
-    .from('profiles')
-    .select(
-      `id, alias, role, gender, birth_year, timezone, languages, open_to_any_system, bio, avatar_url,
-       style_combat_narrative, style_serious_humor, style_roleplay_weight, preferred_vtt,
-       availability_slots(weekday, slot), user_systems(system_id, experience),
-       characters!characters_user_id_fkey(id, name, archetype, level, gender, age, concept, backstory, portrait_url, status, is_public, traits, sheet_theme, systems(name, slug))`
-    );
+/**
+ * El pool de candidatos, UNA sola vez por feed.
+ *
+ * `availability_slots!inner` hace el descarte en Postgres: sin él bajábamos
+ * la tabla `profiles` entera —con disponibilidad, sistemas y personajes
+ * embebidos— para tirar en el móvil a los que no tienen disponibilidad, y
+ * encima una vez por cada mesa del GM.
+ *
+ * Con `applicantIds` (cola de solicitudes) se acota a esa lista y NO se
+ * exige disponibilidad: quien pide sitio entra aunque tenga el perfil a
+ * medias, que esa decisión es del GM.
+ */
+// Tope del pool de descubrimiento: sin él, el feed del GM se baja TODOS los
+// perfiles en búsqueda con sus personajes (ya fue la consulta más cara de la
+// app una vez, #138). Los más recientes primero — el score se calcula en el
+// cliente, así que con más de este número de perfiles buscando, los antiguos
+// dejan de concursar: revisar el corte cuando la comunidad se acerque.
+const CANDIDATE_POOL_LIMIT = 120;
+
+async function fetchCandidatePool(applicantIds?: string[]): Promise<CandidateRow[]> {
+  if (applicantIds && applicantIds.length === 0) return [];
+  const query = applicantIds
+    ? supabase
+        .from('profiles')
+        .select(`${CANDIDATE_COLUMNS}, availability_slots(weekday, slot)`)
+        .in('id', applicantIds)
+    : supabase
+        .from('profiles')
+        .select(`${CANDIDATE_COLUMNS}, availability_slots!inner(weekday, slot)`)
+        .order('created_at', { ascending: false })
+        .limit(CANDIDATE_POOL_LIMIT);
+  // Pausados fuera del DESCUBRIMIENTO, pero no de los aspirantes: quien
+  // pidió sitio antes de pausarse sigue en la bandeja del GM (migr. 00048).
+  if (!applicantIds && (await hasColumn('profiles', 'is_searching'))) {
+    query.eq('is_searching', true);
+  }
+  const { data, error } = await query;
   if (error) throw error;
+  return (data ?? []) as unknown as CandidateRow[];
+}
 
-  // En modo solicitudes entran TODOS los que pidieron sitio, aunque su
-  // perfil esté incompleto o falle filtros (p. ej. un amigo que llegó por
-  // enlace compartido): esa decisión es del GM, no del algoritmo.
-  const eligible = (profiles ?? []).filter((p) =>
-    options.onlyApplicants
-      ? !excluded.has(p.id) && likesByUser.has(p.id)
-      : !excluded.has(p.id) && p.availability_slots.length > 0
-  );
-  // Fiabilidad real (fase 3): media de valoraciones para el 10 % del score.
-  // XP solo para pintar nivel/título en la tarjeta; no puntúa en el matching.
-  const [reliability, xpTotals] = await Promise.all([
-    fetchReliability(eligible.map((p) => p.id)).catch(
-      () => new Map<string, { average: number; count: number }>()
-    ),
-    fetchXpTotals(eligible.map((p) => p.id)).catch(() => new Map<string, number>()),
+/** Fiabilidad (10 % del score) y XP (solo para pintar el nivel en la tarjeta). */
+async function fetchCandidateScores(ids: string[]) {
+  return Promise.all([
+    fetchReliability(ids).catch(() => new Map<string, { average: number; count: number }>()),
+    fetchXpTotals(ids).catch(() => new Map<string, number>()),
   ]);
+}
 
-  return eligible
+/**
+ * Puntúa el pool contra una mesa. Sin red: solo cálculo, y por eso es lo
+ * único de aquí que se puede testear a pelo (feed.test.ts).
+ */
+export function buildCandidates(
+  pool: CandidateRow[],
+  group: MatchGroup,
+  { excluded, likesByUser }: GroupExclusions,
+  reliability: Map<string, { average: number; count: number }>,
+  xpTotals: Map<string, number>,
+  onlyApplicants: boolean
+): PlayerCandidate[] {
+  return pool
+    .filter((p) =>
+      onlyApplicants
+        ? !excluded.has(p.id) && likesByUser.has(p.id)
+        : !excluded.has(p.id) && p.availability_slots.length > 0
+    )
     .map((p) => {
-      const characters = (p.characters ?? []) as unknown as ShowcaseCharacter[];
+      const characters = (p.characters ?? []) as ShowcaseCharacter[];
       const likedGroup = likesByUser.has(p.id);
       const proposedId = likesByUser.get(p.id) ?? null;
       const matchInput = { ...toMatchPlayer(p), reliability: reliability.get(p.id) ?? null };
@@ -261,15 +338,54 @@ export async function fetchGroupCandidates(
         },
         likedGroup,
         proposal: characters.find((c) => c.id === proposedId) ?? null,
-        result: matchPlayerToGroup(matchInput, group as unknown as MatchGroup),
+        result: matchPlayerToGroup(matchInput, group),
       };
     })
-    .filter((c) => (options.onlyApplicants ? c.likedGroup : c.result.pass))
+    .filter((c) => (onlyApplicants ? c.likedGroup : c.result.pass))
     // Los que ya han dado like a la mesa, primero; después por score
     .sort(
-      (a, b) =>
-        Number(b.likedGroup) - Number(a.likedGroup) || b.result.score - a.result.score
+      (a, b) => Number(b.likedGroup) - Number(a.likedGroup) || b.result.score - a.result.score
     );
+}
+
+/** Columnas de mesa que necesita el algoritmo para puntuar candidatos. */
+const GROUP_MATCH_COLUMNS = `id, timezone, language, system_id, session_weekday, session_slot,
+   experience_wanted, style_combat_narrative, style_serious_humor, style_roleplay_weight, vtt`;
+
+/**
+ * Candidatos que pasan los filtros duros para esta mesa, ordenados por score.
+ * Con `onlyApplicants` devuelve SOLO quienes han dado like a la mesa (la
+ * cola de solicitudes de la pantalla Candidatos); el pool completo de
+ * compatibles vive en el feed principal.
+ */
+export async function fetchGroupCandidates(
+  groupId: string,
+  viewerId: string,
+  options: { onlyApplicants?: boolean } = {}
+): Promise<PlayerCandidate[]> {
+  const onlyApplicants = options.onlyApplicants ?? false;
+  const [{ data: group, error: groupError }, exclusionsByGroup] = await Promise.all([
+    supabase.from('groups').select(GROUP_MATCH_COLUMNS).eq('id', groupId).single(),
+    fetchGroupExclusions([groupId], viewerId, onlyApplicants),
+  ]);
+  if (groupError) throw groupError;
+  const exclusions = exclusionsByGroup.get(groupId) ?? {
+    excluded: new Set<string>(),
+    likesByUser: new Map<string, string | null>(),
+  };
+
+  const pool = await fetchCandidatePool(
+    onlyApplicants ? [...exclusions.likesByUser.keys()] : undefined
+  );
+  const [reliability, xpTotals] = await fetchCandidateScores(pool.map((p) => p.id));
+  return buildCandidates(
+    pool,
+    group as unknown as MatchGroup,
+    exclusions,
+    reliability,
+    xpTotals,
+    onlyApplicants
+  );
 }
 
 // ============================================================
@@ -294,6 +410,12 @@ export type UnifiedFeed = {
   items: FeedItem[];
   /** mi disponibilidad, para pintar el mini-grid en los detalles de mesas */
   myAvailability: { weekday: number; slot: number }[];
+  /**
+   * Mesas que existen y NO han pasado los filtros duros, por motivo. El feed
+   * vacío puede así decir por qué lo está, en vez de un «no hay nada» que
+   * deja al usuario sin saber qué tocar.
+   */
+  filteredOut: { total: number; schedule: number; system: number; language: number };
 };
 
 export async function fetchUnifiedFeed(userId: string): Promise<UnifiedFeed> {
@@ -301,24 +423,52 @@ export async function fetchUnifiedFeed(userId: string): Promise<UnifiedFeed> {
   const role = meRow.role as 'player' | 'gm' | 'both';
   const items: FeedItem[] = [];
 
+  let filteredOut: FilteredOut = { total: 0, schedule: 0, system: 0, language: 0 };
   if (role === 'player' || role === 'both') {
     const groups = await fetchPlayerFeed(userId);
-    items.push(...groups.map((g) => ({ kind: 'group' as const, group: g.group, result: g.result })));
+    filteredOut = groups.filteredOut;
+    items.push(
+      ...groups.candidates.map((g) => ({
+        kind: 'group' as const,
+        group: g.group,
+        result: g.result,
+      }))
+    );
   }
 
   if (role === 'gm' || role === 'both') {
     // también las mesas llenas: sus candidatos («piden sitio») deben llegar al GM
     const { data: myGroups } = await supabase
       .from('groups')
-      .select('id, name, image_url, session_weekday, session_slot, timezone')
+      .select(`${GROUP_MATCH_COLUMNS}, name, image_url`)
       .eq('owner_id', userId)
       .eq('is_active', true);
+
+    // El pool de candidatos y sus puntuaciones se piden UNA vez y se puntúan
+    // contra cada mesa en memoria. Antes esto era fetchGroupCandidates dentro
+    // de un bucle con await: un GM con 4 mesas bajaba el pool 4 veces, en
+    // serie, antes de ver la primera tarjeta.
+    const groupIds = (myGroups ?? []).map((g) => g.id);
+    const [exclusionsByGroup, pool] = await Promise.all([
+      fetchGroupExclusions(groupIds, userId, false),
+      groupIds.length > 0 ? fetchCandidatePool() : Promise.resolve([]),
+    ]);
+    const [reliability, xpTotals] = await fetchCandidateScores(pool.map((p) => p.id));
 
     // Un candidato puede encajar en varias de mis mesas: nos quedamos con la
     // mejor combinación (like previo gana; si no, mayor score)
     const bestByUser = new Map<string, { candidate: PlayerCandidate; forGroup: ForGroupRef }>();
     for (const g of myGroups ?? []) {
-      const candidates = await fetchGroupCandidates(g.id, userId);
+      const exclusions = exclusionsByGroup.get(g.id);
+      if (!exclusions) continue;
+      const candidates = buildCandidates(
+        pool,
+        g as unknown as MatchGroup,
+        exclusions,
+        reliability,
+        xpTotals,
+        false
+      );
       for (const c of candidates) {
         const previous = bestByUser.get(c.player.id);
         const better =
@@ -354,5 +504,5 @@ export async function fetchUnifiedFeed(userId: string): Promise<UnifiedFeed> {
       liked(b) - liked(a) || boosted(b) - boosted(a) || full(a) - full(b) || score(b) - score(a)
   );
 
-  return { items, myAvailability: meRow.availability_slots };
+  return { items, myAvailability: meRow.availability_slots, filteredOut };
 }

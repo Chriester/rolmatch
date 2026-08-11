@@ -4,8 +4,8 @@
 
 import Constants from 'expo-constants';
 import { router } from 'expo-router';
-import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { confirmAction, showAlert } from '@/lib/alert';
@@ -15,6 +15,12 @@ import { ThemedView } from '@/components/themed-view';
 import { ListRow, OutlineButton, ScreenBlurb, ScreenTitle } from '@/components/ui';
 import { MaxContentWidth, Rolder, RolderFonts, Spacing } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
+import { track } from '@/lib/analytics';
+import { APP_URL } from '@/lib/config';
+import { fetchMyOwnedGroups } from '@/lib/groups';
+import { amIModerator } from '@/lib/moderation';
+import { fetchSearching, setSearching } from '@/lib/profile';
+import { shareLink } from '@/lib/share';
 import { enableWebPush, webPushState, type WebPushState } from '@/lib/web-push';
 
 const OPTIONS: { icon: string; label: string; detail: string; route: string }[] = [
@@ -30,7 +36,68 @@ const OPTIONS: { icon: string; label: string; detail: string; route: string }[] 
     detail: 'Códigos de premium y regalos de la beta',
     route: '/promo',
   },
+  {
+    icon: '💬',
+    label: 'Enviar sugerencia',
+    detail: 'Ideas y cosas que fallan, directas al equipo',
+    route: '/feedback',
+  },
+  {
+    icon: '🚫',
+    label: 'Bloqueados',
+    detail: 'Quién no te ve ni te escribe, y cómo deshacerlo',
+    route: '/blocked',
+  },
 ];
+
+// Pausar la búsqueda (migr. 00048): dejar de salir en el feed de los GMs sin
+// borrar nada. Si la columna aún no existe, la sección no aparece.
+function SearchingSection() {
+  const session = useSession();
+  // undefined = cargando; null = migración sin aplicar (sección oculta)
+  const [searching, setSearchingState] = useState<boolean | null | undefined>(undefined);
+
+  useEffect(() => {
+    if (!session) return;
+    fetchSearching(session.user.id)
+      .then(setSearchingState)
+      .catch(() => setSearchingState(null));
+  }, [session]);
+
+  if (searching === undefined || searching === null) return null;
+
+  const toggle = async (value: boolean) => {
+    if (!session) return;
+    setSearchingState(value); // optimista: un switch no puede ir con retardo
+    try {
+      await setSearching(session.user.id, value);
+    } catch (error) {
+      setSearchingState(!value);
+      showAlert('No se pudo cambiar', error instanceof Error ? error.message : String(error));
+    }
+  };
+
+  return (
+    <View style={styles.pushBox}>
+      <View style={styles.searchingRow}>
+        <View style={styles.searchingText}>
+          <Text style={styles.pushTitle}>🔍 En búsqueda de mesa</Text>
+          <Text style={styles.pushDetail}>
+            {searching
+              ? 'Los GMs te ven entre los candidatos. Apágalo si ya tienes mesa: dejarás de salir en su feed (tus mesas y chats siguen igual).'
+              : 'Pausado: no apareces en el feed de nadie. Enciéndelo cuando vuelvas a buscar.'}
+          </Text>
+        </View>
+        <Switch
+          value={searching}
+          onValueChange={toggle}
+          accessibilityLabel="En búsqueda de mesa"
+          trackColor={{ true: Rolder.like, false: 'rgba(255,255,255,0.15)' }}
+        />
+      </View>
+    </View>
+  );
+}
 
 // Estado del web push en frases que entienda cualquiera. Solo aparece en web:
 // en el APK las notificaciones nativas ya van solas.
@@ -86,7 +153,57 @@ function WebPushSection() {
   );
 }
 
+/** Invitar a alguien a rolder (no a una mesa concreta): boca a boca puro. */
+function ShareAppRow() {
+  const session = useSession();
+  return (
+    <ListRow
+      onPress={async () => {
+        const via = await shareLink({
+          title: 'rolder — encuentra tu mesa de rol',
+          text: 'Estoy en rolder buscando gente para jugar rol 🎲 Échale un ojo:',
+          url: APP_URL,
+        });
+        if (!via) return;
+        if (via === 'clipboard')
+          showAlert('🔗 Enlace copiado', 'Pégalo donde quieras para invitar a alguien a rolder.');
+        track(session?.user.id, 'share_app', { via });
+      }}>
+      <Text style={styles.icon}>🎲</Text>
+      <View style={styles.body}>
+        <Text style={styles.label}>Invitar a rolder</Text>
+        <Text style={styles.detail}>Comparte la app con quien le falte mesa (o jugadores)</Text>
+      </View>
+      <Text style={styles.chevron}>›</Text>
+    </ListRow>
+  );
+}
+
+/** La bandeja de moderación solo existe para quien modera. */
+function ModerationRow() {
+  const session = useSession();
+  const [isModerator, setIsModerator] = useState(false);
+
+  useEffect(() => {
+    if (!session) return;
+    amIModerator(session.user.id).then(setIsModerator);
+  }, [session]);
+
+  if (!isModerator) return null;
+  return (
+    <ListRow onPress={() => router.push('/moderation')}>
+      <Text style={styles.icon}>🛡️</Text>
+      <View style={styles.body}>
+        <Text style={styles.label}>Moderación</Text>
+        <Text style={styles.detail}>La cola de reportes de la comunidad</Text>
+      </View>
+      <Text style={styles.chevron}>›</Text>
+    </ListRow>
+  );
+}
+
 export default function SettingsScreen() {
+  const session = useSession();
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
@@ -95,6 +212,7 @@ export default function SettingsScreen() {
           <ScreenTitle>⚙️ Opciones</ScreenTitle>
           <ScreenBlurb>Ajustes y utilidades de tu cuenta.</ScreenBlurb>
 
+          <SearchingSection />
           <WebPushSection />
 
           {OPTIONS.map((option) => (
@@ -108,8 +226,28 @@ export default function SettingsScreen() {
             </ListRow>
           ))}
 
+          <ShareAppRow />
+          <ModerationRow />
+
           <Pressable
             onPress={async () => {
+              // Si es GM de mesas con gente, el borrado las disuelve para
+              // TODOS: eso merece un aviso con nombres, no la frase genérica.
+              const owned = session
+                ? await fetchMyOwnedGroups(session.user.id).catch(() => [])
+                : [];
+              const withPeople = owned.filter((g) => g.members > 0);
+              if (withPeople.length > 0) {
+                const names = withPeople
+                  .map((g) => `«${g.name}» (${g.members === 1 ? '1 persona' : `${g.members} personas`})`)
+                  .join(', ');
+                const proceed = await confirmAction(
+                  '⚠️ Tus mesas se disuelven',
+                  `Eres GM de ${names}. Al borrar tu cuenta, esas mesas desaparecen para todos sus miembros: chat, diario y calendario. Puedes traspasarlas antes desde la ficha de cada mesa («👑 Traspasar mesa»).`,
+                  'Continuar igualmente'
+                );
+                if (!proceed) return;
+              }
               const ok = await confirmAction(
                 '¿Eliminar tu cuenta?',
                 'Se borran tu perfil, personajes, mesas, chats y todo lo demás. No se puede deshacer.',
@@ -201,6 +339,15 @@ const styles = StyleSheet.create({
     fontSize: 12.5,
     fontFamily: RolderFonts.regular,
     lineHeight: 18,
+  },
+  searchingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
+  },
+  searchingText: {
+    flex: 1,
+    gap: Spacing.two,
   },
   deleteAccount: {
     color: Rolder.pass,

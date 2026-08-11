@@ -1,15 +1,31 @@
 // Chat 1-a-1 (issue #42): hilos privados entre usuarios que comparten mesa.
-// Mismo contrato de mensajes que el chat de mesa (text/gif/sticker) para
-// reutilizar la UI. Todas las lecturas degradan con gracia si la migración
-// 00025 no está aplicada (patrón fetchMyChats/chat_reads).
+// La mecánica de mensajes es la misma que la del chat de mesa y vive en
+// chat-core.ts; aquí queda lo propio del 1-a-1: crear el hilo, saber con
+// quién hablas y filtrar los bloqueos.
 
 import type { RealtimeChannel } from '@supabase/supabase-js';
 
+import {
+  DM_CHAT,
+  deleteMessageIn,
+  editMessageIn,
+  fetchConversation,
+  fetchLastReadAt,
+  fetchReactions,
+  insertMessage,
+  markRead,
+  messagePreview,
+  subscribeToConversation,
+  subscribeToConversationReactions,
+  toggleReaction,
+  type MessageKind,
+  type ReactionEvent,
+  type ReactionSummary,
+} from '@/lib/chat-core';
 import { rollSummary, type DiceRoll } from '@/lib/dice';
-import { messagePreview, type ChatSummary, type MessageKind } from '@/lib/messages';
+import type { ChatSummary } from '@/lib/messages';
 import { fetchBlockRelations } from '@/lib/moderation';
-import { supabase, uniqueChannel } from '@/lib/supabase';
-import { emitUnreadChanged } from '@/lib/unread-events';
+import { supabase, type Subscription } from '@/lib/supabase';
 
 export type DmMessage = {
   id: string;
@@ -21,8 +37,6 @@ export type DmMessage = {
   created_at: string;
   edited_at: string | null;
 };
-
-const DM_MESSAGE_SELECT = 'id, thread_id, sender_id, body, kind, media_url, created_at, edited_at';
 
 export type DmThread = {
   id: string;
@@ -106,249 +120,89 @@ export async function fetchDmThread(threadId: string, myId: string): Promise<DmT
   };
 }
 
-/**
- * Últimos `limit` mensajes del hilo, más reciente primero (FlatList
- * invertido). `before` pagina hacia atrás.
- */
-export async function fetchDmMessages(
-  threadId: string,
-  limit = 100,
-  before?: string
-): Promise<DmMessage[]> {
-  let query = supabase
-    .from('dm_messages')
-    .select(DM_MESSAGE_SELECT)
-    .eq('thread_id', threadId)
-    .order('created_at', { ascending: false })
-    .limit(limit);
-  if (before) query = query.lt('created_at', before);
-  const { data, error } = await query;
-  if (error) throw error;
-  return (data ?? []) as DmMessage[];
-}
+export const fetchDmMessages = (threadId: string, limit?: number, before?: string) =>
+  fetchConversation<DmMessage>(DM_CHAT, threadId, limit, before);
 
-export async function sendDmMessage(
-  threadId: string,
-  senderId: string,
-  body: string
-): Promise<DmMessage> {
-  const { data, error } = await supabase
-    .from('dm_messages')
-    .insert({ thread_id: threadId, sender_id: senderId, body: body.trim(), kind: 'text' })
-    .select(DM_MESSAGE_SELECT)
-    .single();
-  if (error) throw error;
-  return data as DmMessage;
-}
+export const sendDmMessage = (threadId: string, senderId: string, body: string) =>
+  insertMessage<DmMessage>(DM_CHAT, threadId, senderId, { kind: 'text', body: body.trim() });
 
-export async function sendDmMediaMessage(
+export const sendDmMediaMessage = (
   threadId: string,
   senderId: string,
   kind: 'gif' | 'sticker',
   content: { mediaUrl?: string; body?: string }
-): Promise<DmMessage> {
-  const { data, error } = await supabase
-    .from('dm_messages')
-    .insert({
-      thread_id: threadId,
-      sender_id: senderId,
-      kind,
-      media_url: content.mediaUrl ?? null,
-      body: content.body ?? null,
-    })
-    .select(DM_MESSAGE_SELECT)
-    .single();
-  if (error) throw error;
-  return data as DmMessage;
-}
+) =>
+  insertMessage<DmMessage>(DM_CHAT, threadId, senderId, {
+    kind,
+    media_url: content.mediaUrl ?? null,
+    body: content.body ?? null,
+  });
 
 /** Foto al 1-a-1 (migr. 00038). */
-export async function sendDmImageMessage(
-  threadId: string,
-  senderId: string,
-  mediaUrl: string
-): Promise<DmMessage> {
-  const { data, error } = await supabase
-    .from('dm_messages')
-    .insert({ thread_id: threadId, sender_id: senderId, kind: 'image', media_url: mediaUrl })
-    .select(DM_MESSAGE_SELECT)
-    .single();
-  if (error) throw error;
-  return data as DmMessage;
-}
+export const sendDmImageMessage = (threadId: string, senderId: string, mediaUrl: string) =>
+  insertMessage<DmMessage>(DM_CHAT, threadId, senderId, { kind: 'image', media_url: mediaUrl });
 
 /** Tirada de dados al 1-a-1: body legible + JSON en media_url (migr. 00031). */
-export async function sendDmRollMessage(
-  threadId: string,
-  senderId: string,
-  roll: DiceRoll
-): Promise<DmMessage> {
-  const { data, error } = await supabase
-    .from('dm_messages')
-    .insert({
-      thread_id: threadId,
-      sender_id: senderId,
-      kind: 'roll',
-      body: rollSummary(roll),
-      media_url: JSON.stringify(roll),
-    })
-    .select(DM_MESSAGE_SELECT)
-    .single();
-  if (error) throw error;
-  return data as DmMessage;
-}
+export const sendDmRollMessage = (threadId: string, senderId: string, roll: DiceRoll) =>
+  insertMessage<DmMessage>(DM_CHAT, threadId, senderId, {
+    kind: 'roll',
+    body: rollSummary(roll),
+    media_url: JSON.stringify(roll),
+  });
 
-// ---- Reacciones del 1-a-1 (migr. 00036) ----
-
-export async function fetchDmReactions(
+export const fetchDmReactions = (
   messageIds: string[],
   viewerId: string
-): Promise<Map<string, { emoji: string; count: number; mine: boolean }[]>> {
-  const map = new Map<string, { emoji: string; count: number; mine: boolean }[]>();
-  if (messageIds.length === 0) return map;
-  try {
-    const { data, error } = await supabase
-      .from('dm_message_reactions')
-      .select('message_id, user_id, emoji')
-      .in('message_id', messageIds);
-    if (error) throw error;
-    for (const row of (data ?? []) as { message_id: string; user_id: string; emoji: string }[]) {
-      const list = map.get(row.message_id) ?? [];
-      const existing = list.find((r) => r.emoji === row.emoji);
-      if (existing) {
-        existing.count += 1;
-        existing.mine = existing.mine || row.user_id === viewerId;
-      } else {
-        list.push({ emoji: row.emoji, count: 1, mine: row.user_id === viewerId });
-      }
-      map.set(row.message_id, list);
-    }
-  } catch {
-    // migración 00036 sin aplicar
-  }
-  return map;
-}
+): Promise<Map<string, ReactionSummary[]>> => fetchReactions(DM_CHAT, messageIds, viewerId);
 
-export async function toggleDmReaction(
+export const toggleDmReaction = (
   messageId: string,
   userId: string,
   emoji: string,
   on: boolean
-) {
-  if (on) {
-    const { error } = await supabase
-      .from('dm_message_reactions')
-      .insert({ message_id: messageId, user_id: userId, emoji });
-    if (error && error.code !== '23505') throw error;
-  } else {
-    const { error } = await supabase
-      .from('dm_message_reactions')
-      .delete()
-      .eq('message_id', messageId)
-      .eq('user_id', userId)
-      .eq('emoji', emoji);
-    if (error) throw error;
-  }
-}
+) => toggleReaction(DM_CHAT, messageId, userId, emoji, on);
 
-export function subscribeToDmReactions(
-  key: string,
-  handlers: {
-    onAdd: (e: { message_id: string; user_id: string; emoji: string }) => void;
-    onRemove: (e: { message_id: string; user_id: string; emoji: string }) => void;
-  }
-): RealtimeChannel {
-  return uniqueChannel(`dm-reactions:${key}`)
-    .on(
-      'postgres_changes',
-      { event: 'INSERT', schema: 'public', table: 'dm_message_reactions' },
-      (payload) =>
-        handlers.onAdd(payload.new as { message_id: string; user_id: string; emoji: string })
-    )
-    .on(
-      'postgres_changes',
-      { event: 'DELETE', schema: 'public', table: 'dm_message_reactions' },
-      (payload) => {
-        const old = payload.old as Partial<{ message_id: string; user_id: string; emoji: string }>;
-        if (old.message_id && old.user_id && old.emoji) {
-          handlers.onRemove(old as { message_id: string; user_id: string; emoji: string });
-        }
-      }
-    )
-    .subscribe();
-}
+export const subscribeToDmReactions = (
+  threadId: string,
+  handlers: { onAdd: (e: ReactionEvent) => void; onRemove: (e: ReactionEvent) => void }
+): Subscription => subscribeToConversationReactions(DM_CHAT, threadId, handlers);
 
-/** Edita un mensaje propio (la RLS rechaza los ajenos). */
-export async function editDmMessage(messageId: string, body: string) {
-  const { error } = await supabase
-    .from('dm_messages')
-    .update({ body: body.trim(), edited_at: new Date().toISOString() })
-    .eq('id', messageId);
-  if (error) throw error;
-}
+export const editDmMessage = (messageId: string, body: string) =>
+  editMessageIn(DM_CHAT, messageId, body);
 
-/** Borra un mensaje propio (la RLS rechaza los ajenos). */
-export async function deleteDmMessage(messageId: string) {
-  const { error } = await supabase.from('dm_messages').delete().eq('id', messageId);
-  if (error) throw error;
-}
+export const deleteDmMessage = (messageId: string) => deleteMessageIn(DM_CHAT, messageId);
 
-// UPDATE/DELETE requieren replica identity full (migr. 00027) para filtrar.
-export function subscribeToDmMessages(
+export const subscribeToDmMessages = (
   threadId: string,
   handlers: {
     onInsert: (row: DmMessage) => void;
     onUpdate?: (row: DmMessage) => void;
     onDelete?: (id: string) => void;
   }
-): RealtimeChannel {
-  const filter = { schema: 'public', table: 'dm_messages', filter: `thread_id=eq.${threadId}` };
-  return uniqueChannel(`dm:${threadId}`)
-    .on('postgres_changes', { ...filter, event: 'INSERT' }, (payload) =>
-      handlers.onInsert(payload.new as DmMessage)
-    )
-    .on('postgres_changes', { ...filter, event: 'UPDATE' }, (payload) =>
-      handlers.onUpdate?.(payload.new as DmMessage)
-    )
-    .on('postgres_changes', { ...filter, event: 'DELETE' }, (payload) => {
-      const old = payload.old as { id?: string };
-      if (old.id) handlers.onDelete?.(old.id);
-    })
-    .subscribe();
-}
+) => subscribeToConversation<DmMessage>(DM_CHAT, threadId, handlers);
 
 export function unsubscribeFromDmMessages(channel: RealtimeChannel) {
   supabase.removeChannel(channel);
 }
 
-/** Mi última lectura de este hilo (para el separador «nuevos»). */
-export async function fetchDmLastRead(threadId: string, userId: string): Promise<string | null> {
-  try {
-    const { data } = await supabase
-      .from('dm_reads')
-      .select('last_read_at')
-      .eq('thread_id', threadId)
-      .eq('user_id', userId)
-      .maybeSingle();
-    return data?.last_read_at ?? null;
-  } catch {
-    return null;
-  }
-}
+export const fetchDmLastRead = (threadId: string, userId: string) =>
+  fetchLastReadAt(DM_CHAT, threadId, userId);
 
-/** Marca el hilo como leído hasta ahora (best effort). */
-export async function markDmRead(threadId: string, userId: string) {
-  try {
-    await supabase
-      .from('dm_reads')
-      .upsert({ thread_id: threadId, user_id: userId, last_read_at: new Date().toISOString() });
-    emitUnreadChanged(); // el badge del tab se refresca al momento
-  } catch {
-    // sin migración o sin red: el badge simplemente no se actualiza
-  }
-}
+export const markDmRead = (threadId: string, userId: string) =>
+  markRead(DM_CHAT, threadId, userId);
 
-/** Mis hilos 1-a-1 con último mensaje y no-leídos. [] si la migración falta. */
+type DmSummaryRow = {
+  thread_id: string;
+  other_id: string;
+  other_alias: string | null;
+  other_avatar_url: string | null;
+  last_body: string | null;
+  last_kind: MessageKind;
+  last_created_at: string | null;
+  unread: number;
+};
+
+/** Mis hilos 1-a-1 con último mensaje y no-leídos exactos (migr. 00041). */
 export async function fetchMyDmChats(userId: string): Promise<DmSummary[]> {
   try {
     const [{ data: allThreads, error }, blocked] = await Promise.all([
@@ -360,58 +214,32 @@ export async function fetchMyDmChats(userId: string): Promise<DmSummary[]> {
     ]);
     if (error) throw error;
     // hilos con gente bloqueada (en cualquier dirección): fuera de la lista
-    const threads = (allThreads ?? []).filter(
-      (t) => !blocked.has(t.user_lo === userId ? t.user_hi : t.user_lo)
+    const visible = new Set(
+      (allThreads ?? [])
+        .filter((t) => !blocked.has(t.user_lo === userId ? t.user_hi : t.user_lo))
+        .map((t) => t.id)
     );
-    if (threads.length === 0) return [];
+    if (visible.size === 0) return [];
 
-    const threadIds = threads.map((t) => t.id);
-    const otherIds = threads.map((t) => (t.user_lo === userId ? t.user_hi : t.user_lo));
+    const { data: rows, error: rpcError } = await supabase.rpc('dm_summaries');
+    if (rpcError) throw rpcError;
 
-    const [{ data: profiles }, { data: recent, error: msgError }, { data: reads }] =
-      await Promise.all([
-        supabase.from('profiles').select('id, alias, avatar_url').in('id', otherIds),
-        supabase
-          .from('dm_messages')
-          .select('thread_id, sender_id, body, kind, created_at')
-          .in('thread_id', threadIds)
-          .order('created_at', { ascending: false })
-          .limit(200),
-        supabase.from('dm_reads').select('thread_id, last_read_at').eq('user_id', userId),
-      ]);
-    if (msgError) throw msgError;
-
-    const profileById = new Map((profiles ?? []).map((p) => [p.id, p]));
-    const readByThread = new Map((reads ?? []).map((r) => [r.thread_id, r.last_read_at]));
-
-    const lastByThread = new Map<string, DmSummary['lastMessage']>();
-    const unreadByThread = new Map<string, number>();
-    for (const row of recent ?? []) {
-      if (!lastByThread.has(row.thread_id)) {
-        lastByThread.set(row.thread_id, {
-          body: messagePreview(row as { body: string | null; kind: MessageKind }),
-          sender: null, // en un 1-a-1 el nombre del emisor sobra
-          created_at: row.created_at,
-        });
-      }
-      const lastRead = readByThread.get(row.thread_id);
-      if (row.sender_id !== userId && (!lastRead || row.created_at > lastRead)) {
-        unreadByThread.set(row.thread_id, (unreadByThread.get(row.thread_id) ?? 0) + 1);
-      }
-    }
-
-    return threads.map((t) => {
-      const otherId = t.user_lo === userId ? t.user_hi : t.user_lo;
-      const profile = profileById.get(otherId);
-      return {
-        threadId: t.id,
-        otherId,
-        name: profile?.alias ?? 'Jugador/a',
-        imageUrl: profile?.avatar_url ?? null,
-        lastMessage: lastByThread.get(t.id) ?? null,
-        unread: Math.min(unreadByThread.get(t.id) ?? 0, 99),
-      };
-    });
+    return (rows as DmSummaryRow[])
+      .filter((row) => visible.has(row.thread_id))
+      .map((row) => ({
+        threadId: row.thread_id,
+        otherId: row.other_id,
+        name: row.other_alias ?? 'Jugador/a',
+        imageUrl: row.other_avatar_url,
+        lastMessage: row.last_created_at
+          ? {
+              body: messagePreview({ body: row.last_body, kind: row.last_kind }),
+              sender: null, // en un 1-a-1 el nombre del emisor sobra
+              created_at: row.last_created_at,
+            }
+          : null,
+        unread: Math.min(row.unread ?? 0, 99),
+      }));
   } catch {
     return [];
   }

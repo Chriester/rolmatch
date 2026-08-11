@@ -102,6 +102,9 @@ const TopCard = forwardRef<TopCardHandle, TopCardProps>(function TopCard(
 
   const fly = (dir: 1 | -1) => {
     hapticSwipe();
+    // La tarjeta de abajo crece DURANTE el vuelo (clave con botones, donde
+    // progress no se ha movido): al promocionarse ya mide 1 y no hay salto.
+    progress.value = withTiming(1, EXIT_TIMING);
     tx.value = withTiming(dir * exitDistance, EXIT_TIMING, (done) => {
       if (done) runOnJS(finish)(dir);
     });
@@ -277,6 +280,15 @@ export function SwipeDeck<T>({
 
   const current = items[index];
   const next = items[index + 1];
+  const currentKey = current !== undefined ? keyFor(current) : null;
+
+  // El reset de la escala va DESPUÉS del commit: la que era "siguiente" ya
+  // es principal (misma escala 1 → promoción sin salto) y la nueva
+  // "siguiente" nace detrás de una tarjeta opaca, así que su ajuste a 0.95
+  // no se ve. Resetear antes era el bump que se notaba al swipear.
+  useEffect(() => {
+    progress.value = 0;
+  }, [currentKey, progress]);
 
   useEffect(() => {
     if (!deckRef) return;
@@ -290,7 +302,10 @@ export function SwipeDeck<T>({
   });
 
   const handleSwiped = (choice: SwipeChoice) => {
-    progress.value = 0;
+    // OJO: aquí NO se resetea progress. Hacerlo en este instante encogía la
+    // tarjeta de abajo (1 → 0.95) durante los frames que React tarda en
+    // promocionarla, y se veía como un rebote. El reset vive en el efecto de
+    // abajo, después del commit, cuando la nueva "siguiente" ya está tapada.
     if (current !== undefined) onSwiped(current, choice);
   };
 

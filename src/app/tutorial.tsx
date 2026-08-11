@@ -4,7 +4,7 @@
 // Animación ligada al scroll (parallax): el emoji escala y rota al entrar,
 // el texto funde, los puntos se estiran.
 
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import {
   Pressable,
@@ -35,6 +35,10 @@ import { markTutorialSeen } from '@/lib/tutorial';
 // Texto por partes: los objetos {b} se pintan en negrita blanca
 type Part = string | { b: string };
 
+// Dos pantallas, y ANTES del alta: esto se enseñaba después de rellenar el
+// perfil entero, o sea que le explicábamos la app a quien ya había pagado
+// cuatro pasos a ciegas. Lo demás (chats, sesiones, XP) se descubre solo
+// cuando hace falta; aquí solo va lo que hay que saber para el primer swipe.
 const SLIDES: { emoji: string; title: string; body: Part[] }[] = [
   {
     emoji: '🎲',
@@ -56,61 +60,9 @@ const SLIDES: { emoji: string; title: string; body: Part[] }[] = [
       { b: 'Derecha' },
       ' = ¡CRÍTICO!, te interesa. ',
       { b: 'Izquierda' },
-      ' = PIFIA, paso. ',
-      { b: 'Toca' },
-      ' la tarjeta para ver los personajes, y ',
-      { b: 'ⓘ' },
-      ' para el detalle completo.',
-    ],
-  },
-  {
-    emoji: '🤝',
-    title: 'Matches',
-    body: [
-      'Si os gustáis los dos, ',
+      ' = PIFIA, paso. Si os gustáis los dos, ',
       { b: 'match' },
-      ': entras directamente en la ',
-      { b: 'mesa' },
-      ', con su chat, sus sesiones y su histórico.',
-    ],
-  },
-  {
-    emoji: '💬',
-    title: 'Chats',
-    body: [
-      'Cada mesa tiene su ',
-      { b: 'chat' },
-      ' con emojis, GIFs y stickers, y puedes escribir ',
-      { b: '1 a 1' },
-      ' a cualquier compañero desde su perfil.',
-    ],
-  },
-  {
-    emoji: '📅',
-    title: 'Sesiones e histórico',
-    body: [
-      'Programad sesiones y ',
-      { b: 'confirmadlas al jugar' },
-      ': con 3 confirmaciones, ',
-      { b: '+150 XP' },
-      ' para todos. Y subid vuestros momentos al ',
-      { b: 'histórico' },
-      '.',
-    ],
-  },
-  {
-    emoji: '🏆',
-    title: 'Sube de nivel',
-    body: [
-      'Jugar da ',
-      { b: 'XP' },
-      ': completa tu perfil, únete a mesas, valora a tus compañeros. Tu ',
-      { b: 'título rolero' },
-      ' — de ',
-      { b: 'Dado prestado' },
-      ' a ',
-      { b: 'Mito viviente' },
-      ' — sale en tu tarjeta.',
+      ': entras en la mesa con su chat, sus sesiones y su histórico.',
     ],
   },
 ];
@@ -195,6 +147,7 @@ function Dot({
 }
 
 export default function TutorialScreen() {
+  const { siguiente } = useLocalSearchParams<{ siguiente?: string }>();
   const { width } = useWindowDimensions();
   const pageWidth = Math.min(width, MaxContentWidth);
   const [page, setPage] = useState(0);
@@ -209,7 +162,16 @@ export default function TutorialScreen() {
     scrollX.value = event.contentOffset.x;
   });
 
-  const finish = () => (router.canGoBack() ? router.back() : router.replace('/'));
+  // Con ?siguiente=onboarding venimos del alta: al terminar (o al saltar) se
+  // sigue hacia el perfil, no se vuelve atrás a una pantalla que no existe.
+  const finish = () => {
+    if (siguiente === 'onboarding') {
+      router.replace('/onboarding');
+      return;
+    }
+    if (router.canGoBack()) router.back();
+    else router.replace('/');
+  };
 
   const syncPage = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const next = Math.round(event.nativeEvent.contentOffset.x / pageWidth);
@@ -264,7 +226,10 @@ export default function TutorialScreen() {
 
         <View style={styles.footer}>
           {isLast ? (
-            <PrimaryButton label="¡A rodar dados! 🎲" onPress={finish} />
+            <PrimaryButton
+              label={siguiente === 'onboarding' ? 'Crear mi perfil ›' : '¡A rodar dados! 🎲'}
+              onPress={finish}
+            />
           ) : (
             <PrimaryButton label="Siguiente ›" onPress={() => goTo(page + 1)} />
           )}

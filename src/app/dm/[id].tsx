@@ -25,6 +25,7 @@ import { Image } from 'expo-image';
 
 import { confirmAction, humanizeError, showAlert } from '@/lib/alert';
 import { AppHeader } from '@/components/app-header';
+import { ChatImage } from '@/components/chat-image';
 import { DiceRoller } from '@/components/dice-roller';
 import { MessageActions } from '@/components/message-actions';
 import { RollBubble } from '@/components/roll-bubble';
@@ -163,11 +164,11 @@ export default function DmChatScreen() {
         return next;
       });
     };
-    const channel = subscribeToDmReactions(`dm:${id}`, {
+    const reactions = subscribeToDmReactions(id, {
       onAdd: (e) => apply(e, 1),
       onRemove: (e) => apply(e, -1),
     });
-    return () => unsubscribeFromDmMessages(channel);
+    return () => reactions.close();
   }, [id, userId]);
 
   const handleToggleReaction = async (message: DmMessage, emoji: string) => {
@@ -290,6 +291,7 @@ export default function DmChatScreen() {
     if (!id || !session || sending) return;
     try {
       const url = await pickAndUploadImage(session.user.id, 'chat', [4, 3], {
+        chatTarget: { kind: 'dm', id },
         allowsEditing: false,
       });
       if (!url) return; // cancelado
@@ -366,7 +368,7 @@ export default function DmChatScreen() {
     const media =
       item.kind === 'image' && item.media_url ? (
         <Pressable onPress={() => setViewingImage(item.media_url)}>
-          <Image source={{ uri: item.media_url }} style={styles.photoMessage} contentFit="cover" />
+          <ChatImage mediaUrl={item.media_url} style={styles.photoMessage} />
         </Pressable>
       ) : item.kind === 'gif' && item.media_url ? (
         <Image source={{ uri: item.media_url }} style={styles.gifMessage} contentFit="cover" />
@@ -610,7 +612,7 @@ export default function DmChatScreen() {
         onRequestClose={() => setViewingImage(null)}>
         <Pressable style={styles.viewerBackdrop} onPress={() => setViewingImage(null)}>
           {viewingImage && (
-            <Image source={{ uri: viewingImage }} style={styles.viewerImage} contentFit="contain" />
+            <ChatImage mediaUrl={viewingImage} style={styles.viewerImage} contentFit="contain" />
           )}
         </Pressable>
       </Modal>

@@ -4,9 +4,7 @@
 // sesión real. Los extras de la migración 00030 (closes_at, propuestas)
 // degradan con gracia si aún no está aplicada.
 
-import type { RealtimeChannel } from '@supabase/supabase-js';
-
-import { supabase, uniqueChannel } from '@/lib/supabase';
+import { subscribeScoped, supabase, uniqueChannel, type Subscription } from '@/lib/supabase';
 
 export type PollOption = {
   id: string;
@@ -184,32 +182,48 @@ export async function proposeDate(pollId: string, proposerId: string, date: Date
   if (error) throw error;
 }
 
+const POLL_TABLES = [
+  'session_polls',
+  'session_poll_options',
+  'session_poll_votes',
+  'session_poll_proposals',
+];
+
 /**
- * Cambios en votaciones (crear/cerrar, opciones, votos, propuestas): avisa
- * con debounce y el llamante refresca con fetchPolls. Votos y opciones no
- * llevan group_id, así que escuchamos las tablas sin filtro y el refetch
- * (con RLS) decide qué se ve. Requiere la migración 00039 (publication).
+ * Cambios en votaciones (crear/cerrar, opciones, votos, propuestas) de UNA
+ * mesa: avisa con debounce y el llamante refresca con fetchPolls.
+ *
+ * Antes las cuatro tablas se escuchaban sin filtro porque solo session_polls
+ * tenía group_id: cualquiera votando en cualquier mesa de la plataforma
+ * disparaba un refetch aquí. Con la migración 00042 las cuatro lo llevan y
+ * filtra el servidor. Requiere también la 00039 (publication).
  */
-export function subscribeToPolls(groupId: string, onChange: () => void): RealtimeChannel {
+export function subscribeToPolls(groupId: string, onChange: () => void): Subscription {
   let timer: ReturnType<typeof setTimeout> | null = null;
   const notify = () => {
     if (timer) clearTimeout(timer);
     timer = setTimeout(onChange, 400);
   };
-  let channel = uniqueChannel(`polls:group:${groupId}`);
-  for (const table of [
-    'session_polls',
-    'session_poll_options',
-    'session_poll_votes',
-    'session_poll_proposals',
-  ]) {
-    channel = channel.on('postgres_changes', { event: '*', schema: 'public', table }, notify);
-  }
-  return channel.subscribe();
+  return subscribeScoped('session_poll_votes', 'group_id', (filtered) => {
+    let channel = uniqueChannel(`polls:group:${groupId}`);
+    for (const table of POLL_TABLES) {
+      channel = channel.on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table,
+          ...(filtered ? { filter: `group_id=eq.${groupId}` } : {}),
+        },
+        notify
+      );
+    }
+    return channel.subscribe();
+  });
 }
 
-export function unsubscribeFromPolls(channel: RealtimeChannel) {
-  supabase.removeChannel(channel);
+export function unsubscribeFromPolls(subscription: Subscription) {
+  subscription.close();
 }
 
 /** El GM añade la propuesta como opción de la votación, o la rechaza. */

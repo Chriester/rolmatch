@@ -10,12 +10,13 @@ import {
 } from '@expo-google-fonts/sora';
 import { DarkTheme, Stack, ThemeProvider, router } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { Rolder } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
+import { track } from '@/lib/analytics';
 import { ensureCommunityMembership } from '@/lib/auth';
 import { DISCORD_ENABLED } from '@/lib/config';
 import { ErrorBoundary } from '@/components/error-boundary';
@@ -69,6 +70,15 @@ export default function RootLayout() {
     setupWebTweaks();
   }, [session, fontsLoaded]);
 
+  // Una apertura por sesión de app: es la base de las cohortes de retención,
+  // el único KPI del PRD que no se puede deducir de las tablas de siempre.
+  const openTracked = useRef(false);
+  useEffect(() => {
+    if (!session || openTracked.current) return;
+    openTracked.current = true;
+    track(session.user.id, 'app_open', { platform: Platform.OS });
+  }, [session]);
+
   // Deep link tras login (web): quien llega a un enlace compartido sin
   // sesión pasa por el login — guardamos su destino y lo restauramos al
   // volver del OAuth (el callback aterriza en «/»).
@@ -109,6 +119,10 @@ export default function RootLayout() {
           <Stack.Screen name="report" />
           <Stack.Screen name="rate" />
           <Stack.Screen name="settings" />
+          <Stack.Screen name="feedback" />
+          <Stack.Screen name="blocked" />
+          <Stack.Screen name="moderation" />
+          <Stack.Screen name="novedades" />
           <Stack.Screen name="xp" />
           <Stack.Screen name="players/[id]" />
           <Stack.Screen name="dm/[id]" />
@@ -116,7 +130,6 @@ export default function RootLayout() {
           <Stack.Screen name="characters/new" />
           <Stack.Screen name="characters/[id]" />
           <Stack.Screen name="groups/new" />
-          <Stack.Screen name="groups/[id]/index" />
           <Stack.Screen name="groups/[id]/candidates" />
           <Stack.Screen name="groups/[id]/edit" />
           <Stack.Screen name="groups/[id]/chat" />
@@ -125,6 +138,10 @@ export default function RootLayout() {
           <Stack.Protected guard={!session}>
             <Stack.Screen name="login" />
           </Stack.Protected>
+          {/* Fuera de los dos guardas: es el destino de los enlaces
+              compartidos y la propia pantalla decide qué enseñar según haya
+              sesión o no. Es la única ruta con parte pública. */}
+          <Stack.Screen name="groups/[id]/index" />
         </Stack>
         {updating && <UpdateOverlay />}
         {webUpdateReady && <UpdateBanner />}

@@ -1,5 +1,6 @@
 import * as ImagePicker from 'expo-image-picker';
 
+import { CHAT_MEDIA_BUCKET } from '@/lib/chat-media';
 import { supabase } from '@/lib/supabase';
 
 // 1600px cubre la tarjeta del feed en pantallas 3x (con 1024 se reescalaba
@@ -27,16 +28,26 @@ async function compressImage(asset: ImagePicker.ImagePickerAsset): Promise<{
   }
 }
 
+/** Conversación a la que pertenece una foto de chat (migr. 00044). */
+export type ChatMediaTarget = { kind: 'group' | 'dm'; id: string };
+
 /**
- * Abre el selector de imágenes, sube la elegida al bucket público `avatars`
- * (carpeta del usuario, requerida por las políticas de Storage) y devuelve
- * la URL pública. Devuelve null si el usuario cancela.
+ * Abre el selector de imágenes, sube la elegida y devuelve lo que hay que
+ * guardar.
+ *
+ * Por defecto va al bucket público `avatars` (avatares, portadas, retratos,
+ * diario) y devuelve su URL pública. Con `chatTarget` va al bucket PRIVADO
+ * `chat-media`, en la carpeta de esa conversación, y devuelve la RUTA: las
+ * fotos de chat —sobre todo las de un privado— no deben tener URL abierta.
+ * Quien las pinta las firma (ver chat-media.ts).
+ *
+ * Devuelve null si el usuario cancela.
  */
 export async function pickAndUploadImage(
   userId: string,
   prefix: 'avatar' | 'group' | 'character' | 'journal' | 'chat',
   aspect: [number, number] = [1, 1],
-  options: { allowsEditing?: boolean } = {}
+  options: { allowsEditing?: boolean; chatTarget?: ChatMediaTarget } = {}
 ): Promise<string | null> {
   const result = await ImagePicker.launchImageLibraryAsync({
     mediaTypes: ['images'],
@@ -54,8 +65,21 @@ export async function pickAndUploadImage(
   const data = await (await fetch(optimized?.uri ?? asset.uri)).arrayBuffer();
   const contentType = optimized ? 'image/jpeg' : (asset.mimeType ?? 'image/jpeg');
   const extension = contentType.split('/')[1] ?? 'jpg';
-  const path = `${userId}/${prefix}-${Date.now()}.${extension}`;
+  const name = `${prefix}-${Date.now()}.${extension}`;
 
+  if (options.chatTarget) {
+    const { kind, id } = options.chatTarget;
+    // el ámbito va DELANTE: la política de Storage lo lee de la ruta para
+    // decidir quién puede mirar la foto
+    const path = `${kind}/${id}/${userId}/${name}`;
+    const { error } = await supabase.storage
+      .from(CHAT_MEDIA_BUCKET)
+      .upload(path, data, { contentType, upsert: true });
+    if (error) throw error;
+    return path;
+  }
+
+  const path = `${userId}/${name}`;
   const { error } = await supabase.storage
     .from('avatars')
     .upload(path, data, { contentType, upsert: true });

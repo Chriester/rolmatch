@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import { hasColumn, supabase } from '@/lib/supabase';
 import type { ExperienceLevel, VttType } from '@/lib/profile';
 
 export type GroupFormat = 'campaign' | 'oneshot';
@@ -104,6 +104,72 @@ export async function deleteGroup(groupId: string) {
   if (error) throw error;
 }
 
+// ——— Mesas inactivas (migr. 00052) ———
+// Todas degradan si la migración no está: null / no-op.
+
+export type GroupVitality = { lastActivityAt: string; warnedAt: string | null };
+
+/** Estado de actividad de la mesa, o null si la 00052 no está aplicada. */
+export async function fetchGroupVitality(groupId: string): Promise<GroupVitality | null> {
+  if (!(await hasColumn('groups', 'inactivity_warned_at'))) return null;
+  const { data, error } = await supabase
+    .from('groups')
+    .select('last_activity_at, inactivity_warned_at')
+    .eq('id', groupId)
+    .single();
+  if (error) throw error;
+  return { lastActivityAt: data.last_activity_at, warnedAt: data.inactivity_warned_at };
+}
+
+/** «¡Seguimos jugando!»: limpia el aviso y renueva la actividad (solo dueño — RLS). */
+export async function confirmGroupAlive(groupId: string) {
+  const { error } = await supabase
+    .from('groups')
+    .update({ last_activity_at: new Date().toISOString(), inactivity_warned_at: null })
+    .eq('id', groupId);
+  if (error) throw error;
+}
+
+/** Reabre una mesa archivada por inactividad (solo dueño — RLS). */
+export async function reopenGroup(groupId: string) {
+  const alive = (await hasColumn('groups', 'last_activity_at'))
+    ? { is_active: true, last_activity_at: new Date().toISOString(), inactivity_warned_at: null }
+    : { is_active: true };
+  const { error } = await supabase.from('groups').update(alive).eq('id', groupId);
+  if (error) throw error;
+}
+
+/**
+ * Traspasa la mesa a otro miembro (migr. 00051): el nuevo pasa a GM y el
+ * actual se queda de jugador. Solo el dueño (lo valida el RPC).
+ */
+export async function transferGroup(groupId: string, newOwnerId: string) {
+  const { error } = await supabase.rpc('transfer_group', {
+    p_group_id: groupId,
+    p_new_owner: newOwnerId,
+  });
+  if (error) throw error;
+}
+
+/** Mesas de las que soy dueño y cuánta gente hay dentro (sin contarme). */
+export type OwnedGroup = { id: string; name: string; members: number };
+
+export async function fetchMyOwnedGroups(userId: string): Promise<OwnedGroup[]> {
+  const { data, error } = await supabase
+    .from('groups')
+    .select('id, name, group_members(user_id)')
+    .eq('owner_id', userId)
+    .eq('is_active', true);
+  if (error) throw error;
+  return (data ?? []).map((row) => ({
+    id: row.id as string,
+    name: row.name as string,
+    members: ((row.group_members as { user_id: string }[]) ?? []).filter(
+      (m) => m.user_id !== userId
+    ).length,
+  }));
+}
+
 /** Saca a un miembro de la mesa (uno mismo, o el dueño a cualquiera — RLS). */
 export async function removeGroupMember(groupId: string, userId: string) {
   const { error } = await supabase
@@ -139,6 +205,35 @@ export async function fetchGroup(groupId: string): Promise<GroupDetail> {
     .single();
   if (error) throw error;
   return data as unknown as GroupDetail;
+}
+
+/** Lo que ve alguien SIN cuenta que llega por un enlace de invitación. */
+export type PublicGroupCard = {
+  id: string;
+  name: string;
+  description: string | null;
+  image_url: string | null;
+  format: GroupFormat;
+  frequency: string | null;
+  session_weekday: number | null;
+  session_slot: number | null;
+  timezone: string;
+  system_name: string | null;
+  max_players: number;
+  taken_seats: number;
+  owner_alias: string | null;
+  owner_avatar_url: string | null;
+};
+
+/**
+ * Ficha mínima de una mesa activa, sin sesión (migr. 00046). null si no
+ * existe o está disuelta.
+ */
+export async function fetchPublicGroupCard(groupId: string): Promise<PublicGroupCard | null> {
+  const { data, error } = await supabase.rpc('public_group_card', { p_group_id: groupId });
+  if (error) throw error;
+  const rows = (data ?? []) as PublicGroupCard[];
+  return rows[0] ?? null;
 }
 
 export const WEEKDAY_LABELS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];

@@ -1,14 +1,13 @@
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Linking,
   Platform,
   Pressable,
   ScrollView,
-  Share,
   StyleSheet,
   Text,
   View,
@@ -16,8 +15,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { confirmAction, humanizeError, showAlert } from '@/lib/alert';
-import { DISCORD_ENABLED } from '@/lib/config';
+import { track } from '@/lib/analytics';
+import { APP_URL, DISCORD_ENABLED } from '@/lib/config';
 import { AppHeader } from '@/components/app-header';
+import { PublicGroupInvite } from '@/components/public-group-invite';
 import { CardChip, CardChipRow } from '@/components/swipe/card-shell';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -30,15 +31,22 @@ import {
   SLOT_LABELS,
   VTT_LABELS,
   WEEKDAY_LABELS,
+  confirmGroupAlive,
   fetchGroup,
+  fetchGroupVitality,
   freeSeats,
   removeGroupMember,
+  reopenGroup,
+  transferGroup,
   type GroupDetail,
+  type GroupVitality,
 } from '@/lib/groups';
 import { fetchGroupMatches, matchChannelUrl, type GroupMatch } from '@/lib/matches';
 import { boostGroup, isBoostActive } from '@/lib/premium';
 import { hasCompletedOnboarding } from '@/lib/profile';
 import { cacheGet, cacheSet } from '@/lib/screen-cache';
+import { fetchRatedSince } from '@/lib/ratings';
+import { shareLink } from '@/lib/share';
 import { fetchMySwipeOnGroup, swipeOnGroup, undoSwipeOnGroup } from '@/lib/swipes';
 import {
   SESSION_CONFIRM_QUORUM,
@@ -63,7 +71,29 @@ function formatSessionDate(iso: string) {
 }
 
 
-export default function GroupDetailScreen() {
+/**
+ * Esta ruta vive FUERA del bloque protegido: es el destino de los enlaces
+ * compartidos y quien llega sin cuenta tiene que poder ver de qué va la mesa
+ * antes de registrarse. Sin sesión se pinta la ficha pública (migr. 00046);
+ * con ella, la pantalla completa de siempre. Son dos componentes distintos a
+ * propósito: la de abajo asume sesión en media docena de hooks.
+ */
+export default function GroupDetailRoute() {
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const session = useSession();
+
+  if (session === undefined) {
+    return (
+      <ThemedView style={[styles.container, styles.loading]}>
+        <ActivityIndicator />
+      </ThemedView>
+    );
+  }
+  if (session === null) return <PublicGroupInvite groupId={id} />;
+  return <GroupDetailScreen />;
+}
+
+function GroupDetailScreen() {
   const { id, invitacion } = useLocalSearchParams<{ id: string; invitacion?: string }>();
   const session = useSession();
   // arranca con lo último visto (comparte caché con el chat de la mesa)
@@ -74,8 +104,14 @@ export default function GroupDetailScreen() {
   const [sessions, setSessions] = useState<GameSession[]>([]);
   const [recentSessions, setRecentSessions] = useState<GameSession[]>([]);
   const [confirmations, setConfirmations] = useState<Map<string, SessionConfirmState>>(new Map());
+  const [ratedSince, setRatedSince] = useState<Set<string>>(new Set());
   const [boostedUntil, setBoostedUntil] = useState<string | null>(null);
   const [boostBusy, setBoostBusy] = useState(false);
+  /** abierta la lista de miembros para elegir nuevo GM */
+  const [transferOpen, setTransferOpen] = useState(false);
+  /** aviso de inactividad (migr. 00052): null = sin aviso o sin migración */
+  const [vitality, setVitality] = useState<GroupVitality | null>(null);
+  const [aliveBusy, setAliveBusy] = useState(false);
   // «pedir sitio» para quien llega sin ser miembro (p. ej. enlace compartido)
   const [mySwipe, setMySwipe] = useState<'like' | 'pass' | null | undefined>(undefined);
   const [applyBusy, setApplyBusy] = useState(false);
@@ -99,28 +135,15 @@ export default function GroupDetailScreen() {
 
   const handleShare = async (name: string) => {
     if (!id) return;
-    const url = `https://rolmatch.vercel.app/groups/${id}?invitacion=1`;
-    try {
-      if (Platform.OS === 'web') {
-        const nav = navigator as { share?: (data: object) => Promise<void>; clipboard?: { writeText: (t: string) => Promise<void> } };
-        if (nav.share) {
-          // texto SIN la URL: con ella en ambos campos muchos destinos
-          // (WhatsApp incluido) pegaban el enlace dos veces
-          await nav.share({
-            title: `«${name}» en rolder`,
-            text: `Únete a mi mesa «${name}» en rolder 🎲`,
-            url,
-          });
-        } else {
-          await nav.clipboard?.writeText(url);
-          showAlert('🔗 Enlace copiado', 'Pégalo donde quieras para invitar gente a la mesa.');
-        }
-      } else {
-        await Share.share({ message: `Únete a mi mesa «${name}» en rolder 🎲 ${url}` });
-      }
-    } catch {
-      // compartir cancelado por el usuario
-    }
+    const via = await shareLink({
+      title: `«${name}» en rolder`,
+      text: `Únete a mi mesa «${name}» en rolder 🎲`,
+      url: `${APP_URL}/groups/${id}?invitacion=1`,
+    });
+    if (!via) return;
+    if (via === 'clipboard')
+      showAlert('🔗 Enlace copiado', 'Pégalo donde quieras para invitar gente a la mesa.');
+    track(session?.user.id, 'share_group_link', { via });
   };
 
   const handleBoost = async () => {
@@ -156,6 +179,9 @@ export default function GroupDetailScreen() {
       .catch(() => setGroup((current) => current ?? null));
     fetchUpcomingSessions(id)
       .then(setSessions)
+      .catch(() => {});
+    fetchGroupVitality(id)
+      .then(setVitality)
       .catch(() => {});
   }, [id]);
 
@@ -199,6 +225,19 @@ export default function GroupDetailScreen() {
       })
       .catch(() => {});
   }, [id, session]);
+
+  // Quién me falta por valorar de la última partida. Se relee al volver a la
+  // pantalla (p. ej. justo después de valorar a alguien), no solo al montar.
+  const lastPlayedAt = recentSessions[0]?.starts_at ?? null;
+  const viewerId = session?.user.id ?? null;
+  useFocusEffect(
+    useCallback(() => {
+      if (!id || !viewerId || !lastPlayedAt) return;
+      fetchRatedSince(viewerId, id, lastPlayedAt)
+        .then(setRatedSince)
+        .catch(() => {});
+    }, [id, viewerId, lastPlayedAt])
+  );
 
   useEffect(() => {
     if (!id || !session || group?.owner_id !== session.user.id) return;
@@ -246,6 +285,17 @@ export default function GroupDetailScreen() {
   const isOwner = session?.user.id === group.owner_id;
   const isMember = group.group_members.some((m) => m.user_id === session?.user.id);
 
+  // Última partida jugada y a quién me falta valorar de ella. La fiabilidad
+  // solo se llena si se pide en caliente; escondida en un enlace de la lista
+  // de plazas no la usaba nadie.
+  const lastPlayed = recentSessions[0] ?? null;
+  const pendingToRate =
+    isMember && lastPlayed
+      ? group.group_members.filter(
+          (m) => m.user_id !== session?.user.id && !ratedSince.has(m.user_id)
+        )
+      : [];
+
   const schedule =
     group.session_weekday !== null && group.session_slot !== null
       ? `${WEEKDAY_LABELS[group.session_weekday]} · ${SLOT_LABELS[group.session_slot]}`
@@ -258,6 +308,68 @@ export default function GroupDetailScreen() {
           <AppHeader
             onBack={() => (router.canGoBack() ? router.back() : router.replace('/groups'))}
           />
+
+          {/* Mesa parada (migr. 00052): el cron avisó y, sin señales de vida
+              en 7 días, la archiva. El GM la rescata con un toque. */}
+          {isOwner && group.is_active && vitality?.warnedAt && (
+            <View style={styles.vitalityBanner}>
+              <Text style={styles.vitalityTitle}>⏳ ¿Seguís jugando?</Text>
+              <Text style={styles.vitalityBody}>
+                La mesa lleva parada desde el{' '}
+                {new Date(vitality.lastActivityAt).toLocaleDateString('es-ES', {
+                  day: 'numeric',
+                  month: 'long',
+                })}
+                . Si nadie da señales, se archivará sola y dejará de salir en el feed.
+              </Text>
+              <OutlineButton
+                label={aliveBusy ? 'Confirmando…' : '🔄 ¡Seguimos jugando!'}
+                disabled={aliveBusy}
+                onPress={async () => {
+                  setAliveBusy(true);
+                  try {
+                    await confirmGroupAlive(group.id);
+                    setVitality((v) => (v ? { ...v, warnedAt: null } : v));
+                  } catch (error) {
+                    showAlert(
+                      'No se pudo confirmar',
+                      error instanceof Error ? error.message : String(error)
+                    );
+                  } finally {
+                    setAliveBusy(false);
+                  }
+                }}
+              />
+            </View>
+          )}
+
+          {isOwner && !group.is_active && (
+            <View style={styles.vitalityBanner}>
+              <Text style={styles.vitalityTitle}>💤 Mesa archivada</Text>
+              <Text style={styles.vitalityBody}>
+                No sale en el feed ni recibe candidatos. Todo lo demás (chat, diario, miembros)
+                sigue intacto.
+              </Text>
+              <OutlineButton
+                label={aliveBusy ? 'Reabriendo…' : '☀️ Reabrir mesa'}
+                disabled={aliveBusy}
+                onPress={async () => {
+                  setAliveBusy(true);
+                  try {
+                    await reopenGroup(group.id);
+                    setGroup((g) => (g ? { ...g, is_active: true } : g));
+                  } catch (error) {
+                    showAlert(
+                      'No se pudo reabrir',
+                      error instanceof Error ? error.message : String(error)
+                    );
+                  } finally {
+                    setAliveBusy(false);
+                  }
+                }}
+              />
+            </View>
+          )}
 
           <View style={styles.hero}>
             {group.image_url ? (
@@ -377,6 +489,38 @@ export default function GroupDetailScreen() {
                 disabled={applyBusy || mySwipe === undefined}
               />
             )
+          )}
+
+          {lastPlayed && pendingToRate.length > 0 && (
+            <View style={styles.rateBox}>
+              <Text style={styles.rateBoxTitle}>🎲 ¿Qué tal la partida?</Text>
+              <Text style={styles.rateBoxHelp}>
+                {formatSessionDate(lastPlayed.starts_at)} · valora a quien jugó contigo. Es lo
+                que construye la fiabilidad que ve el resto.
+              </Text>
+              <View style={styles.rateChips}>
+                {pendingToRate.map((member) => (
+                  <Pressable
+                    key={member.user_id}
+                    style={styles.rateChip}
+                    accessibilityLabel={`Valorar a ${member.profiles?.alias ?? 'este miembro'}`}
+                    onPress={() =>
+                      router.push({
+                        pathname: '/rate',
+                        params: {
+                          userId: member.user_id,
+                          alias: member.profiles?.alias ?? '',
+                          groupId: group.id,
+                        },
+                      })
+                    }>
+                    <Text style={styles.rateChipText}>
+                      {member.profiles?.alias ?? 'Sin alias'}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
           )}
 
           {group.description && (
@@ -643,6 +787,52 @@ export default function GroupDetailScreen() {
               />
             ))}
 
+          {/* Traspasar la mesa: que irse el GM no la mate (migr. 00051) */}
+          {isOwner && group.group_members.some((m) => m.user_id !== session!.user.id) && (
+            <>
+              <OutlineButton
+                label={transferOpen ? '✖️ Cancelar traspaso' : '👑 Traspasar mesa'}
+                onPress={() => setTransferOpen((open) => !open)}
+              />
+              {transferOpen &&
+                group.group_members
+                  .filter((m) => m.user_id !== session!.user.id)
+                  .map((member) => (
+                    <Pressable
+                      key={member.user_id}
+                      style={styles.transferRow}
+                      accessibilityLabel={`Traspasar la mesa a ${member.profiles?.alias ?? 'este miembro'}`}
+                      onPress={async () => {
+                        const alias = member.profiles?.alias ?? 'este miembro';
+                        const ok = await confirmAction(
+                          `¿Traspasar la mesa a ${alias}?`,
+                          'Pasará a ser GM con todos los mandos; tú te quedas dentro como jugador. No se puede deshacer (salvo que te la devuelva).',
+                          'Sí, traspasar'
+                        );
+                        if (!ok) return;
+                        try {
+                          await transferGroup(group.id, member.user_id);
+                          setTransferOpen(false);
+                          const fresh = await fetchGroup(group.id);
+                          cacheSet(`group:${group.id}`, fresh);
+                          setGroup(fresh);
+                          showAlert('👑 Mesa traspasada', `${alias} es GM a partir de ahora.`);
+                        } catch (error) {
+                          showAlert(
+                            'No se pudo traspasar',
+                            error instanceof Error ? error.message : String(error)
+                          );
+                        }
+                      }}>
+                      <Text style={styles.transferAlias}>
+                        👤 {member.profiles?.alias ?? 'Sin alias'}
+                      </Text>
+                      <Text style={styles.transferHint}>Hacer GM ›</Text>
+                    </Pressable>
+                  ))}
+            </>
+          )}
+
           {session &&
             session.user.id !== group.owner_id &&
             group.group_members.some((m) => m.user_id === session.user.id) && (
@@ -796,6 +986,45 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontFamily: RolderFonts.regular,
   },
+  rateBox: {
+    backgroundColor: Rolder.surface,
+    borderWidth: 1,
+    borderColor: Rolder.violet,
+    borderRadius: 16,
+    padding: 14,
+    gap: Spacing.two,
+  },
+  rateBoxTitle: {
+    color: '#fff',
+    fontSize: 15,
+    fontFamily: RolderFonts.semibold,
+    fontWeight: '600',
+  },
+  rateBoxHelp: {
+    color: Rolder.textSecondary,
+    fontSize: 12.5,
+    fontFamily: RolderFonts.regular,
+    lineHeight: 18,
+  },
+  rateChips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.two,
+  },
+  rateChip: {
+    backgroundColor: 'rgba(139,108,255,0.18)',
+    borderWidth: 1,
+    borderColor: Rolder.violetSoft,
+    borderRadius: 999,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+  },
+  rateChipText: {
+    color: '#fff',
+    fontSize: 12.5,
+    fontFamily: RolderFonts.semibold,
+    fontWeight: '600',
+  },
   kickHint: {
     color: Rolder.pass,
     fontSize: 10,
@@ -918,6 +1147,47 @@ const styles = StyleSheet.create({
   },
   boostActive: {
     color: '#F5A623',
+  },
+  vitalityBanner: {
+    backgroundColor: 'rgba(245,166,35,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(245,166,35,0.4)',
+    borderRadius: 16,
+    padding: 14,
+    gap: Spacing.two,
+    marginBottom: Spacing.three,
+  },
+  vitalityTitle: {
+    color: '#F5A623',
+    fontSize: 15,
+    fontFamily: RolderFonts.semibold,
+    fontWeight: '700',
+  },
+  vitalityBody: {
+    color: Rolder.textSecondary,
+    fontSize: 13,
+    lineHeight: 19,
+  },
+  transferRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: Rolder.surface,
+    borderWidth: 1,
+    borderColor: Rolder.surfaceBorder,
+    borderRadius: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+  },
+  transferAlias: {
+    color: '#fff',
+    fontSize: 14,
+    fontFamily: RolderFonts.semibold,
+  },
+  transferHint: {
+    color: Rolder.violetSoft,
+    fontSize: 13,
+    fontFamily: RolderFonts.semibold,
   },
   reportLink: {
     color: Rolder.pass,

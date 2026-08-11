@@ -39,10 +39,21 @@ function timeLabel(iso: string) {
     : date.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
 }
 
+type ChatFilter = 'all' | 'group' | 'dm';
+
+const FILTERS: { key: ChatFilter; label: string }[] = [
+  { key: 'all', label: 'Todos' },
+  { key: 'group', label: 'Mesas' },
+  { key: 'dm', label: 'Privados' },
+];
+
 export default function ChatsScreen() {
   const session = useSession();
   const [chats, setChats] = useState<ChatRow[] | undefined>(undefined);
   const [loadError, setLoadError] = useState(false);
+  // «Todos» por defecto a propósito: separar mesas y privados no debe costar
+  // un toque extra en el caso normal, que es abrir la conversación de arriba.
+  const [filter, setFilter] = useState<ChatFilter>('all');
 
   const load = useCallback(() => {
     if (!session) return;
@@ -70,6 +81,12 @@ export default function ChatsScreen() {
 
   useFocusEffect(load);
 
+  const visible = (chats ?? []).filter((c) => filter === 'all' || c.kind === filter);
+  const unreadIn = (kind: ChatFilter) =>
+    (chats ?? [])
+      .filter((c) => kind === 'all' || c.kind === kind)
+      .reduce((total, c) => total + c.unread, 0);
+
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
@@ -82,6 +99,39 @@ export default function ChatsScreen() {
               🔔 Activa las notificaciones para no perderte matches ni mensajes ›
             </Text>
           </Pressable>
+        )}
+
+        {/* Mesas y privados se distinguen ya por la forma del avatar; estos
+            chips son para cuando quieres SOLO uno de los dos. El contador de
+            cada uno evita que separar te haga perder de vista lo del otro. */}
+        {chats !== undefined && chats.length > 0 && (
+          <View style={styles.filterRow}>
+            {FILTERS.map((option) => {
+              const unread = unreadIn(option.key);
+              const active = filter === option.key;
+              return (
+                <Pressable
+                  key={option.key}
+                  accessibilityLabel={
+                    unread > 0
+                      ? `${option.label}, ${unread} sin leer`
+                      : option.label
+                  }
+                  accessibilityState={{ selected: active }}
+                  style={[styles.filter, active && styles.filterActive]}
+                  onPress={() => setFilter(option.key)}>
+                  <Text style={[styles.filterLabel, active && styles.filterLabelActive]}>
+                    {option.label}
+                  </Text>
+                  {unread > 0 && (
+                    <View style={styles.filterDot}>
+                      <Text style={styles.filterDotLabel}>{unread >= 99 ? '99+' : unread}</Text>
+                    </View>
+                  )}
+                </Pressable>
+              );
+            })}
+          </View>
         )}
 
         {loadError && chats === undefined ? (
@@ -99,9 +149,18 @@ export default function ChatsScreen() {
               aquí.
             </Text>
           </View>
+        ) : visible.length === 0 ? (
+          <View style={styles.centerBox}>
+            <Text style={styles.centerEmoji}>{filter === 'dm' ? '✉️' : '🎲'}</Text>
+            <Text style={styles.empty}>
+              {filter === 'dm'
+                ? 'Ningún privado todavía. Puedes escribir a cualquier compañero desde su perfil.'
+                : 'Ninguna mesa con chat todavía.'}
+            </Text>
+          </View>
         ) : (
           <FlatList
-            data={chats}
+            data={visible}
             keyExtractor={(c) => (c.kind === 'group' ? `g-${c.groupId}` : `d-${c.threadId}`)}
             contentContainerStyle={styles.list}
             renderItem={({ item }) => (
@@ -209,6 +268,50 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: RolderFonts.regular,
     textAlign: 'center',
+  },
+  filterRow: {
+    flexDirection: 'row',
+    gap: Spacing.two,
+    paddingHorizontal: 20,
+    paddingBottom: Spacing.two,
+  },
+  filter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    borderWidth: 1,
+    borderColor: Rolder.surfaceBorder,
+    borderRadius: 999,
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+  },
+  filterActive: {
+    borderColor: Rolder.violetSoft,
+    backgroundColor: 'rgba(139,108,255,0.18)',
+  },
+  filterLabel: {
+    color: Rolder.textSecondary,
+    fontSize: 13,
+    fontFamily: RolderFonts.semibold,
+    fontWeight: '600',
+  },
+  filterLabelActive: {
+    color: '#fff',
+  },
+  filterDot: {
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    paddingHorizontal: 5,
+    backgroundColor: Rolder.violet,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  filterDotLabel: {
+    color: '#fff',
+    fontSize: 9.5,
+    fontFamily: RolderFonts.bold,
+    fontWeight: '700',
   },
   list: {
     gap: 12,

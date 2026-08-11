@@ -1,10 +1,10 @@
 // Página principal: el feed de descubrimiento (estilo Tinder). Los menús
 // viven en el panel superior derecho (avatar).
 
+import { Image } from 'expo-image';
 import { Redirect, router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   Platform,
   Pressable,
   ScrollView,
@@ -14,7 +14,9 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { hasUnseenActivity } from '@/lib/activity';
 import { confirmAction, humanizeError, showAlert } from '@/lib/alert';
+import { track } from '@/lib/analytics';
 import { AppHeader } from '@/components/app-header';
 import { Chip } from '@/components/chip';
 import { ActionBar } from '@/components/swipe/action-bar';
@@ -24,6 +26,7 @@ import {
 } from '@/components/swipe/availability-mini-grid';
 import { CharacterSheetView } from '@/components/character-sheet-view';
 import { CardCycle } from '@/components/swipe/card-cycle';
+import { CardSkeleton } from '@/components/swipe/card-skeleton';
 import {
   CardBlurb,
   CardChip,
@@ -75,6 +78,9 @@ const DECK_MAX_WIDTH = 420;
 // Tweak del handoff rolder: el % de compatibilidad va oculto por defecto
 const SHOW_SCORE = false;
 
+/** Ventana en la que el feed se considera fresco al volver a la pestaña. */
+const FEED_FRESH_MS = 2 * 60 * 1000;
+
 const ROLE_LABELS: Record<string, string> = {
   player: 'Jugador/a',
   gm: 'GM',
@@ -102,18 +108,24 @@ export default function HomeScreen() {
 
   const [onboarded, setOnboarded] = useState<boolean | undefined>(undefined);
 
-  // Primera visita con perfil completo → tutorial de bienvenida (una vez;
-  // el propio tutorial marca el flag al montarse, así no hay bucle)
+  // Quien aún no tiene perfil pasa primero por el tutorial (dos pantallas) y
+  // de ahí al alta: explicar la app DESPUÉS de rellenar cuatro pasos era
+  // cobrar por adelantado. El propio tutorial marca el flag al montarse.
+  const [tutorialPending, setTutorialPending] = useState<boolean | undefined>(undefined);
   useEffect(() => {
-    if (onboarded !== true) return;
+    if (onboarded !== false) return;
     shouldShowTutorial()
-      .then((show) => {
-        if (show) router.push('/tutorial');
-      })
-      .catch(() => {});
+      .then(setTutorialPending)
+      .catch(() => setTutorialPending(false));
   }, [onboarded]);
   const [items, setItems] = useState<FeedItem[] | undefined>(undefined);
   const [myAvailability, setMyAvailability] = useState<Set<string>>(new Set());
+  const [filteredOut, setFilteredOut] = useState({
+    total: 0,
+    schedule: 0,
+    system: 0,
+    language: 0,
+  });
   const [loadError, setLoadError] = useState(false);
   // el mensaje real del fallo, visible en pantalla: sin él es imposible
   // diagnosticar problemas que solo pasan en el dispositivo de alguien
@@ -128,42 +140,130 @@ export default function HomeScreen() {
   const [myAvatar, setMyAvatar] = useState<string | null>(null);
   const [premium, setPremium] = useState(false);
   const [lastSwiped, setLastSwiped] = useState<FeedItem | null>(null);
+  /** enciende el punto de la campana: hay novedades sin ver */
+  const [hasNews, setHasNews] = useState(false);
+  /** cuándo y para quién se cargó el feed (para no rehacerlo en cada focus) */
+  const lastLoad = useRef<{ userId: string; at: number } | null>(null);
 
-  const load = useCallback(() => {
-    if (!session) return;
-    setLoadError(false);
-    setLoadErrorDetail(null);
-    setItems(undefined);
-    setIndex(0);
-    setProposedId(null);
-    setLastSwiped(null);
-    hasCompletedOnboarding(session.user.id)
-      .then(setOnboarded)
-      .catch(() => setOnboarded(true));
-    registerPushToken(session.user.id);
-    fetchPremiumStatus(session.user.id)
-      .then((status) => setPremium(status.active))
-      .catch(() => {});
-    fetchUnifiedFeed(session.user.id)
-      .then((feed) => {
-        setItems(feed.items);
-        setMyAvailability(
-          new Set(feed.myAvailability.map((a) => availabilityCellKey(a.weekday, a.slot)))
-        );
-      })
-      .catch((error) => {
-        setLoadError(true);
-        setLoadErrorDetail(error instanceof Error ? error.message : String(error));
+  // Volver de un perfil o de un chat NO debe rehacer el feed: era la consulta
+  // más cara de la app, dejaba la pantalla en la rueda y devolvía el mazo a la
+  // primera tarjeta, perdiendo por dónde ibas. Refrescamos solo si los datos
+  // ya están viejos; «Reintentar» y «volver a barajar» fuerzan.
+  const load = useCallback(
+    (options?: { force?: boolean }) => {
+      if (!session) return;
+      // el punto de la campana se recalcula en CADA focus, fuera del
+      // throttle del feed: al volver de Novedades tiene que apagarse ya
+      hasUnseenActivity(session.user.id).then(setHasNews);
+      const fresh =
+        lastLoad.current?.userId === session.user.id &&
+        Date.now() - lastLoad.current.at < FEED_FRESH_MS;
+      if (!options?.force && fresh) return;
+      setLoadError(false);
+      setLoadErrorDetail(null);
+      setItems(undefined);
+      setIndex(0);
+      setProposedId(null);
+      setLastSwiped(null);
+      hasCompletedOnboarding(session.user.id)
+        .then(setOnboarded)
+        .catch(() => setOnboarded(true));
+      registerPushToken(session.user.id);
+      fetchPremiumStatus(session.user.id)
+        .then((status) => setPremium(status.active))
+        .catch(() => {});
+      fetchUnifiedFeed(session.user.id)
+        .then((feed) => {
+          lastLoad.current = { userId: session.user.id, at: Date.now() };
+          setItems(feed.items);
+          setMyAvailability(
+            new Set(feed.myAvailability.map((a) => availabilityCellKey(a.weekday, a.slot)))
+          );
+          setFilteredOut(feed.filteredOut);
+        })
+        .catch((error) => {
+          setLoadError(true);
+          setLoadErrorDetail(error instanceof Error ? error.message : String(error));
+        });
+      fetchMyCharacters(session.user.id)
+        .then((all) => setMyCharacters(all.filter((c) => c.status === 'looking')))
+        .catch(() => {});
+      fetchProfileData(session.user.id)
+        .then((p) => setMyAvatar(p.avatar_url))
+        .catch(() => {});
+    },
+    [session]
+  );
+
+  const reload = useCallback(() => load({ force: true }), [load]);
+
+  // Un feed vacío que solo dice «no hay nada» deja al usuario sin saber qué
+  // tocar. Si hay mesas que se han caído por un filtro duro, lo decimos y
+  // mandamos justo a ese ajuste.
+  const emptyReason = (() => {
+    const { total, schedule, system, language } = filteredOut;
+    if (total === 0) {
+      return {
+        headline: 'No hay mesas ni jugadores nuevos por ahora.',
+        hint: 'Con la comunidad aún pequeña esto pasa: vuelve a barajar lo que descartaste, o monta tú la mesa y que te encuentren.',
+        action: '⚙️ Ajustar mi perfil',
+      };
+    }
+    const mesas = total === 1 ? '1 mesa se ha quedado' : `${total} mesas se han quedado`;
+    if (schedule >= system && schedule >= language) {
+      return {
+        headline: `${mesas} fuera por horario.`,
+        hint: 'Marca más franjas en tu disponibilidad y vuelven a aparecer.',
+        action: '🕒 Ampliar mi disponibilidad',
+      };
+    }
+    if (system >= language) {
+      return {
+        headline: `${mesas} fuera por sistema de juego.`,
+        hint: 'Añade sistemas, o marca «abierto a cualquiera» y las verás todas.',
+        action: '🎲 Añadir sistemas',
+      };
+    }
+    return {
+      headline: `${mesas} fuera por idioma.`,
+      hint: 'Añade los idiomas en los que te apañas para verlas.',
+      action: '🗣️ Ajustar mi perfil',
+    };
+  })();
+
+  // Feed agotado: es el peor primer momento posible para alguien nuevo y no
+  // deja rastro en ninguna tabla, así que se registra aquí.
+  const exhausted = items !== undefined && index >= items.length;
+  useEffect(() => {
+    // el desglose de filtros duros es el dato que decide si hay que
+    // relajarlos (pendientes.md, B1): sin él el evento solo dice «vacío»
+    if (exhausted)
+      track(session?.user.id, 'feed_empty', {
+        cards: items?.length ?? 0,
+        filtered_total: filteredOut.total,
+        filtered_schedule: filteredOut.schedule,
+        filtered_system: filteredOut.system,
+        filtered_language: filteredOut.language,
       });
-    fetchMyCharacters(session.user.id)
-      .then((all) => setMyCharacters(all.filter((c) => c.status === 'looking')))
-      .catch(() => {});
-    fetchProfileData(session.user.id)
-      .then((p) => setMyAvatar(p.avatar_url))
-      .catch(() => {});
-  }, [session]);
+    // solo al quedarse vacío, no en cada render
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [exhausted]);
 
   useFocusEffect(load);
+
+  // La tarjeta siguiente ya está montada (carga su foto sola); las dos de
+  // después se precargan aquí para que una racha de swipes rápidos no
+  // enseñe el degradado fallback mientras llega la imagen.
+  useEffect(() => {
+    if (!items) return;
+    const urls = items
+      .slice(index + 2, index + 4)
+      .map((item) =>
+        item.kind === 'group' ? item.group.image_url : item.candidate.player.avatar_url
+      )
+      .filter((url): url is string => url !== null);
+    if (urls.length > 0) void Image.prefetch(urls);
+  }, [items, index]);
 
   // Teclado en web: ← pass · → like (handoff rolder §2)
   useEffect(() => {
@@ -186,6 +286,7 @@ export default function HomeScreen() {
     setTopFace(0);
 
     const direction = choice === 'like' ? ('like' as const) : ('pass' as const);
+    track(session.user.id, 'swipe', { direction, kind: item.kind });
     const request =
       item.kind === 'group'
         ? swipeOnGroup(session.user.id, item.group.id, direction, proposal)
@@ -254,10 +355,15 @@ export default function HomeScreen() {
   const renderCard = (item: FeedItem) => {
     if (item.kind === 'group') {
       const g = item.group;
+      const when =
+        g.session_weekday !== null && g.session_slot !== null
+          ? `${WEEKDAY_LABELS[g.session_weekday]} ${SLOT_LABELS[g.session_slot].toLowerCase()}`
+          : 'horario por definir';
       return (
         <CardShell
           imageUrl={g.image_url}
           fallbackEmoji="🎲"
+          accessibilityLabel={`Mesa ${g.name}. ${g.systems?.name ?? 'Sistema sin definir'}, ${FORMAT_LABELS[g.format]}, ${when}. Coincidís ${item.result.overlapHours} horas.${g.full ? ' Mesa completa, puedes pedir sitio.' : ''}`}
           topRight={
             SHOW_SCORE ? (
               <View style={styles.scoreBadge}>
@@ -320,6 +426,7 @@ export default function HomeScreen() {
         imageUrl={c.player.avatar_url}
         fallbackEmoji="🧙"
         fallbackColors={['#5865F2', '#8B6CFF']}
+        accessibilityLabel={`Jugador ${c.player.alias}${playerAge !== null ? `, ${playerAge} años` : ''}. Candidato para tu mesa ${item.forGroup.name}. Nivel ${playerLevel}. Coincide ${c.result.overlapHours} horas con vuestra sesión.${c.likedGroup ? ' Le gusta vuestra mesa.' : ''}`}
         topRight={
           SHOW_SCORE ? (
             <View style={styles.scoreBadge}>
@@ -528,19 +635,43 @@ export default function HomeScreen() {
   };
 
   if (onboarded === false) {
-    return <Redirect href="/onboarding" />;
+    // esperamos a saber si toca tutorial para no mandarlo dos veces de ruta
+    if (tutorialPending === undefined) return null;
+    return (
+      <Redirect href={tutorialPending ? '/tutorial?siguiente=onboarding' : '/onboarding'} />
+    );
   }
 
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        <AppHeader />
+        <AppHeader
+          extra={
+            <>
+              {/* refresco manual: sin esto solo refrescaba al volver con el
+                  feed viejo (>2 min) — «acabo de crear mi mesa, mírala» */}
+              <Pressable
+                accessibilityLabel="Actualizar el feed"
+                onPress={reload}
+                style={({ pressed }) => pressed && styles.bellPressed}>
+                <Text style={styles.refreshGlyph}>↻</Text>
+              </Pressable>
+              <Pressable
+                accessibilityLabel="Novedades"
+                onPress={() => router.push('/novedades')}
+                style={({ pressed }) => pressed && styles.bellPressed}>
+                <Text style={styles.bell}>🔔</Text>
+                {hasNews && <View style={styles.bellDot} />}
+              </Pressable>
+            </>
+          }
+        />
 
         {loadError ? (
           <View style={styles.centerBox}>
             <Text style={styles.centerEmoji}>📡</Text>
             <ThemedText style={styles.centerText}>No se pudo cargar el feed.</ThemedText>
-            <Pressable style={styles.retryButton} onPress={load}>
+            <Pressable style={styles.retryButton} onPress={reload}>
               <ThemedText>Reintentar</ThemedText>
             </Pressable>
             {loadErrorDetail && (
@@ -550,28 +681,38 @@ export default function HomeScreen() {
             )}
           </View>
         ) : items === undefined || onboarded === undefined ? (
-          <View style={styles.centerBox}>
-            <ActivityIndicator />
+          // silueta de tarjeta, no rueda: misma caja que el deck real
+          <View style={styles.deckArea}>
+            <CardSkeleton />
           </View>
         ) : !current ? (
           <View style={styles.centerBox}>
             <Text style={styles.centerEmoji}>🃏</Text>
             <ThemedText style={styles.centerText}>
-              No hay más mesas ni candidatos compatibles por ahora. Amplía tu
-              disponibilidad y sistemas, o vuelve a barajar lo que descartaste.
+              {emptyReason.headline}
             </ThemedText>
+            {emptyReason.hint && (
+              <ThemedText type="small" style={styles.centerText} themeColor="textSecondary">
+                {emptyReason.hint}
+              </ThemedText>
+            )}
             <Pressable
               style={styles.retryButton}
               onPress={() => {
                 if (!session) return;
                 // borra solo los «pass»: lo descartado vuelve a la baraja
-                resetPasses(session.user.id).then(load).catch(load);
+                resetPasses(session.user.id).then(reload).catch(reload);
               }}>
               <Text style={styles.retryLabel}>🔄 Volver a barajar los pases</Text>
             </Pressable>
             <Pressable onPress={() => router.push('/onboarding')}>
-              <ThemedText type="small" themeColor="textSecondary">
-                Ajustar mi perfil
+              <ThemedText type="small" style={styles.emptyAction}>
+                {emptyReason.action}
+              </ThemedText>
+            </Pressable>
+            <Pressable onPress={() => router.push('/groups/new')}>
+              <ThemedText type="small" style={styles.emptyAction}>
+                🛡️ Crear mi propia mesa
               </ThemedText>
             </Pressable>
           </View>
@@ -619,25 +760,38 @@ export default function HomeScreen() {
               />
             </View>
 
-            {current.kind === 'group' && myCharacters.length > 0 && (
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                style={styles.proposalStrip}
-                contentContainerStyle={styles.proposalContent}>
-                <ThemedText type="small" style={styles.proposalLabel}>
-                  Proponer:
-                </ThemedText>
-                {myCharacters.map((c) => (
-                  <Chip
-                    key={c.id}
-                    label={c.name}
-                    selected={proposedId === c.id}
-                    onPress={() => setProposedId(proposedId === c.id ? null : c.id)}
-                  />
-                ))}
-              </ScrollView>
-            )}
+            {/* Franja bajo el mazo, de alto FIJO: si cambiara entre tipos de
+                tarjeta, la nueva pegaría un bump al promocionarse (nos pasó).
+                Con mesa y personajes propios lleva la tira de proponer; en el
+                resto de casos, el distintivo de qué estás viendo. */}
+            <View style={styles.stripSlot}>
+              {current.kind === 'group' && myCharacters.length > 0 ? (
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.proposalContent}>
+                  <ThemedText type="small" style={styles.proposalLabel}>
+                    Proponer:
+                  </ThemedText>
+                  {myCharacters.map((c) => (
+                    <Chip
+                      key={c.id}
+                      label={c.name}
+                      selected={proposedId === c.id}
+                      onPress={() => setProposedId(proposedId === c.id ? null : c.id)}
+                    />
+                  ))}
+                </ScrollView>
+              ) : (
+                <View style={styles.kindBadge}>
+                  <Text style={styles.kindBadgeText} numberOfLines={1}>
+                    {current.kind === 'group'
+                      ? '🎲 Mesa buscando jugadores'
+                      : `🧙 Jugador — candidato para «${current.forGroup.name}»`}
+                  </Text>
+                </View>
+              )}
+            </View>
           </>
         )}
       </SafeAreaView>
@@ -728,6 +882,36 @@ const styles = StyleSheet.create({
     fontFamily: RolderFonts.semibold,
     fontWeight: '600',
   },
+  bell: {
+    fontSize: 20,
+  },
+  refreshGlyph: {
+    color: Rolder.violetSoft,
+    fontSize: 24,
+    fontFamily: RolderFonts.semibold,
+    fontWeight: '700',
+    marginTop: -2,
+  },
+  bellPressed: {
+    opacity: 0.6,
+  },
+  // mismo lenguaje que el punto de no-leídos del avatar (app-header)
+  bellDot: {
+    position: 'absolute',
+    top: -2,
+    right: -4,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: Rolder.coral,
+    borderWidth: 2,
+    borderColor: Rolder.page,
+  },
+  emptyAction: {
+    color: Rolder.violetSoft,
+    fontFamily: RolderFonts.semibold,
+    fontWeight: '600',
+  },
   scoreBadge: {
     backgroundColor: 'rgba(0,0,0,0.55)',
     borderRadius: 999,
@@ -789,9 +973,28 @@ const styles = StyleSheet.create({
     fontFamily: RolderFonts.regular,
     fontStyle: 'italic',
   },
-  proposalStrip: {
-    flexGrow: 0,
+  // alto fijo: aquí viven la tira de proponer O el distintivo de tipo, y el
+  // deck no cambia de tamaño al alternar entre mesas y jugadores
+  stripSlot: {
+    height: 44,
     marginTop: Spacing.two,
+    justifyContent: 'center',
+  },
+  kindBadge: {
+    alignSelf: 'center',
+    backgroundColor: Rolder.surface,
+    borderWidth: 1,
+    borderColor: Rolder.surfaceBorder,
+    borderRadius: 999,
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+    maxWidth: '92%',
+  },
+  kindBadgeText: {
+    color: Rolder.textSecondary,
+    fontSize: 12.5,
+    fontFamily: RolderFonts.semibold,
+    fontWeight: '600',
   },
   proposalContent: {
     alignItems: 'center',
