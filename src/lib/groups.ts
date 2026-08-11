@@ -130,6 +130,15 @@ export async function confirmGroupAlive(groupId: string) {
   if (error) throw error;
 }
 
+/** Archiva la mesa sin disolverla: fuera del feed, todo lo demás intacto. */
+export async function archiveGroup(groupId: string) {
+  const payload = (await hasColumn('groups', 'inactivity_warned_at'))
+    ? { is_active: false, inactivity_warned_at: null }
+    : { is_active: false };
+  const { error } = await supabase.from('groups').update(payload).eq('id', groupId);
+  if (error) throw error;
+}
+
 /** Reabre una mesa archivada por inactividad (solo dueño — RLS). */
 export async function reopenGroup(groupId: string) {
   const alive = (await hasColumn('groups', 'last_activity_at'))
