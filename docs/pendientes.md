@@ -4,15 +4,18 @@ Cosas identificadas en barridos de mejoras que se decidió NO hacer todavía,
 con el porqué y la señal que indicaría que ha llegado su momento. Antes de
 proponer una mejora, mirar aquí: si ya está listada, no es un hallazgo nuevo.
 
-Última revisión: 2026-08-13.
+Última revisión: 2026-08-11.
 
 ## Operativo (bloquea funcionalidad ya mergeada)
 
-- **Aplicar migraciones 00044 y 00052** en el SQL Editor. La 00044 (bucket
-  `chat-media` privado) lleva pendiente desde su PR — verificado por REST que
-  el bucket no existe; hasta entonces las fotos de chat siguen yendo al
-  bucket público `avatars`. La 00052 (mesas inactivas: aviso y archivo
-  automático) es de la PR #153. Las 00045-00051 están todas aplicadas ✔.
+- **Aplicar la migración 00044** (bucket `chat-media` privado) en el SQL
+  Editor. Lleva pendiente desde su PR — verificado por REST (2026-08-11) que
+  el bucket sigue sin existir; hasta entonces las fotos de chat siguen yendo
+  al bucket público `avatars`. Las 00045-00054 están todas aplicadas ✔.
+- **Redesplegar la Edge Function `push-notify`** con el código del PR #164:
+  ganó el caso `nudges`, y hasta el redeploy los toques se insertan pero no
+  llegan como push. No se puede verificar desde fuera — si ya está hecho,
+  borrar esta línea.
 - **Migrar las fotos de chat viejas** del bucket público `avatars` a
   `chat-media` (privado). No se puede desde SQL: script contra la API de
   Storage, objeto a objeto. El cliente ya distingue ambas formas (URL completa
@@ -68,18 +71,12 @@ proponer una mejora, mirar aquí: si ya está listada, no es un hallazgo nuevo.
   tóxico sin SQL Editor. Flag de suspensión + excluir del feed + pantalla de
   «cuenta suspendida». Señal: el primer reporte que requiera actuar.
 
-## Restos del rediseño de mesas (entregable aplicado en PRs #159-#162)
+## Restos del rediseño de mesas (entregable aplicado en PRs #159-#164)
 
 - **Editar mesa como acordeón con resumen** (entregable 3a, mitad edición).
   Crear ya va en 3 pasos; editar sigue en un scroll. El acordeón (secciones
   plegadas con el valor actual de resumen) es su propia PR. Señal: al
   retomar pulido, o si los testers editan mucho.
-- **Plazas como AvatarStack + un solo Invitar** (entregable §3). Choca con
-  las plazas pulsables de la #134 (CapitanSapatia) y con valorar/echar por
-  asiento. Decisión de producto entre los dos antes de tocar.
-- **«Dar un toque»** (entregable 2d): avisar al miembro que no ha votado o
-  confirmado. Es funcionalidad nueva con push dirigido (Edge Function), no
-  rediseño. Señal: cuando las votaciones se queden atascadas de verdad.
 
 ## Esperando a la estrategia de marca (decisión de 2026-08)
 
@@ -98,7 +95,7 @@ y estrategia, no se toca. Señal de activación común: marca decidida
   `...@NNN.brevosend.com` — política DMARC de Brevo para dominios públicos,
   no un fallo de config).
 
-Hecho por el camino (2026-08-13): **SMTP propio vía Brevo** — remitente
+Hecho por el camino (2026-08-11): **SMTP propio vía Brevo** — remitente
 verificado, plantillas de Magic Link y Confirm signup en español, límite de
 emails/hora subido. El muro de ~2-4 emails/hora del SMTP integrado ya no
 existe.
