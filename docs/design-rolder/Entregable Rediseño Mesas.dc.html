@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&display=swap" rel="stylesheet">
+<script src="./doc-page.js"></script>
+<style>
+doc-page:not(:defined){visibility:hidden}
+body{margin:0;font-family:Sora,system-ui,sans-serif}
+a{color:#6B4FE0;text-decoration:none}a:hover{color:#8B6CFF;text-decoration:underline}
+</style>
+</helmet>
+<doc-page margin="0.8in">
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+    <span style="width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#FF5A5F,#8B6CFF);display:inline-flex;align-items:center;justify-content:center;color:#fff;font:800 11px Sora,sans-serif">20</span>
+    <span style="font:800 20px Sora,sans-serif;color:#1A1626">rolder</span>
+    <span style="color:#8A8494;font:600 12px Sora,sans-serif;margin-left:auto">Entregable de rediseño · agosto 2026</span>
+  </div>
+  <h1 style="font:800 30px/1.2 Sora,sans-serif;color:#1A1626;margin:14px 0 10px">Rediseño de las pantallas de mesa</h1>
+  <p style="font:400 13.5px/1.7 Sora,sans-serif;color:#3D3849;margin:0 0 8px">Dirección elegida: <strong>hub con pestañas</strong> (opción 1a del canvas de exploración). Tres principios rigen todos los cambios: <strong>menos saltos</strong> (chat, agenda y diario dejan de ser pantallas y pasan a ser pestañas de la mesa), <strong>un solo CTA por pantalla</strong> (el verde se reserva para la acción principal) y <strong>estado antes del salto</strong> (badges y previews dicen a qué vas antes de tocar).</p>
+  <p style="font:400 12.5px/1.7 Sora,sans-serif;color:#6B657A;margin:0 0 22px">Los mockups viven en <em>Rediseño Mesas.dc.html</em>; cada pantalla referencia su id (1a, 2a…). Todo usa tokens actuales del design system, sin blur ni filtros, implementable en React Native con estilos planos y expo-linear-gradient.</p>
+
+  <h2 style="font:800 19px Sora,sans-serif;color:#1A1626;border-bottom:2px solid #8B6CFF;padding-bottom:6px;margin:0 0 14px">Componentes nuevos (una definición, todas las pantallas)</h2>
+  <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:26px">
+    <div style="break-inside:avoid;background:#F6F4FB;border-radius:12px;padding:12px 16px">
+      <div style="font:700 13px Sora,sans-serif;color:#1A1626">1 · TableTabs</div>
+      <div style="font:400 12.5px/1.6 Sora,sans-serif;color:#4A4556">Segmented control Mesa · Chat · Agenda · Diario, con badge numérico opcional por pestaña. Sustituye los 4 accesos circulares sin etiqueta. Variante bloqueada (🔒) para visitantes. Usado en 1a, 2a, 2d, 3b, 3c.</div>
+    </div>
+    <div style="break-inside:avoid;background:#F6F4FB;border-radius:12px;padding:12px 16px">
+      <div style="font:700 13px Sora,sans-serif;color:#1A1626">2 · StatChip</div>
+      <div style="font:400 12.5px/1.6 Sora,sans-serif;color:#4A4556">Pill de pendiente: «💬 2 nuevos», «⚔️ 3 piden sitio», «📅 Te falta votar fecha». Variantes verde / violeta / ámbar / coral. Regla: solo aparece cuando hay algo — sin ceros. Usado en 1a, 3d, 4a.</div>
+    </div>
+    <div style="break-inside:avoid;background:#F6F4FB;border-radius:12px;padding:12px 16px">
+      <div style="font:700 13px Sora,sans-serif;color:#1A1626">3 · AvatarStack</div>
+      <div style="font:400 12.5px/1.6 Sora,sans-serif;color:#4A4556">Pila solapada de avatares con borde del fondo; el GM lleva anillo oro (#F5A623); los huecos libres, círculo punteado «+N». Sustituye la parrilla de plazas con «invitar» repetido: un solo botón Invitar por sección. Usado en 1a, 1b, 2d, 4a.</div>
+    </div>
+    <div style="break-inside:avoid;background:#F6F4FB;border-radius:12px;padding:12px 16px">
+      <div style="font:700 13px Sora,sans-serif;color:#1A1626">4 · StyleBars (compacto)</div>
+      <div style="font:400 12.5px/1.6 Sora,sans-serif;color:#4A4556">Versión solo-lectura de los sliders de estilo: pista de 4 px con punto, etiquetas en los extremos, tres filas en una tarjeta. El slider interactivo actual queda solo para crear/editar. Usado en 1a, 2a.</div>
+    </div>
+    <div style="break-inside:avoid;background:#F6F4FB;border-radius:12px;padding:12px 16px">
+      <div style="font:700 13px Sora,sans-serif;color:#1A1626">5 · InlineBanner</div>
+      <div style="font:400 12.5px/1.6 Sora,sans-serif;color:#4A4556">Aviso accionable con botones dentro: ámbar «¿Seguís jugando?» (¡Seguimos! / Archivar), verde «Crónica de hoy» (Escribir ✍️). Nunca modal ni overlay. Usado en 1c, 3c, 4a.</div>
+    </div>
+    <div style="break-inside:avoid;background:#F6F4FB;border-radius:12px;padding:12px 16px">
+      <div style="font:700 13px Sora,sans-serif;color:#1A1626">6 · CoverStrip</div>
+      <div style="font:400 12.5px/1.6 Sora,sans-serif;color:#4A4556">Franja de portada de 58 px con el gradiente/foto de la mesa, nombre y StatusPill encima. Da identidad a cada mesa en listas. Usado en 4a.</div>
+    </div>
+    <div style="break-inside:avoid;background:#F6F4FB;border-radius:12px;padding:12px 16px">
+      <div style="font:700 13px Sora,sans-serif;color:#1A1626">7 · VoteRow</div>
+      <div style="font:400 12.5px/1.6 Sora,sans-serif;color:#4A4556">Fila de fecha propuesta: fecha + mini AvatarStack de votantes + recuento. Estado seleccionado con borde violeta. Un tap = voto. Usado en 2d.</div>
+    </div>
+    <div style="break-inside:avoid;background:#F6F4FB;border-radius:12px;padding:12px 16px">
+      <div style="font:700 13px Sora,sans-serif;color:#1A1626">8 · RollCard</div>
+      <div style="font:400 12.5px/1.6 Sora,sans-serif;color:#4A4556">Mensaje de tirada en el chat como tarjeta propia (🎲 quién tira, fórmula, resultado grande con desglose), borde violeta. Las tiradas son lo diferencial de rolder: no van como texto plano. Usado en 3b.</div>
+    </div>
+    <div style="break-inside:avoid;background:#F6F4FB;border-radius:12px;padding:12px 16px">
+      <div style="font:700 13px Sora,sans-serif;color:#1A1626">9 · StepperHeader</div>
+      <div style="font:400 12.5px/1.6 Sora,sans-serif;color:#4A4556">Progreso de 3 segmentos + etiquetas de paso para formularios largos, con barra de acción fija abajo («Paso 1 de 3 · Siguiente →»). Usado en 3a.</div>
+    </div>
+  </div>
+
+  <h2 style="font:800 19px Sora,sans-serif;color:#1A1626;border-bottom:2px solid #8B6CFF;padding-bottom:6px;margin:0 0 14px;break-before:page">Pantalla a pantalla</h2>
+
+  <div style="break-inside:avoid;margin-bottom:18px">
+    <div style="font:800 15px Sora,sans-serif;color:#1A1626;margin-bottom:6px">Ficha de mesa · vista GM <span style="background:#8B6CFF;color:#fff;border-radius:6px;padding:2px 8px;font:800 11px Sora,sans-serif;margin-left:4px">1a</span></div>
+    <p style="font:400 12.5px/1.7 Sora,sans-serif;color:#3D3849;margin:0 0 4px"><strong>Conservar:</strong> hero con gradiente/foto y nombre grande, chips de sistema/formato, pill verde de plazas libres, la sensación de sitios contados.</p>
+    <p style="font:400 12.5px/1.7 Sora,sans-serif;color:#3D3849;margin:0 0 4px"><strong>Cambiar:</strong> los 4 accesos circulares pasan a TableTabs; candidatos sube como tarjeta destacada («3 aventureros piden sitio»); próxima partida visible en la propia ficha; plazas como AvatarStack con un solo Invitar; sliders a StyleBars compacto; traspasar/destacar/archivar se agrupan en una fila «Gestionar mesa».</p>
+    <p style="font:400 12.5px/1.7 Sora,sans-serif;color:#6B657A;margin:0"><strong>Por qué:</strong> era la pantalla con más ruido: iconos sin etiqueta, 5 enlaces «invitar» idénticos y acciones de GM sueltas al final. Cada ida al chat y vuelta eran dos saltos; ahora es un tap sin salir de contexto.</p>
+  </div>
+
+  <div style="break-inside:avoid;margin-bottom:18px">
+    <div style="font:800 15px Sora,sans-serif;color:#1A1626;margin-bottom:6px">Ficha · visitante con sesión <span style="background:#8B6CFF;color:#fff;border-radius:6px;padding:2px 8px;font:800 11px Sora,sans-serif;margin-left:4px">2a</span></div>
+    <p style="font:400 12.5px/1.7 Sora,sans-serif;color:#3D3849;margin:0 0 4px"><strong>Conservar:</strong> «Pedir sitio en esta mesa» como CTA verde único y prominente; misma estructura de ficha que el GM.</p>
+    <p style="font:400 12.5px/1.7 Sora,sans-serif;color:#3D3849;margin:0 0 4px"><strong>Cambiar:</strong> las pestañas se enseñan bloqueadas con 🔒 y la nota «se desbloquean cuando el GM te acepte»; se añade fila del GM (quién dirige, antigüedad) y chip de compatibilidad horaria en el hero.</p>
+    <p style="font:400 12.5px/1.7 Sora,sans-serif;color:#6B657A;margin:0"><strong>Por qué:</strong> el candado vende más que ocultar: el visitante ve exactamente qué gana al entrar (chat, agenda, diario) y la decisión de pedir sitio se apoya en quién dirige y cuándo se juega.</p>
+  </div>
+
+  <div style="break-inside:avoid;margin-bottom:18px">
+    <div style="font:800 15px Sora,sans-serif;color:#1A1626;margin-bottom:6px">Ficha pública · enlace compartido <span style="background:#8B6CFF;color:#fff;border-radius:6px;padding:2px 8px;font:800 11px Sora,sans-serif;margin-left:4px">2b</span></div>
+    <p style="font:400 12.5px/1.7 Sora,sans-serif;color:#3D3849;margin:0 0 4px"><strong>Conservar:</strong> tarjeta de invitación mínima, sin lista de miembros (privacidad), CTA de registro único, texto de fricción baja («se tarda un minuto»).</p>
+    <p style="font:400 12.5px/1.7 Sora,sans-serif;color:#3D3849;margin:0 0 4px"><strong>Cambiar:</strong> todo cabe en un viewport sin scroll; el hero entra dentro de la tarjeta (una sola pieza que «es» la invitación); GM y sitios libres como dos mini-tarjetas lado a lado.</p>
+    <p style="font:400 12.5px/1.7 Sora,sans-serif;color:#6B657A;margin:0"><strong>Por qué:</strong> es la landing del motor de crecimiento nº 1; una invitación de una pieza se entiende en un segundo y no da razones para irse antes del botón.</p>
+  </div>
+
+  <div style="break-inside:avoid;margin-bottom:18px">
+    <div style="font:800 15px Sora,sans-serif;color:#1A1626;margin-bottom:6px">Tarjeta del feed de swipe <span style="background:#8B6CFF;color:#fff;border-radius:6px;padding:2px 8px;font:800 11px Sora,sans-serif;margin-left:4px">2c</span></div>
+    <p style="font:400 12.5px/1.7 Sora,sans-serif;color:#3D3849;margin:0 0 4px"><strong>Conservar:</strong> el gesto y la física del deck no se tocan; nombre grande abajo, chips de sistema/formato, chip verde de compatibilidad horaria.</p>
+    <p style="font:400 12.5px/1.7 Sora,sans-serif;color:#3D3849;margin:0 0 4px"><strong>Cambiar:</strong> la franja verde superior («One-shot — la primera cita perfecta») baja a chip compacto arriba a la izquierda; se añade un bloque inferior con lo que decide un swipe: horario coincidente, quién dirige y con qué tono, sitios libres; pista «desliza arriba para ver la ficha».</p>
+    <p style="font:400 12.5px/1.7 Sora,sans-serif;color:#6B657A;margin:0"><strong>Por qué:</strong> la franja a todo lo ancho competía con los sellos ¡CRÍTICO!/PIFIA (la capa sagrada del gesto), y la tarjeta no respondía las tres preguntas que decide un like: cuándo, con quién, cuántos sitios.</p>
+  </div>
+
+  <div style="break-inside:avoid;margin-bottom:18px">
+    <div style="font:800 15px Sora,sans-serif;color:#1A1626;margin-bottom:6px">Agenda · organizar partida <span style="background:#8B6CFF;color:#fff;border-radius:6px;padding:2px 8px;font:800 11px Sora,sans-serif;margin-left:4px">2d</span></div>
+    <p style="font:400 12.5px/1.7 Sora,sans-serif;color:#3D3849;margin:0 0 4px"><strong>Conservar:</strong> el flujo real (GM propone → miembros votan → GM fija → confirmaciones); solo el GM fija fecha.</p>
+    <p style="font:400 12.5px/1.7 Sora,sans-serif;color:#3D3849;margin:0 0 4px"><strong>Cambiar:</strong> vive como pestaña del hub; la próxima partida fijada siempre arriba con confirmados y «Dar un toque» al que falta; votación inline con VoteRow (un tap por fecha, sin pantalla aparte); la guía de 4 pasos pasa de overlay a fila discreta «Ver guía».</p>
+    <p style="font:400 12.5px/1.7 Sora,sans-serif;color:#6B657A;margin:0"><strong>Por qué:</strong> la pantalla vacía con un solo botón verde no explicaba el sistema de votos; el overlay de primeros pasos bloqueaba en vez de acompañar. Votar debe costar un tap o la gente no vota.</p>
+  </div>
+
+  <div style="break-inside:avoid;margin-bottom:18px">
+    <div style="font:800 15px Sora,sans-serif;color:#1A1626;margin-bottom:6px">Chat de la mesa <span style="background:#8B6CFF;color:#fff;border-radius:6px;padding:2px 8px;font:800 11px Sora,sans-serif;margin-left:4px">3b</span></div>
+    <p style="font:400 12.5px/1.7 Sora,sans-serif;color:#3D3849;margin:0 0 4px"><strong>Conservar:</strong> burbujas, reacciones, fotos, gifs, tiradas — todo el contenido actual.</p>
+    <p style="font:400 12.5px/1.7 Sora,sans-serif;color:#3D3849;margin:0 0 4px"><strong>Cambiar:</strong> pestaña del hub; los 5 botones de adjuntos se reducen a 2 (🎲 siempre visible, ＋ agrupa gif/foto/sticker); tiradas como RollCard; el GM se distingue con nombre en oro y anillo en el avatar; reacciones colgando de la burbuja.</p>
+    <p style="font:400 12.5px/1.7 Sora,sans-serif;color:#6B657A;margin:0"><strong>Por qué:</strong> cinco botones del mismo peso = ninguno importa; el dado es identidad de producto y merece el sitio fijo. La tirada como tarjeta la hace legible y celebrable (y enlazable a futuro con la hoja de personaje).</p>
+  </div>
+
+  <div style="break-inside:avoid;margin-bottom:18px">
+    <div style="font:800 15px Sora,sans-serif;color:#1A1626;margin-bottom:6px">Diario de campaña <span style="background:#8B6CFF;color:#fff;border-radius:6px;padding:2px 8px;font:800 11px Sora,sans-serif;margin-left:4px">3c</span></div>
+    <p style="font:400 12.5px/1.7 Sora,sans-serif;color:#3D3849;margin:0 0 4px"><strong>Conservar:</strong> entradas cronológicas por partida jugada; cualquiera de la mesa escribe; se abre el día de sesión.</p>
+    <p style="font:400 12.5px/1.7 Sora,sans-serif;color:#3D3849;margin:0 0 4px"><strong>Cambiar:</strong> pestaña del hub; línea de campaña vertical con tarjetas de sesión (título, extracto, autor, reacción); el día de partida aparece el InlineBanner verde «Crónica de hoy» con CTA de escribir; «ver las N anteriores» pliega el histórico largo.</p>
+    <p style="font:400 12.5px/1.7 Sora,sans-serif;color:#6B657A;margin:0"><strong>Por qué:</strong> la pantalla negra con dos frases sueltas parecía un error; la línea de tiempo convierte el diario en el trofeo de la campaña y da razón para volver entre sesiones.</p>
+  </div>
+
+  <div style="break-inside:avoid;margin-bottom:18px">
+    <div style="font:800 15px Sora,sans-serif;color:#1A1626;margin-bottom:6px">Crear / editar mesa <span style="background:#8B6CFF;color:#fff;border-radius:6px;padding:2px 8px;font:800 11px Sora,sans-serif;margin-left:4px">3a</span></div>
+    <p style="font:400 12.5px/1.7 Sora,sans-serif;color:#3D3849;margin:0 0 4px"><strong>Conservar:</strong> todos los campos actuales y el mismo formulario para crear y editar; chips de sistema; segmented de formato.</p>
+    <p style="font:400 12.5px/1.7 Sora,sans-serif;color:#3D3849;margin:0 0 4px"><strong>Cambiar:</strong> el formulario largo se parte en 3 pasos con StepperHeader — 1 Identidad (foto, nombre, sistema, formato) · 2 Cómo jugáis (descripción, horario, frecuencia, experiencia, VTT, plazas) · 3 Estilo (los 3 sliders) — con «Siguiente» fijo abajo. En edición, los 3 pasos se muestran como secciones plegadas con resumen del valor actual.</p>
+    <p style="font:400 12.5px/1.7 Sora,sans-serif;color:#6B657A;margin:0"><strong>Por qué:</strong> 11 campos en un scroll producen abandono; tres pantallas cortas con progreso visible se terminan. El modo acordeón en edición evita re-navegar pasos para tocar un campo.</p>
+  </div>
+
+  <div style="break-inside:avoid;margin-bottom:18px">
+    <div style="font:800 15px Sora,sans-serif;color:#1A1626;margin-bottom:6px">Mis mesas <span style="background:#8B6CFF;color:#fff;border-radius:6px;padding:2px 8px;font:800 11px Sora,sans-serif;margin-left:4px">4a</span></div>
+    <p style="font:400 12.5px/1.7 Sora,sans-serif;color:#3D3849;margin:0 0 4px"><strong>Conservar:</strong> filas por mesa con StatusPill; «+ Crear mesa» punteado.</p>
+    <p style="font:400 12.5px/1.7 Sora,sans-serif;color:#3D3849;margin:0 0 4px"><strong>Cambiar:</strong> spotlight verde «🔥 Hoy toca partida» arriba cuando hay sesión; grupos «🧙 Dirijo» y «⚔️ Juego»; cada mesa con CoverStrip y StatChips de pendientes; el botón «Candidatos» suelto desaparece (vive en el hub y como badge); aviso de inactividad accionable en la propia fila; cierre con dos caminos: crear mesa o «🔭 Buscar en el feed».</p>
+    <p style="font:400 12.5px/1.7 Sora,sans-serif;color:#6B657A;margin:0"><strong>Por qué:</strong> la lista no respondía «¿tengo que entrar?» ni distinguía tu rol. El spotlight celebra el mejor momento de la semana y los badges convierten la pantalla en bandeja de entrada de tus partidas.</p>
+  </div>
+
+  <div style="break-inside:avoid;margin-bottom:18px">
+    <div style="font:800 15px Sora,sans-serif;color:#1A1626;margin-bottom:6px">Bandeja de candidatos <span style="background:#B4AECB;color:#fff;border-radius:6px;padding:2px 8px;font:800 11px Sora,sans-serif;margin-left:4px">sin mockup nuevo</span></div>
+    <p style="font:400 12.5px/1.7 Sora,sans-serif;color:#3D3849;margin:0 0 4px"><strong>Conservar:</strong> las tarjetas swipeables de candidato tal cual (misma física del deck) y el estado vacío actual, que ya explica bien el flujo.</p>
+    <p style="font:400 12.5px/1.7 Sora,sans-serif;color:#3D3849;margin:0 0 4px"><strong>Cambiar:</strong> solo sus puntos de entrada — tarjeta destacada en la pestaña Mesa (1a) y StatChip en Mis mesas (4a); desaparece el botón «Candidatos» de la fila de mesa.</p>
+    <p style="font:400 12.5px/1.7 Sora,sans-serif;color:#6B657A;margin:0"><strong>Por qué:</strong> el problema era de acceso disperso, no de la pantalla en sí.</p>
+  </div>
+
+  <h2 style="font:800 19px Sora,sans-serif;color:#1A1626;border-bottom:2px solid #8B6CFF;padding-bottom:6px;margin:26px 0 14px">Reglas transversales</h2>
+  <ul style="font:400 12.5px/1.8 Sora,sans-serif;color:#3D3849;margin:0 0 20px;padding-left:20px">
+    <li><strong>Un CTA verde por pantalla.</strong> Si hay dos verdes, uno sobra. El resto de acciones: OutlineButton o filas.</li>
+    <li><strong>Oro = premium o GM, nada más.</strong> Anillo de avatar del GM, Destacar mesa, pill PREMIUM.</li>
+    <li><strong>Badges solo con contenido.</strong> Nunca «0 nuevos»; sin pendientes, la fila queda limpia.</li>
+    <li><strong>Estados vacíos con siguiente paso</strong>, no pantallas negras: qué pasará aquí y qué puedes hacer ahora.</li>
+    <li><strong>Tono jugón intacto</strong> en todo el copy nuevo: «¿Seguís jugando?», «Dar un toque», «¡Seguimos! 🎲», «la silla del GM brilla en oro».</li>
+    <li><strong>Accesibilidad:</strong> targets ≥44 px (los StatChip son informativos, no targets), contraste AA sobre #0B0B12/#16161F, todo control con label.</li>
+  </ul>
+  <p style="font:400 12px/1.7 Sora,sans-serif;color:#6B657A;margin:0">Evoluciones de token propuestas: ninguna. Todo se compone con los colores, radios y tipografía existentes; los componentes nuevos son primitivas de composición, no estilos nuevos.</p>
+</doc-page>
+</x-dc>
+</body>
+</html>
