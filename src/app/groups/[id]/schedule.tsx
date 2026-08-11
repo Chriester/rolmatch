@@ -25,7 +25,7 @@ import { ThemedView } from '@/components/themed-view';
 import { OutlineButton, PrimaryButton, ScreenBlurb, ScreenTitle, SectionLabel } from '@/components/ui';
 import { MaxContentWidth, Rolder, RolderFonts, Spacing } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
-import { showAlert } from '@/lib/alert';
+import { confirmAction, humanizeError, showAlert } from '@/lib/alert';
 import { fetchGroup, type GroupDetail } from '@/lib/groups';
 import { markCoachSeen, shouldShowCoach } from '@/lib/tutorial';
 import {
@@ -365,17 +365,20 @@ export default function ScheduleScreen() {
                         </Pressable>
                         <Pressable
                           onPress={async () => {
+                            const ok = await confirmAction(
+                              '¿Cancelar esta partida?',
+                              'Se borra del calendario de la mesa y le llega un aviso a cada miembro.',
+                              'Sí, cancelar'
+                            );
+                            if (!ok) return;
                             try {
                               await deleteSession(s.id);
                               setSessions((list) => list.filter((x) => x.id !== s.id));
                             } catch (error) {
-                              showAlert(
-                                'No se pudo borrar',
-                                error instanceof Error ? error.message : String(error)
-                              );
+                              showAlert('No se pudo cancelar', humanizeError(error));
                             }
                           }}>
-                          <Text style={styles.deleteLink}>Quitar</Text>
+                          <Text style={styles.deleteLink}>Cancelar</Text>
                         </Pressable>
                       </View>
                     )}

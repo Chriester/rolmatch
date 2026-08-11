@@ -1,8 +1,9 @@
 // Edge Function: push-notify
 // Envía notificaciones push (Expo Push API) a los móviles.
 // Disparada por Database Webhooks en INSERT sobre `matches`, `messages`,
-// `dm_messages`, `session_polls`, `swipes` y `character_likes`
-// (una sola función: distingue por payload.table).
+// `dm_messages`, `session_polls`, `swipes` y `character_likes`, y en
+// DELETE sobre `sessions` (partida cancelada, migr. 00053)
+// (una sola función: distingue por payload.table y payload.type).
 //
 // - Match → avisa al jugador y al GM de la mesa.
 // - Mensaje → avisa a los miembros de la mesa menos quien lo envía.
@@ -12,6 +13,7 @@
 //   jugador → teaser sin nombre (la pestaña Likes es el gancho premium).
 //   Si el like cierra un match, se calla: ya avisa el push de match.
 // - Like a personaje → avisa a su dueño.
+// - Partida cancelada → avisa a la mesa menos quien la canceló.
 //
 // Los tokens los registra la app en push_tokens (migr. 00003). El envío va a
 // https://exp.host/--/api/v2/push/send (gratis); Expo lo entrega vía FCM, así
@@ -80,6 +82,8 @@ type SessionRecord = {
   created_by: string;
 };
 
+type SessionCancelledRecord = SessionRecord & { deleted_by: string | null };
+
 type ReportRecord = {
   id: string;
   reporter_id: string;
@@ -99,6 +103,7 @@ type WebhookPayload =
   | { type: 'INSERT'; table: 'session_poll_proposals'; record: ProposalRecord }
   | { type: 'INSERT'; table: 'session_poll_votes'; record: PollVoteRecord }
   | { type: 'INSERT'; table: 'sessions'; record: SessionRecord }
+  | { type: 'DELETE'; table: 'sessions'; record: SessionCancelledRecord }
   | { type: 'INSERT'; table: 'reports'; record: ReportRecord };
 
 type PushMessage = {
@@ -369,6 +374,26 @@ async function buildForSession(record: SessionRecord): Promise<Map<string, { tit
   return out;
 }
 
+/** Partida cancelada (borrada de "Próximas sesiones"): a toda la mesa menos quien la canceló. */
+async function buildForSessionCancelled(
+  record: SessionCancelledRecord
+): Promise<Map<string, { title: string; body: string; url: string }>> {
+  const [{ data: group }, { data: members }] = await Promise.all([
+    supabase.from('groups').select('name, timezone').eq('id', record.group_id).single(),
+    supabase.from('group_members').select('user_id').eq('group_id', record.group_id),
+  ]);
+  if (!group || !members) return new Map();
+
+  const url = `/groups/${record.group_id}/schedule`;
+  const title = `📅 Partida cancelada en «${group.name}»`;
+  const body = `Se canceló la sesión del ${formatDateEs(record.starts_at, group.timezone)}${record.title ? ` — ${record.title}` : ''}.`;
+  const out = new Map<string, { title: string; body: string; url: string }>();
+  for (const member of members) {
+    if (member.user_id !== record.deleted_by) out.set(member.user_id, { title, body, url });
+  }
+  return out;
+}
+
 /** Reporte nuevo: aviso a todos los moderadores (profiles.is_moderator). */
 async function buildForReport(record: ReportRecord): Promise<Map<string, { title: string; body: string; url: string }>> {
   const [{ data: moderators }, { data: reporter }] = await Promise.all([
@@ -494,30 +519,33 @@ Deno.serve(async (request) => {
 
   try {
     const payload = (await request.json()) as WebhookPayload;
-    if (payload.type !== 'INSERT') return Response.json({ skipped: true });
 
     const byUser =
-      payload.table === 'matches'
-        ? await buildForMatch(payload.record)
-        : payload.table === 'messages'
-          ? await buildForMessage(payload.record)
-          : payload.table === 'dm_messages'
-            ? await buildForDm(payload.record)
-            : payload.table === 'session_polls'
-              ? await buildForPoll(payload.record)
-              : payload.table === 'swipes'
-                ? await buildForSwipe(payload.record)
-                : payload.table === 'character_likes'
-                  ? await buildForCharacterLike(payload.record)
-                  : payload.table === 'session_poll_proposals'
-                    ? await buildForProposal(payload.record)
-                    : payload.table === 'session_poll_votes'
-                      ? await buildForPollVote(payload.record)
-                      : payload.table === 'sessions'
-                        ? await buildForSession(payload.record)
-                        : payload.table === 'reports'
-                          ? await buildForReport(payload.record)
-                          : new Map<string, { title: string; body: string; url: string }>();
+      payload.type === 'DELETE'
+        ? payload.table === 'sessions'
+          ? await buildForSessionCancelled(payload.record)
+          : new Map<string, { title: string; body: string; url: string }>()
+        : payload.table === 'matches'
+          ? await buildForMatch(payload.record)
+          : payload.table === 'messages'
+            ? await buildForMessage(payload.record)
+            : payload.table === 'dm_messages'
+              ? await buildForDm(payload.record)
+              : payload.table === 'session_polls'
+                ? await buildForPoll(payload.record)
+                : payload.table === 'swipes'
+                  ? await buildForSwipe(payload.record)
+                  : payload.table === 'character_likes'
+                    ? await buildForCharacterLike(payload.record)
+                    : payload.table === 'session_poll_proposals'
+                      ? await buildForProposal(payload.record)
+                      : payload.table === 'session_poll_votes'
+                        ? await buildForPollVote(payload.record)
+                        : payload.table === 'sessions'
+                          ? await buildForSession(payload.record)
+                          : payload.table === 'reports'
+                            ? await buildForReport(payload.record)
+                            : new Map<string, { title: string; body: string; url: string }>();
 
     const result = await sendAll(byUser);
     const webResult = await sendAllWeb(byUser);
