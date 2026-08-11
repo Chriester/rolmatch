@@ -68,6 +68,19 @@ proponer una mejora, mirar aquí: si ya está listada, no es un hallazgo nuevo.
   tóxico sin SQL Editor. Flag de suspensión + excluir del feed + pantalla de
   «cuenta suspendida». Señal: el primer reporte que requiera actuar.
 
+## Restos del rediseño de mesas (entregable aplicado en PRs #159-#162)
+
+- **Editar mesa como acordeón con resumen** (entregable 3a, mitad edición).
+  Crear ya va en 3 pasos; editar sigue en un scroll. El acordeón (secciones
+  plegadas con el valor actual de resumen) es su propia PR. Señal: al
+  retomar pulido, o si los testers editan mucho.
+- **Plazas como AvatarStack + un solo Invitar** (entregable §3). Choca con
+  las plazas pulsables de la #134 (CapitanSapatia) y con valorar/echar por
+  asiento. Decisión de producto entre los dos antes de tocar.
+- **«Dar un toque»** (entregable 2d): avisar al miembro que no ha votado o
+  confirmado. Es funcionalidad nueva con push dirigido (Edge Function), no
+  rediseño. Señal: cuando las votaciones se queden atascadas de verdad.
+
 ## Esperando a la estrategia de marca (decisión de 2026-08)
 
 Los tres van juntos: hasta que la encargada de marketing fije nombre final
