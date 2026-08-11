@@ -93,7 +93,17 @@ type ReportRecord = {
 };
 
 
+type NudgeRecord = {
+  id: string;
+  group_id: string;
+  kind: 'confirm' | 'vote';
+  ref_id: string;
+  to_user: string;
+  from_user: string;
+};
+
 type WebhookPayload =
+  | { type: 'INSERT'; table: 'nudges'; record: NudgeRecord }
   | { type: 'INSERT'; table: 'matches'; record: MatchRecord }
   | { type: 'INSERT'; table: 'messages'; record: MessageRecord }
   | { type: 'INSERT'; table: 'dm_messages'; record: DmMessageRecord }
@@ -395,6 +405,30 @@ async function buildForSessionCancelled(
 }
 
 /** Reporte nuevo: aviso a todos los moderadores (profiles.is_moderator). */
+// «Dar un toque» (migr. 00054): push dirigido a UNA persona. La constraint
+// unique de la tabla ya garantiza que no hay spam: un toque por asunto.
+async function buildForNudge(record: NudgeRecord): Promise<Map<string, { title: string; body: string; url: string }>> {
+  const [{ data: from }, { data: group }] = await Promise.all([
+    supabase.from('profiles').select('alias').eq('id', record.from_user).single(),
+    supabase.from('groups').select('name').eq('id', record.group_id).single(),
+  ]);
+  const who = from?.alias ?? 'Alguien';
+  const mesa = group?.name ?? 'tu mesa';
+  return new Map([
+    [
+      record.to_user,
+      {
+        title: '🫵 Te dan un toque',
+        body:
+          record.kind === 'confirm'
+            ? `${who}: ¿vienes a la partida de «${mesa}»? Falta tu confirmación.`
+            : `${who}: falta tu voto para la fecha de «${mesa}».`,
+        url: `/groups/${record.group_id}/schedule`,
+      },
+    ],
+  ]);
+}
+
 async function buildForReport(record: ReportRecord): Promise<Map<string, { title: string; body: string; url: string }>> {
   const [{ data: moderators }, { data: reporter }] = await Promise.all([
     supabase.from('profiles').select('id').eq('is_moderator', true),
@@ -525,7 +559,9 @@ Deno.serve(async (request) => {
         ? payload.table === 'sessions'
           ? await buildForSessionCancelled(payload.record)
           : new Map<string, { title: string; body: string; url: string }>()
-        : payload.table === 'matches'
+        : payload.table === 'nudges'
+          ? await buildForNudge(payload.record)
+          : payload.table === 'matches'
           ? await buildForMatch(payload.record)
           : payload.table === 'messages'
             ? await buildForMessage(payload.record)

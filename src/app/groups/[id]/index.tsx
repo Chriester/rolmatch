@@ -13,6 +13,13 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Animated, {
+  Extrapolation,
+  interpolate,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 
 import { pendingApplicants } from '@/lib/activity';
 import { confirmAction, humanizeError, showAlert } from '@/lib/alert';
@@ -21,8 +28,12 @@ import { fetchMyChats } from '@/lib/messages';
 import { supabase } from '@/lib/supabase';
 import { APP_URL, DISCORD_ENABLED } from '@/lib/config';
 import { AppHeader } from '@/components/app-header';
+import { AvatarStack } from '@/components/avatar-stack';
 import { PublicGroupInvite } from '@/components/public-group-invite';
-import { TableTabs } from '@/components/table-tabs';
+import { TableTabs, type TableTabKey } from '@/components/table-tabs';
+import { GroupChatPanel } from './chat';
+import { GroupSchedulePanel } from './schedule';
+import { GroupJournalPanel } from './journal';
 import { CardChip, CardChipRow } from '@/components/swipe/card-shell';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -65,6 +76,11 @@ import {
   type SessionConfirmState,
 } from '@/lib/sessions';
 
+// El hero del hub: grande en la pestaña Mesa, compacto (solo el nombre) en
+// las demás — la cabecera nunca se va, solo cede sitio.
+const HERO_FULL = 210;
+const HERO_MINI = 64;
+
 function formatSessionDate(iso: string) {
   return new Date(iso).toLocaleString('es-ES', {
     weekday: 'long',
@@ -99,7 +115,11 @@ export default function GroupDetailRoute() {
 }
 
 function GroupDetailScreen() {
-  const { id, invitacion } = useLocalSearchParams<{ id: string; invitacion?: string }>();
+  const { id, invitacion, tab: tabParam } = useLocalSearchParams<{
+    id: string;
+    invitacion?: string;
+    tab?: string;
+  }>();
   const session = useSession();
   // arranca con lo último visto (comparte caché con el chat de la mesa)
   const [group, setGroup] = useState<GroupDetail | null | undefined>(() =>
@@ -114,6 +134,42 @@ function GroupDetailScreen() {
   const [boostBusy, setBoostBusy] = useState(false);
   /** abierta la lista de miembros para elegir nuevo GM */
   const [transferOpen, setTransferOpen] = useState(false);
+  /** plazas en detalle (grid con echar/valorar/invitar por asiento) */
+  const [seatsDetail, setSeatsDetail] = useState(false);
+
+  // ——— El hub es UNA página: la pestaña es estado, no navegación ———
+  // El tab mostrado se DERIVA en render (sin setState en efectos): el deep
+  // link (?tab=chat) manda hasta que el usuario toca otra pestaña; si llega
+  // un param nuevo, vuelve a mandar el param.
+  const paramTab: TableTabKey =
+    tabParam === 'chat' || tabParam === 'agenda' || tabParam === 'diario' ? tabParam : 'mesa';
+  const [tabOverride, setTabOverride] = useState<{ param: string | undefined; tab: TableTabKey } | null>(
+    null
+  );
+  // sin plaza en la mesa las pestañas están bloqueadas: mande lo que mande
+  // el param, un visitante siempre ve Mesa
+  const lockedView =
+    group != null &&
+    session != null &&
+    group.owner_id !== session.user.id &&
+    !group.group_members.some((m) => m.user_id === session.user.id);
+  const tab: TableTabKey = lockedView
+    ? 'mesa'
+    : tabOverride && tabOverride.param === tabParam
+      ? tabOverride.tab
+      : paramTab;
+  const selectTab = (next: TableTabKey) => setTabOverride({ param: tabParam, tab: next });
+
+  // El hero encoge al salir de la pestaña Mesa: misma cabecera, más sitio.
+  const heroH = useSharedValue(tab === 'mesa' ? HERO_FULL : HERO_MINI);
+  useEffect(() => {
+     
+    heroH.value = withTiming(tab === 'mesa' ? HERO_FULL : HERO_MINI, { duration: 240 });
+  }, [tab, heroH]);
+  const heroAnimStyle = useAnimatedStyle(() => ({ height: heroH.value }));
+  const heroDetailStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(heroH.value, [HERO_MINI, HERO_FULL], [0, 1], Extrapolation.CLAMP),
+  }));
   /** aviso de inactividad (migr. 00052): null = sin aviso o sin migración */
   const [vitality, setVitality] = useState<GroupVitality | null>(null);
   const [aliveBusy, setAliveBusy] = useState(false);
@@ -275,13 +331,14 @@ function GroupDetailScreen() {
       .catch(() => {});
   }, [id, session, group?.owner_id]);
 
-  // badge del chat en las pestañas del hub (solo con plaza en la mesa)
+  // badge del chat en las pestañas del hub (solo con plaza en la mesa);
+  // se recalcula al cambiar de pestaña — al salir del chat ya está leído
   useEffect(() => {
     if (!id || !session) return;
     fetchMyChats(session.user.id)
       .then((chats) => setChatUnread(chats.find((c) => c.groupId === id)?.unread ?? 0))
       .catch(() => {});
-  }, [id, session]);
+  }, [id, session, tab]);
   const handleConfirmSession = async (s: GameSession) => {
     if (!session) return;
     try {
@@ -342,11 +399,101 @@ function GroupDetailScreen() {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        <ScrollView contentContainerStyle={styles.scroll}>
+        {/* Zona fija del hub: cabecera de app, hero (que encoge fuera de
+            Mesa) y pestañas. El contenido de cada pestaña carga DEBAJO —
+            nunca sales de la página de la mesa. */}
+        <View style={styles.fixedTop}>
           <AppHeader
             onBack={() => (router.canGoBack() ? router.back() : router.replace('/groups'))}
           />
 
+          <Animated.View style={[styles.hero, heroAnimStyle]}>
+            {group.image_url ? (
+              <Image
+                source={{ uri: group.image_url }}
+                style={StyleSheet.absoluteFill}
+                contentFit="cover"
+              />
+            ) : (
+              <LinearGradient
+                colors={['#4A55E2', '#8B6CFF']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={[StyleSheet.absoluteFill, styles.heroFallback]}>
+                <Text style={styles.heroEmoji}>🎲</Text>
+              </LinearGradient>
+            )}
+            <LinearGradient
+              colors={['transparent', 'rgba(10,10,18,0.55)', 'rgba(10,10,18,0.94)']}
+              style={styles.heroGradient}
+            />
+            <View style={styles.heroInfo}>
+              <Text style={styles.heroName} numberOfLines={tab === 'mesa' ? 2 : 1}>
+                {group.name}
+              </Text>
+              {/* los chips y los fabs se desvanecen con el hero compacto */}
+              <Animated.View
+                style={heroDetailStyle}
+                pointerEvents={tab === 'mesa' ? 'auto' : 'none'}>
+                <CardChipRow>
+                  <CardChip label={group.systems?.name ?? 'Sistema sin definir'} />
+                  <CardChip label={FORMAT_LABELS[group.format]} />
+                  {group.frequency && <CardChip label={group.frequency} />}
+                  {openSeats > 0 && (
+                    <CardChip
+                      variant="green"
+                      label={`${openSeats} ${openSeats === 1 ? 'plaza libre' : 'plazas libres'}`}
+                    />
+                  )}
+                </CardChipRow>
+              </Animated.View>
+            </View>
+            <Animated.View
+              style={[styles.heroFabs, heroDetailStyle]}
+              pointerEvents={tab === 'mesa' ? 'auto' : 'none'}>
+              <Pressable
+                style={styles.heroFab}
+                accessibilityLabel="Compartir mesa"
+                onPress={() => handleShare(group.name)}>
+                <Text style={styles.heroFabIcon}>🔗</Text>
+              </Pressable>
+              {isOwner && (
+                <Pressable
+                  style={styles.heroFab}
+                  accessibilityLabel="Editar mesa"
+                  onPress={() =>
+                    router.push({ pathname: '/groups/[id]/edit', params: { id: group.id } })
+                  }>
+                  <Text style={styles.heroFabIcon}>✏️</Text>
+                </Pressable>
+              )}
+            </Animated.View>
+          </Animated.View>
+
+          {/* El hub (entregable §1): pestañas con etiqueta en vez de círculos
+              mudos. El visitante las ve con candado — el candado vende. */}
+          {session && (
+            <TableTabs
+              active={tab}
+              onSelect={selectTab}
+              unread={chatUnread}
+              locked={!isMember && !isOwner}
+            />
+          )}
+          {session && !isMember && !isOwner && (
+            <Text style={styles.lockedNote}>
+              Chat, agenda y diario se desbloquean cuando el GM te acepte.
+            </Text>
+          )}
+        </View>
+
+        {tab === 'chat' && <GroupChatPanel id={group.id} />}
+        {tab === 'agenda' && <GroupSchedulePanel id={group.id} />}
+        {tab === 'diario' && (
+          <GroupJournalPanel id={group.id} onGoAgenda={() => selectTab('agenda')} />
+        )}
+        {tab === 'mesa' && (
+        <ScrollView contentContainerStyle={styles.scroll}>
           {/* Mesa parada (migr. 00052): el cron avisó y, sin señales de vida
               en 7 días, la archiva. El GM la rescata con un toque. */}
           {isOwner && group.is_active && vitality?.warnedAt && (
@@ -407,74 +554,6 @@ function GroupDetailScreen() {
                 }}
               />
             </View>
-          )}
-
-          <View style={styles.hero}>
-            {group.image_url ? (
-              <Image source={{ uri: group.image_url }} style={StyleSheet.absoluteFill} contentFit="cover" />
-            ) : (
-              <LinearGradient
-                colors={['#4A55E2', '#8B6CFF']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={[StyleSheet.absoluteFill, styles.heroFallback]}>
-                <Text style={styles.heroEmoji}>🎲</Text>
-              </LinearGradient>
-            )}
-            <LinearGradient
-              colors={['transparent', 'rgba(10,10,18,0.55)', 'rgba(10,10,18,0.94)']}
-              style={styles.heroGradient}
-            />
-            <View style={styles.heroInfo}>
-              <Text style={styles.heroName} numberOfLines={2}>
-                {group.name}
-              </Text>
-              <CardChipRow>
-                <CardChip label={group.systems?.name ?? 'Sistema sin definir'} />
-                <CardChip label={FORMAT_LABELS[group.format]} />
-                {group.frequency && <CardChip label={group.frequency} />}
-                {openSeats > 0 && (
-                  <CardChip
-                    variant="green"
-                    label={`${openSeats} ${openSeats === 1 ? 'plaza libre' : 'plazas libres'}`}
-                  />
-                )}
-              </CardChipRow>
-            </View>
-            <View style={styles.heroFabs}>
-              <Pressable
-                style={styles.heroFab}
-                accessibilityLabel="Compartir mesa"
-                onPress={() => handleShare(group.name)}>
-                <Text style={styles.heroFabIcon}>🔗</Text>
-              </Pressable>
-              {isOwner && (
-                <Pressable
-                  style={styles.heroFab}
-                  accessibilityLabel="Editar mesa"
-                  onPress={() =>
-                    router.push({ pathname: '/groups/[id]/edit', params: { id: group.id } })
-                  }>
-                  <Text style={styles.heroFabIcon}>✏️</Text>
-                </Pressable>
-              )}
-            </View>
-          </View>
-
-          {/* El hub (entregable §1): pestañas con etiqueta en vez de círculos
-              mudos. El visitante las ve con candado — el candado vende. */}
-          {session && (
-            <TableTabs
-              groupId={group.id}
-              active="mesa"
-              unread={chatUnread}
-              locked={!isMember && !isOwner}
-            />
-          )}
-          {session && !isMember && !isOwner && (
-            <Text style={styles.lockedNote}>
-              Chat, agenda y diario se desbloquean cuando el GM te acepte.
-            </Text>
           )}
 
           {/* Quién dirige (2a): la decisión de pedir sitio se apoya en el GM */}
@@ -623,6 +702,53 @@ function GroupDetailScreen() {
 
           <View style={styles.block}>
             <SectionLabel>Plazas</SectionLabel>
+            {/* Compacto por defecto (entregable §3): pila de avatares con el
+                GM en oro y un solo Invitar. Lo operativo por asiento (echar,
+                valorar, invitar hueco a hueco — #134) vive en «ver detalle». */}
+            {!seatsDetail && (
+              <>
+                <View style={styles.stackRow}>
+                  <AvatarStack
+                    people={group.group_members.map((m) => ({
+                      id: m.user_id,
+                      alias: m.profiles?.alias ?? null,
+                      avatarUrl: m.profiles?.avatar_url ?? null,
+                      isGm: m.user_id === group.owner_id,
+                    }))}
+                    freeSeats={openSeats}
+                    onPressPerson={(person) =>
+                      router.push({ pathname: '/players/[id]', params: { id: person.id } })
+                    }
+                  />
+                  <Text style={styles.stackMeta}>
+                    {openSeats > 0
+                      ? `quedan ${openSeats} de ${group.max_players}`
+                      : 'mesa completa'}
+                  </Text>
+                </View>
+                <View style={styles.stackActions}>
+                  <OutlineButton
+                    label="🔗 Invitar"
+                    style={styles.stackButton}
+                    onPress={() => handleShare(group.name)}
+                  />
+                  {isMemberOrOwner && (
+                    <OutlineButton
+                      label="Ver detalle"
+                      tone="white"
+                      style={styles.stackButton}
+                      onPress={() => setSeatsDetail(true)}
+                    />
+                  )}
+                </View>
+              </>
+            )}
+            {seatsDetail && (
+              <Pressable onPress={() => setSeatsDetail(false)} accessibilityLabel="Plegar plazas">
+                <Text style={styles.stackCollapse}>▲ Plegar detalle</Text>
+              </Pressable>
+            )}
+            {seatsDetail && (
             <View style={styles.seatsRow}>
               {group.group_members.map((member) => {
                 const isMe = member.user_id === session?.user.id;
@@ -721,6 +847,7 @@ function GroupDetailScreen() {
                 </Pressable>
               ))}
             </View>
+            )}
             {group.experience_wanted && (
               <Text style={styles.bodySoft}>
                 Busca nivel {EXPERIENCE_LABELS[group.experience_wanted].toLowerCase()}
@@ -995,6 +1122,7 @@ function GroupDetailScreen() {
             </Pressable>
           )}
         </ScrollView>
+        )}
       </SafeAreaView>
     </ThemedView>
   );
@@ -1012,10 +1140,18 @@ const styles = StyleSheet.create({
   },
   safeArea: {
     flex: 1,
+    width: '100%',
     maxWidth: MaxContentWidth,
+  },
+  // cabecera del hub fija: comparte el padding lateral con el scroll
+  fixedTop: {
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    gap: Spacing.three,
   },
   scroll: {
     padding: 20,
+    paddingTop: Spacing.three,
     gap: Spacing.three,
   },
   block: {
@@ -1264,6 +1400,30 @@ const styles = StyleSheet.create({
   },
   boostActive: {
     color: '#F5A623',
+  },
+  stackRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
+  },
+  stackMeta: {
+    color: Rolder.textSecondary,
+    fontSize: 12.5,
+    fontFamily: RolderFonts.semibold,
+    fontWeight: '600',
+  },
+  stackActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  stackButton: {
+    flex: 1,
+  },
+  stackCollapse: {
+    color: Rolder.violetSoft,
+    fontSize: 12.5,
+    fontFamily: RolderFonts.semibold,
+    fontWeight: '600',
   },
   lockedNote: {
     color: Rolder.textTertiary,

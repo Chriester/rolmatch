@@ -1,40 +1,34 @@
-// TableTabs (rediseño de mesas, entregable §1): la mesa como hub. Mesa ·
-// Chat · Agenda · Diario dejan de ser pantallas sueltas y se navegan como
-// pestañas — un salto menos en cada ida y vuelta. Sustituye a los cuatro
-// accesos circulares sin etiqueta.
-//
-// Implementación deliberada: las pestañas SON las rutas de siempre
-// (/groups/[id], /chat, /schedule, /journal) vestidas de segmented control
-// y navegadas con replace — así los push y deep links existentes siguen
-// funcionando y el botón de atrás sale del hub entero, no deshace pestañas.
+// TableTabs (rediseño de mesas, entregable §1): la mesa como hub de UNA
+// sola página. Mesa · Chat · Agenda · Diario no navegan a ningún sitio:
+// cambian qué panel se monta debajo, con la cabecera de la mesa siempre
+// presente. Sustituye a los cuatro accesos circulares sin etiqueta.
 //
 // Variante bloqueada (visitante): 🔒 en las tres privadas; se enseñan en
 // vez de ocultarse porque el candado vende — ves qué ganas al entrar.
 
-import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Rolder, RolderFonts } from '@/constants/theme';
 
 export type TableTabKey = 'mesa' | 'chat' | 'agenda' | 'diario';
 
-const TABS: { key: TableTabKey; label: string; path: string }[] = [
-  { key: 'mesa', label: 'Mesa', path: '' },
-  { key: 'chat', label: 'Chat', path: '/chat' },
-  { key: 'agenda', label: 'Agenda', path: '/schedule' },
-  { key: 'diario', label: 'Diario', path: '/journal' },
+const TABS: { key: TableTabKey; label: string }[] = [
+  { key: 'mesa', label: 'Mesa' },
+  { key: 'chat', label: 'Chat' },
+  { key: 'agenda', label: 'Agenda' },
+  { key: 'diario', label: 'Diario' },
 ];
 
 type TableTabsProps = {
-  groupId: string;
   active: TableTabKey;
+  onSelect: (tab: TableTabKey) => void;
   /** no leídos del chat: badge numérico (solo si > 0) */
   unread?: number;
   /** visitante sin plaza: solo Mesa es navegable, el resto con candado */
   locked?: boolean;
 };
 
-export function TableTabs({ groupId, active, unread = 0, locked = false }: TableTabsProps) {
+export function TableTabs({ active, onSelect, unread = 0, locked = false }: TableTabsProps) {
   return (
     <View style={styles.row} accessibilityRole="tablist">
       {TABS.map((tab) => {
@@ -52,9 +46,7 @@ export function TableTabs({ groupId, active, unread = 0, locked = false }: Table
               isActive && styles.tabActive,
               pressed && styles.tabPressed,
             ]}
-            onPress={() =>
-              router.replace({ pathname: `/groups/[id]${tab.path}` as never, params: { id: groupId } })
-            }>
+            onPress={() => onSelect(tab.key)}>
             <Text
               style={[styles.label, isActive && styles.labelActive, isLocked && styles.labelLocked]}
               numberOfLines={1}>

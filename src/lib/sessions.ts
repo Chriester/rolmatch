@@ -93,7 +93,13 @@ export async function updateSession(sessionId: string, startsAt: Date, title: st
 // ---- Asistencia previa (✋ voy / 🙅 no voy, migr. 00036) ----
 
 export type RsvpStatus = 'yes' | 'no';
-export type SessionRsvps = { yes: string[]; no: string[]; mine: RsvpStatus | null };
+export type SessionRsvps = {
+  yes: string[];
+  no: string[];
+  mine: RsvpStatus | null;
+  /** ids de quien YA respondió — para saber a quién falta darle un toque */
+  respondedIds: string[];
+};
 
 /** Asistencia por sesión con alias. Degrada a vacío sin la migración. */
 export async function fetchRsvps(
@@ -115,8 +121,10 @@ export async function fetchRsvps(
         status: RsvpStatus;
         profiles: { alias: string } | null;
       };
-      const entry = map.get(raw.session_id) ?? { yes: [], no: [], mine: null };
+      const entry =
+        map.get(raw.session_id) ?? { yes: [], no: [], mine: null, respondedIds: [] };
       entry[raw.status].push(raw.profiles?.alias ?? '¿?');
+      entry.respondedIds.push(raw.user_id);
       if (raw.user_id === viewerId) entry.mine = raw.status;
       map.set(raw.session_id, entry);
     }

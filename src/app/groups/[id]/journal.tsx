@@ -6,7 +6,7 @@
 
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router, useLocalSearchParams } from 'expo-router';
+import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -19,14 +19,10 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { showAlert } from '@/lib/alert';
-import { AppHeader } from '@/components/app-header';
 import { InlineBanner } from '@/components/inline-banner';
-import { TableTabs } from '@/components/table-tabs';
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
 import { OutlineButton } from '@/components/ui';
 import { MaxContentWidth, Rolder, RolderFonts, Spacing } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
@@ -46,8 +42,21 @@ function formatEntryTime(iso: string) {
   return new Date(iso).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
 }
 
-export default function GroupJournalScreen() {
+// La ruta vive solo para deep links: el diario es una pestaña del hub.
+export default function GroupJournalRoute() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  return <Redirect href={{ pathname: '/groups/[id]', params: { id: id!, tab: 'diario' } }} />;
+}
+
+/** El diario embebido en el hub: sin cabecera propia. */
+export function GroupJournalPanel({
+  id,
+  onGoAgenda,
+}: {
+  id: string;
+  /** cambiar a la pestaña Agenda sin navegar (lo pone el hub) */
+  onGoAgenda?: () => void;
+}) {
   const session = useSession();
   const [group, setGroup] = useState<GroupDetail | null | undefined>(undefined);
   const [entries, setEntries] = useState<JournalEntry[] | undefined>(undefined);
@@ -136,17 +145,17 @@ export default function GroupJournalScreen() {
 
   if (group === undefined || entries === undefined) {
     return (
-      <ThemedView style={[styles.container, styles.loading]}>
+      <View style={[styles.panel, styles.loading]}>
         <ActivityIndicator />
-      </ThemedView>
+      </View>
     );
   }
 
   if (group === null) {
     return (
-      <ThemedView style={[styles.container, styles.loading]}>
+      <View style={[styles.panel, styles.loading]}>
         <ThemedText>No se pudo cargar la mesa.</ThemedText>
-      </ThemedView>
+      </View>
     );
   }
 
@@ -186,21 +195,9 @@ export default function GroupJournalScreen() {
     );
   };
 
+  // Panel embebido: la identidad de la mesa la pone el hero del hub.
   return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <AppHeader
-          onBack={() =>
-            router.canGoBack()
-              ? router.back()
-              : router.replace({ pathname: '/groups/[id]', params: { id: id! } })
-          }
-        />
-        {iAmMember && id && <TableTabs groupId={id} active="diario" />}
-        <Text numberOfLines={1} style={styles.subheader}>
-          📖 {group.name}
-        </Text>
-
+    <View style={styles.panel}>
         {/* Día de partida con la crónica en blanco: el empujón (3c) */}
         {iAmMember &&
           todaySession != null &&
@@ -330,23 +327,26 @@ export default function GroupJournalScreen() {
                 <OutlineButton
                   label="📅 Ver calendario"
                   onPress={() =>
-                    router.push({ pathname: '/groups/[id]/schedule', params: { id: group.id } })
+                    onGoAgenda
+                      ? onGoAgenda()
+                      : router.push({
+                          pathname: '/groups/[id]/schedule',
+                          params: { id: group.id },
+                        })
                   }
                 />
               </View>
             ) : null}
           </KeyboardAvoidingView>
         )}
-      </SafeAreaView>
-    </ThemedView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  panel: {
     flex: 1,
-    flexDirection: 'row',
-    justifyContent: 'center',
+    width: '100%',
   },
   loading: {
     alignItems: 'center',
