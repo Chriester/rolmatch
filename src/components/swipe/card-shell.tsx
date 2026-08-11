@@ -28,6 +28,14 @@ type CardShellProps = {
   topRight?: ReactNode;
   /** banda superior opcional (p. ej. «💘 Le gustáis») */
   banner?: ReactNode;
+  /**
+   * Resumen para lector de pantalla: la tarjeta pasa a ser UN elemento
+   * legible («Mesa Eladria, D&D 5e, sábado por la mañana…»). Sin él, el
+   * deck era invisible para TalkBack/VoiceOver (los botones ✕/♥ hablan,
+   * pero nadie decía QUÉ se estaba aceptando). Ojo: agrupa a sus hijos,
+   * así que no ponerlo en caras con controles dentro (like de personaje).
+   */
+  accessibilityLabel?: string;
   children: ReactNode;
 };
 
@@ -37,10 +45,14 @@ export function CardShell({
   fallbackColors = ['#4A55E2', '#8B6CFF'],
   topRight,
   banner,
+  accessibilityLabel,
   children,
 }: CardShellProps) {
   return (
-    <View style={styles.card}>
+    <View
+      style={styles.card}
+      accessible={accessibilityLabel !== undefined}
+      accessibilityLabel={accessibilityLabel}>
       {imageUrl ? (
         <Image source={{ uri: imageUrl }} style={StyleSheet.absoluteFill} contentFit="cover" />
       ) : (

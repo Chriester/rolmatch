@@ -13,7 +13,7 @@ significa eso en concreto para poder evaluar el resultado sin dar vueltas.
    o vuelve con muelle o sale volando. Los botones disparan la misma animación.
 3. **Feedback inmediato y legible.** Sellos «ME INTERESA» (verde, rotado, arriba-izq.)
    y «PASO» (rojo, arriba-dcha.) cuya opacidad crece con el arrastre. El umbral de
-   decisión es ~35 % del ancho o velocidad alta.
+   decisión es ~25 % del ancho o velocidad alta.
 4. **Siempre hay una tarjeta siguiente.** La siguiente tarjeta asoma detrás (escala
    0.95, y crece hasta 1 mientras la de arriba se va). Sin pantallas en blanco entre
    swipes.
@@ -74,5 +74,6 @@ significa eso en concreto para poder evaluar el resultado sin dar vueltas.
 - Componentes en `src/components/swipe/`: `deck` (física + stack + sellos + ref
   `swipe(dir)` para los botones), `card-shell` (foto/fallback/degradado), `action-bar`,
   `match-overlay`. Las pantallas solo componen.
-- Parámetros del feel (ajustables en `deck.tsx`): rotación máx 12°, umbral 35 % del
-  ancho, velocidad de salida 250 ms, muelle de vuelta `damping 15 / stiffness 150`.
+- Parámetros del feel (ajustables en `deck.tsx`, fuente de verdad): rotación máx
+  12°, umbral 25 % del ancho (se bajó del 35 % inicial al probarlo), salida 260 ms,
+  muelle de vuelta `damping 20 / stiffness 260`.

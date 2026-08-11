@@ -1,10 +1,10 @@
 // Página principal: el feed de descubrimiento (estilo Tinder). Los menús
 // viven en el panel superior derecho (avatar).
 
+import { Image } from 'expo-image';
 import { Redirect, router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   Platform,
   Pressable,
   ScrollView,
@@ -26,6 +26,7 @@ import {
 } from '@/components/swipe/availability-mini-grid';
 import { CharacterSheetView } from '@/components/character-sheet-view';
 import { CardCycle } from '@/components/swipe/card-cycle';
+import { CardSkeleton } from '@/components/swipe/card-skeleton';
 import {
   CardBlurb,
   CardChip,
@@ -250,6 +251,20 @@ export default function HomeScreen() {
 
   useFocusEffect(load);
 
+  // La tarjeta siguiente ya está montada (carga su foto sola); las dos de
+  // después se precargan aquí para que una racha de swipes rápidos no
+  // enseñe el degradado fallback mientras llega la imagen.
+  useEffect(() => {
+    if (!items) return;
+    const urls = items
+      .slice(index + 2, index + 4)
+      .map((item) =>
+        item.kind === 'group' ? item.group.image_url : item.candidate.player.avatar_url
+      )
+      .filter((url): url is string => url !== null);
+    if (urls.length > 0) void Image.prefetch(urls);
+  }, [items, index]);
+
   // Teclado en web: ← pass · → like (handoff rolder §2)
   useEffect(() => {
     if (Platform.OS !== 'web') return;
@@ -333,10 +348,15 @@ export default function HomeScreen() {
   const renderCard = (item: FeedItem) => {
     if (item.kind === 'group') {
       const g = item.group;
+      const when =
+        g.session_weekday !== null && g.session_slot !== null
+          ? `${WEEKDAY_LABELS[g.session_weekday]} ${SLOT_LABELS[g.session_slot].toLowerCase()}`
+          : 'horario por definir';
       return (
         <CardShell
           imageUrl={g.image_url}
           fallbackEmoji="🎲"
+          accessibilityLabel={`Mesa ${g.name}. ${g.systems?.name ?? 'Sistema sin definir'}, ${FORMAT_LABELS[g.format]}, ${when}. Coincidís ${item.result.overlapHours} horas.${g.full ? ' Mesa completa, puedes pedir sitio.' : ''}`}
           topRight={
             SHOW_SCORE ? (
               <View style={styles.scoreBadge}>
@@ -399,6 +419,7 @@ export default function HomeScreen() {
         imageUrl={c.player.avatar_url}
         fallbackEmoji="🧙"
         fallbackColors={['#5865F2', '#8B6CFF']}
+        accessibilityLabel={`Jugador ${c.player.alias}${playerAge !== null ? `, ${playerAge} años` : ''}. Candidato para tu mesa ${item.forGroup.name}. Nivel ${playerLevel}. Coincide ${c.result.overlapHours} horas con vuestra sesión.${c.likedGroup ? ' Le gusta vuestra mesa.' : ''}`}
         topRight={
           SHOW_SCORE ? (
             <View style={styles.scoreBadge}>
@@ -643,8 +664,9 @@ export default function HomeScreen() {
             )}
           </View>
         ) : items === undefined || onboarded === undefined ? (
-          <View style={styles.centerBox}>
-            <ActivityIndicator />
+          // silueta de tarjeta, no rueda: misma caja que el deck real
+          <View style={styles.deckArea}>
+            <CardSkeleton />
           </View>
         ) : !current ? (
           <View style={styles.centerBox}>
@@ -721,31 +743,38 @@ export default function HomeScreen() {
               />
             </View>
 
-            {/* La tira se monta SIEMPRE que haya personajes y solo cambia su
-                visibilidad: si se montara únicamente con mesas, aparecer y
-                desaparecer cambiaba el alto del deck y la tarjeta nueva
-                pegaba un bump al promocionarse entre tipos distintos. */}
-            {myCharacters.length > 0 && (
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                style={[styles.proposalStrip, current.kind !== 'group' && styles.proposalHidden]}
-                pointerEvents={current.kind === 'group' ? 'auto' : 'none'}
-                aria-hidden={current.kind !== 'group'}
-                contentContainerStyle={styles.proposalContent}>
-                <ThemedText type="small" style={styles.proposalLabel}>
-                  Proponer:
-                </ThemedText>
-                {myCharacters.map((c) => (
-                  <Chip
-                    key={c.id}
-                    label={c.name}
-                    selected={proposedId === c.id}
-                    onPress={() => setProposedId(proposedId === c.id ? null : c.id)}
-                  />
-                ))}
-              </ScrollView>
-            )}
+            {/* Franja bajo el mazo, de alto FIJO: si cambiara entre tipos de
+                tarjeta, la nueva pegaría un bump al promocionarse (nos pasó).
+                Con mesa y personajes propios lleva la tira de proponer; en el
+                resto de casos, el distintivo de qué estás viendo. */}
+            <View style={styles.stripSlot}>
+              {current.kind === 'group' && myCharacters.length > 0 ? (
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.proposalContent}>
+                  <ThemedText type="small" style={styles.proposalLabel}>
+                    Proponer:
+                  </ThemedText>
+                  {myCharacters.map((c) => (
+                    <Chip
+                      key={c.id}
+                      label={c.name}
+                      selected={proposedId === c.id}
+                      onPress={() => setProposedId(proposedId === c.id ? null : c.id)}
+                    />
+                  ))}
+                </ScrollView>
+              ) : (
+                <View style={styles.kindBadge}>
+                  <Text style={styles.kindBadgeText} numberOfLines={1}>
+                    {current.kind === 'group'
+                      ? '🎲 Mesa buscando jugadores'
+                      : `🧙 Jugador — candidato para «${current.forGroup.name}»`}
+                  </Text>
+                </View>
+              )}
+            </View>
           </>
         )}
       </SafeAreaView>
@@ -920,13 +949,28 @@ const styles = StyleSheet.create({
     fontFamily: RolderFonts.regular,
     fontStyle: 'italic',
   },
-  proposalStrip: {
-    flexGrow: 0,
+  // alto fijo: aquí viven la tira de proponer O el distintivo de tipo, y el
+  // deck no cambia de tamaño al alternar entre mesas y jugadores
+  stripSlot: {
+    height: 44,
     marginTop: Spacing.two,
+    justifyContent: 'center',
   },
-  // invisible pero ocupando su sitio: el alto del deck no baila entre tipos
-  proposalHidden: {
-    opacity: 0,
+  kindBadge: {
+    alignSelf: 'center',
+    backgroundColor: Rolder.surface,
+    borderWidth: 1,
+    borderColor: Rolder.surfaceBorder,
+    borderRadius: 999,
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+    maxWidth: '92%',
+  },
+  kindBadgeText: {
+    color: Rolder.textSecondary,
+    fontSize: 12.5,
+    fontFamily: RolderFonts.semibold,
+    fontWeight: '600',
   },
   proposalContent: {
     alignItems: 'center',
