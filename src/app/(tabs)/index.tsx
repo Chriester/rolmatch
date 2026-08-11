@@ -721,11 +721,17 @@ export default function HomeScreen() {
               />
             </View>
 
-            {current.kind === 'group' && myCharacters.length > 0 && (
+            {/* La tira se monta SIEMPRE que haya personajes y solo cambia su
+                visibilidad: si se montara únicamente con mesas, aparecer y
+                desaparecer cambiaba el alto del deck y la tarjeta nueva
+                pegaba un bump al promocionarse entre tipos distintos. */}
+            {myCharacters.length > 0 && (
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
-                style={styles.proposalStrip}
+                style={[styles.proposalStrip, current.kind !== 'group' && styles.proposalHidden]}
+                pointerEvents={current.kind === 'group' ? 'auto' : 'none'}
+                aria-hidden={current.kind !== 'group'}
                 contentContainerStyle={styles.proposalContent}>
                 <ThemedText type="small" style={styles.proposalLabel}>
                   Proponer:
@@ -917,6 +923,10 @@ const styles = StyleSheet.create({
   proposalStrip: {
     flexGrow: 0,
     marginTop: Spacing.two,
+  },
+  // invisible pero ocupando su sitio: el alto del deck no baila entre tipos
+  proposalHidden: {
+    opacity: 0,
   },
   proposalContent: {
     alignItems: 'center',

@@ -67,6 +67,11 @@ proponer una mejora, mirar aquí: si ya está listada, no es un hallazgo nuevo.
   sistema entero (perdemos el canal completo). Tabla `chat_mutes` + toggle
   en la cabecera del chat + check en push-notify. Señal: primera mesa
   charlatana de verdad o primera queja de exceso de avisos.
+- **Distintivo de tipo en la tarjeta del feed** (pedido por Chris,
+  2026-08-13): saber de un vistazo si estás swipeando una mesa o un jugador.
+  Hoy la pista es la forma del contenido (chips distintos, banner). Idea
+  natural: aprovechar la tira inferior reservada o una esquina de la
+  tarjeta. Señal: al retomar pulido del feed.
 - **Moderar no tiene dientes.** La bandeja (00045) marca reportes pero no
   hay acción real: no existe `is_suspended` ni forma de apartar a un usuario
   tóxico sin SQL Editor. Flag de suspensión + excluir del feed + pantalla de
