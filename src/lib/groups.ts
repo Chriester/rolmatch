@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import { hasColumn, supabase } from '@/lib/supabase';
 import type { ExperienceLevel, VttType } from '@/lib/profile';
 
 export type GroupFormat = 'campaign' | 'oneshot';
@@ -101,6 +101,41 @@ export async function updateGroup(groupId: string, group: GroupInput, maxPlayers
  */
 export async function deleteGroup(groupId: string) {
   const { error } = await supabase.from('groups').delete().eq('id', groupId);
+  if (error) throw error;
+}
+
+// ——— Mesas inactivas (migr. 00052) ———
+// Todas degradan si la migración no está: null / no-op.
+
+export type GroupVitality = { lastActivityAt: string; warnedAt: string | null };
+
+/** Estado de actividad de la mesa, o null si la 00052 no está aplicada. */
+export async function fetchGroupVitality(groupId: string): Promise<GroupVitality | null> {
+  if (!(await hasColumn('groups', 'inactivity_warned_at'))) return null;
+  const { data, error } = await supabase
+    .from('groups')
+    .select('last_activity_at, inactivity_warned_at')
+    .eq('id', groupId)
+    .single();
+  if (error) throw error;
+  return { lastActivityAt: data.last_activity_at, warnedAt: data.inactivity_warned_at };
+}
+
+/** «¡Seguimos jugando!»: limpia el aviso y renueva la actividad (solo dueño — RLS). */
+export async function confirmGroupAlive(groupId: string) {
+  const { error } = await supabase
+    .from('groups')
+    .update({ last_activity_at: new Date().toISOString(), inactivity_warned_at: null })
+    .eq('id', groupId);
+  if (error) throw error;
+}
+
+/** Reabre una mesa archivada por inactividad (solo dueño — RLS). */
+export async function reopenGroup(groupId: string) {
+  const alive = (await hasColumn('groups', 'last_activity_at'))
+    ? { is_active: true, last_activity_at: new Date().toISOString(), inactivity_warned_at: null }
+    : { is_active: true };
+  const { error } = await supabase.from('groups').update(alive).eq('id', groupId);
   if (error) throw error;
 }
 
