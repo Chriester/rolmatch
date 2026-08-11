@@ -3,7 +3,7 @@
 // votación (con cierre opcional) o fijarlas directamente. Los jugadores
 // votan y pueden proponer una fecha extra que cae en la bandeja del GM.
 
-import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { Redirect, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -14,20 +14,17 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AppHeader } from '@/components/app-header';
-import { TableTabs } from '@/components/table-tabs';
 import { CalendarPicker } from '@/components/calendar-picker';
 import { Chip } from '@/components/chip';
 import { OrganizarCoach } from '@/components/organizar-coach';
 import { TimeField, type TimeValue } from '@/components/time-field';
-import { ThemedView } from '@/components/themed-view';
-import { OutlineButton, PrimaryButton, ScreenBlurb, ScreenTitle, SectionLabel } from '@/components/ui';
+import { OutlineButton, PrimaryButton, SectionLabel } from '@/components/ui';
 import { MaxContentWidth, Rolder, RolderFonts, Spacing } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
 import { confirmAction, humanizeError, showAlert } from '@/lib/alert';
 import { fetchGroup, type GroupDetail } from '@/lib/groups';
+import { fetchNudged, sendNudge } from '@/lib/nudges';
 import { markCoachSeen } from '@/lib/tutorial';
 import {
   closePoll,
@@ -78,8 +75,15 @@ function shortDate(key: string): string {
   });
 }
 
-export default function ScheduleScreen() {
+// La ruta vive solo para deep links y push antiguos: la agenda es una
+// pestaña del hub de mesa, no una pantalla.
+export default function ScheduleRoute() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  return <Redirect href={{ pathname: '/groups/[id]', params: { id: id!, tab: 'agenda' } }} />;
+}
+
+/** La agenda embebida en el hub: sin cabecera propia. */
+export function GroupSchedulePanel({ id }: { id: string }) {
   const session = useSession();
   // la suscripción depende del id, no del objeto session: supabase-js emite
   // una sesión nueva en cada refresco de token y la rehacía sin motivo
@@ -87,6 +91,8 @@ export default function ScheduleScreen() {
   const [group, setGroup] = useState<GroupDetail | null>(null);
   const [sessions, setSessions] = useState<GameSession[]>([]);
   const [rsvps, setRsvps] = useState<Map<string, SessionRsvps>>(new Map());
+  /** por sesión, a quién ya se le dio un toque (migr. 00054) */
+  const [nudged, setNudged] = useState<Map<string, Set<string>>>(new Map());
   const [polls, setPolls] = useState<SessionPoll[] | undefined>(undefined);
   const [busy, setBusy] = useState(false);
 
@@ -117,6 +123,7 @@ export default function ScheduleScreen() {
       .then((list) => {
         setSessions(list);
         fetchRsvps(list.map((s) => s.id), viewerId).then(setRsvps);
+        fetchNudged('confirm', list.map((s) => s.id)).then(setNudged);
       })
       .catch(() => {});
     fetchPolls(id, viewerId).then(setPolls).catch(() => setPolls([]));
@@ -270,7 +277,7 @@ export default function ScheduleScreen() {
   // ✋ voy / 🙅 no voy — toque en el mismo estado lo quita
   const handleRsvp = async (gameSession: GameSession, status: 'yes' | 'no') => {
     if (!session) return;
-    const current = rsvps.get(gameSession.id) ?? { yes: [], no: [], mine: null };
+    const current = rsvps.get(gameSession.id) ?? { yes: [], no: [], mine: null, respondedIds: [] };
     const next = current.mine === status ? null : status;
     try {
       await setRsvp(gameSession.id, session.user.id, next);
@@ -310,28 +317,20 @@ export default function ScheduleScreen() {
 
   if (!group || polls === undefined) {
     return (
-      <ThemedView style={[styles.container, styles.loading]}>
+      <View style={[styles.panel, styles.loading]}>
         <ActivityIndicator />
-      </ThemedView>
+      </View>
     );
   }
 
   const openPolls = polls.filter((p) => p.status === 'open');
 
+  // Panel embebido: la identidad de la mesa la pone el hero del hub.
   return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
+    <View style={styles.panel}>
         <ScrollView contentContainerStyle={styles.scroll}>
-          <AppHeader
-            onBack={() =>
-              router.canGoBack()
-                ? router.back()
-                : router.replace({ pathname: '/groups/[id]', params: { id: id! } })
-            }
-          />
-          {id && <TableTabs groupId={id} active="agenda" />}
           <View style={styles.titleRow}>
-            <ScreenTitle>📅 Organizar partida</ScreenTitle>
+            <SectionLabel>Próximas partidas</SectionLabel>
             <Pressable
               style={styles.helpButton}
               onPress={() => setCoachOpen(true)}
@@ -339,14 +338,11 @@ export default function ScheduleScreen() {
               <Text style={styles.helpGlyph}>?</Text>
             </Pressable>
           </View>
-          <ScreenBlurb>«{group.name}»</ScreenBlurb>
-
-          <SectionLabel>Próximas partidas</SectionLabel>
           {sessions.length === 0 ? (
             <Text style={styles.soft}>Ninguna fijada todavía.</Text>
           ) : (
             sessions.map((s) => {
-              const rsvp = rsvps.get(s.id) ?? { yes: [], no: [], mine: null };
+              const rsvp = rsvps.get(s.id) ?? { yes: [], no: [], mine: null, respondedIds: [] };
               return (
                 <View key={s.id} style={styles.sessionCard}>
                   <View style={styles.sessionRow}>
@@ -432,6 +428,59 @@ export default function ScheduleScreen() {
                       {rsvp.no.length > 0 ? `No van: ${rsvp.no.join(', ')}` : ''}
                     </Text>
                   )}
+                  {/* «Dar un toque» al que falta (entregable 2d, migr. 00054):
+                      un push amable en vez de perseguirle por el chat */}
+                  {(() => {
+                    if (!group || !session) return null;
+                    const responded = new Set(rsvp.respondedIds);
+                    const missing = group.group_members.filter(
+                      (m) => !responded.has(m.user_id) && m.user_id !== session.user.id
+                    );
+                    if (missing.length === 0) return null;
+                    const sessionNudged = nudged.get(s.id) ?? new Set<string>();
+                    return (
+                      <View style={styles.nudgeRow}>
+                        <Text style={styles.nudgeLabel}>Sin responder:</Text>
+                        {missing.map((member) => {
+                          const done = sessionNudged.has(member.user_id);
+                          const alias = member.profiles?.alias ?? 'Sin alias';
+                          return (
+                            <Pressable
+                              key={member.user_id}
+                              disabled={done}
+                              accessibilityLabel={
+                                done ? `${alias} ya avisado` : `Dar un toque a ${alias}`
+                              }
+                              style={[styles.nudgeChip, done && styles.nudgeChipDone]}
+                              onPress={async () => {
+                                try {
+                                  await sendNudge(
+                                    id!,
+                                    'confirm',
+                                    s.id,
+                                    member.user_id,
+                                    session.user.id
+                                  );
+                                  setNudged((map) => {
+                                    const next = new Map(map);
+                                    const set = new Set(next.get(s.id) ?? []);
+                                    set.add(member.user_id);
+                                    next.set(s.id, set);
+                                    return next;
+                                  });
+                                } catch (error) {
+                                  showAlert('No se pudo avisar', humanizeError(error));
+                                }
+                              }}>
+                              <Text style={[styles.nudgeChipText, done && styles.nudgeChipTextDone]}>
+                                {done ? `✅ ${alias}` : `🫵 ${alias}`}
+                              </Text>
+                            </Pressable>
+                          );
+                        })}
+                      </View>
+                    );
+                  })()}
                 </View>
               );
             })
@@ -714,18 +763,16 @@ export default function ScheduleScreen() {
             </Text>
           )}
         </ScrollView>
-      </SafeAreaView>
 
       <OrganizarCoach visible={coachOpen} isOwner={isOwner} onClose={closeCoach} />
-    </ThemedView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  panel: {
     flex: 1,
-    flexDirection: 'row',
-    justifyContent: 'center',
+    width: '100%',
   },
   loading: {
     alignItems: 'center',
@@ -1023,5 +1070,39 @@ const styles = StyleSheet.create({
   },
   navBig: {
     flex: 2,
+  },
+  nudgeRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 8,
+  },
+  nudgeLabel: {
+    color: Rolder.textTertiary,
+    fontSize: 12,
+    fontFamily: RolderFonts.semibold,
+    fontWeight: '600',
+  },
+  nudgeChip: {
+    borderWidth: 1,
+    borderColor: 'rgba(245,166,35,0.5)',
+    backgroundColor: 'rgba(245,166,35,0.1)',
+    borderRadius: 999,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+  },
+  nudgeChipDone: {
+    borderColor: Rolder.surfaceBorder,
+    backgroundColor: 'transparent',
+  },
+  nudgeChipText: {
+    color: '#F5C34D',
+    fontSize: 12.5,
+    fontFamily: RolderFonts.semibold,
+    fontWeight: '600',
+  },
+  nudgeChipTextDone: {
+    color: Rolder.textTertiary,
   },
 });

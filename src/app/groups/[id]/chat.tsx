@@ -2,7 +2,7 @@
 // de postgres_changes en el proyecto. Discord deja de ser obligatorio: esta
 // pantalla es el canal principal para hablar sin salir de la app.
 
-import { router, useLocalSearchParams } from 'expo-router';
+import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -18,21 +18,18 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { Image } from 'expo-image';
 
 import { confirmAction, humanizeError, showAlert } from '@/lib/alert';
-import { AppHeader } from '@/components/app-header';
 import { ChatImage } from '@/components/chat-image';
 import { ChatInfoPanel } from '@/components/chat-info-panel';
 import { ChatPollBanner } from '@/components/chat-poll-banner';
 import { DiceRoller } from '@/components/dice-roller';
 import { MessageActions } from '@/components/message-actions';
 import { RollBubble } from '@/components/roll-bubble';
-import { TableTabs } from '@/components/table-tabs';
 import { parseRoll, type DiceRoll } from '@/lib/dice';
 import { fetchPolls, subscribeToPolls, unsubscribeFromPolls, type SessionPoll } from '@/lib/polls';
 import {
@@ -41,7 +38,6 @@ import {
   type PickerTab,
 } from '@/components/chat-media-pickers';
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Rolder, RolderFonts, Spacing } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
 import { fetchGroup, type GroupDetail } from '@/lib/groups';
@@ -69,8 +65,15 @@ import { pickAndUploadImage } from '@/lib/images';
 import { cacheGet, cacheSet } from '@/lib/screen-cache';
 import { joinTypingChannel, leaveTypingChannel, type TypingHandle } from '@/lib/typing';
 
-export default function GroupChatScreen() {
+// La ruta vive solo para los deep links y push antiguos: el chat es una
+// pestaña del hub de mesa (una única página), no una pantalla.
+export default function GroupChatRoute() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  return <Redirect href={{ pathname: '/groups/[id]', params: { id: id!, tab: 'chat' } }} />;
+}
+
+/** El chat embebido en el hub: sin cabecera propia, ocupa el hueco del panel. */
+export function GroupChatPanel({ id }: { id: string }) {
   const session = useSession();
   // Los efectos dependen del id, NO del objeto session: supabase-js emite una
   // sesión nueva en cada refresco de token (y al volver a la pestaña en web),
@@ -396,17 +399,17 @@ export default function GroupChatScreen() {
 
   if (group === undefined || messages === undefined) {
     return (
-      <ThemedView style={[styles.container, styles.loading]}>
+      <View style={[styles.panel, styles.loading]}>
         <ActivityIndicator />
-      </ThemedView>
+      </View>
     );
   }
 
   if (group === null) {
     return (
-      <ThemedView style={[styles.container, styles.loading]}>
+      <View style={[styles.panel, styles.loading]}>
         <ThemedText>No se pudo cargar la mesa.</ThemedText>
-      </ThemedView>
+      </View>
     );
   }
 
@@ -509,29 +512,10 @@ export default function GroupChatScreen() {
     );
   };
 
+  // Panel embebido en el hub: sin ThemedView/SafeArea/cabecera propios —
+  // la identidad de la mesa ya la pone el hero del hub encima.
   return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <AppHeader
-          onBack={() =>
-            router.canGoBack()
-              ? router.back()
-              : router.replace({ pathname: '/groups/[id]', params: { id: id! } })
-          }
-        />
-        {iAmMember && id && <TableTabs groupId={id} active="chat" />}
-        <View style={styles.subheaderRow}>
-          <Text numberOfLines={1} style={styles.subheader}>
-            💬 {group.name}
-          </Text>
-          <Pressable
-            style={({ pressed }) => [styles.infoButton, pressed && styles.pressed]}
-            onPress={() => setInfoOpen(true)}
-            accessibilityLabel="Información de la mesa">
-            <Text style={styles.infoGlyph}>i</Text>
-          </Pressable>
-        </View>
-
+    <View style={styles.panel}>
         {session &&
           id &&
           iAmMember &&
@@ -699,7 +683,6 @@ export default function GroupChatScreen() {
             </View>
           </KeyboardAvoidingView>
         )}
-      </SafeAreaView>
 
       <MessageActions
         visible={actionsFor !== null}
@@ -753,15 +736,15 @@ export default function GroupChatScreen() {
           )}
         </Pressable>
       </Modal>
-    </ThemedView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  // el panel llena el hueco que le deja el hub (hero + pestañas arriba)
+  panel: {
     flex: 1,
-    flexDirection: 'row',
-    justifyContent: 'center',
+    width: '100%',
   },
   loading: {
     alignItems: 'center',
