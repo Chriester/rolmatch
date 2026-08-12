@@ -27,6 +27,7 @@ import { confirmAction, humanizeError, showAlert } from '@/lib/alert';
 import { AppHeader } from '@/components/app-header';
 import { ChatImage } from '@/components/chat-image';
 import { DiceRoller } from '@/components/dice-roller';
+import { Reveal } from '@/components/reveal';
 import { MessageActions } from '@/components/message-actions';
 import { RollBubble } from '@/components/roll-bubble';
 import { parseRoll, type DiceRoll } from '@/lib/dice';
@@ -504,14 +505,20 @@ export default function DmChatScreen() {
             </View>
           )}
           {pickerTab !== null && pickerTab !== 'dice' && (
-            <ChatMediaPickers
-              tab={pickerTab}
-              onEmoji={(e) => setDraft((d) => d + e)}
-              onSticker={(s) => handleSendMedia('sticker', { body: s })}
-              onGif={(url) => handleSendMedia('gif', { mediaUrl: url })}
-            />
+            <Reveal switchKey={pickerTab} distance={8}>
+              <ChatMediaPickers
+                tab={pickerTab}
+                onEmoji={(e) => setDraft((d) => d + e)}
+                onSticker={(s) => handleSendMedia('sticker', { body: s })}
+                onGif={(url) => handleSendMedia('gif', { mediaUrl: url })}
+              />
+            </Reveal>
           )}
-          {pickerTab === 'dice' && <DiceRoller onRoll={handleSendRoll} busy={sending} />}
+          {pickerTab === 'dice' && (
+            <Reveal distance={8}>
+              <DiceRoller onRoll={handleSendRoll} busy={sending} />
+            </Reveal>
+          )}
           <View style={styles.pickerTabs}>
             <Pressable
               style={[styles.tabButton, pickerTab === 'emoji' && styles.tabActive]}

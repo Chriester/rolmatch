@@ -22,6 +22,7 @@ import {
 
 import { showAlert } from '@/lib/alert';
 import { InlineBanner } from '@/components/inline-banner';
+import { Reveal } from '@/components/reveal';
 import { ThemedText } from '@/components/themed-text';
 import { OutlineButton } from '@/components/ui';
 import { MaxContentWidth, Rolder, RolderFonts, Spacing } from '@/constants/theme';
@@ -274,7 +275,11 @@ export function GroupJournalPanel({
                           </Text>
                         )}
                       </Pressable>
-                      {isOpen && chapter.entries.map(renderEntry)}
+                      {isOpen && (
+                        <Reveal distance={6} style={styles.chapterEntries}>
+                          {chapter.entries.map(renderEntry)}
+                        </Reveal>
+                      )}
                     </View>
                   );
                 })
@@ -412,6 +417,9 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   chapter: {
+    gap: Spacing.two,
+  },
+  chapterEntries: {
     gap: Spacing.two,
   },
   chapterHeader: {
