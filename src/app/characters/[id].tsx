@@ -31,6 +31,7 @@ import {
   type CharacterInput,
 } from '@/lib/characters';
 import { fetchPremiumStatus } from '@/lib/premium';
+import { cacheGet, cacheSet } from '@/lib/screen-cache';
 import { fetchXpTotals, levelFromXp } from '@/lib/xp';
 import {
   deleteSheet,
@@ -46,8 +47,14 @@ export default function EditCharacterScreen() {
   const session = useSession();
   // vista por defecto: la hoja; editar es una decisión explícita
   const [editing, setEditing] = useState(edit === '1');
-  const [character, setCharacter] = useState<Character | null | undefined>(undefined);
-  const [sheet, setSheet] = useState<CharacterSheet | null | undefined>(undefined);
+  // arranca con lo último visto para no enseñar la rueda al volver a una
+  // ficha ya visitada; el fetch de abajo refresca en silencio
+  const [character, setCharacter] = useState<Character | null | undefined>(() =>
+    id ? cacheGet(`character:${id}`) : undefined
+  );
+  const [sheet, setSheet] = useState<CharacterSheet | null | undefined>(() =>
+    id ? cacheGet(`character-sheet:${id}`) : undefined
+  );
   const [busy, setBusy] = useState(false);
   const [sheetBusy, setSheetBusy] = useState(false);
   const [themeStatus, setThemeStatus] = useState({ isPremium: false, level: 1 });
@@ -68,11 +75,17 @@ export default function EditCharacterScreen() {
   useEffect(() => {
     if (!id) return;
     fetchCharacter(id)
-      .then(setCharacter)
-      .catch(() => setCharacter(null));
+      .then((c) => {
+        cacheSet(`character:${id}`, c);
+        setCharacter(c);
+      })
+      .catch(() => setCharacter((current) => current ?? null));
     fetchSheet(id)
-      .then(setSheet)
-      .catch(() => setSheet(null));
+      .then((s) => {
+        cacheSet(`character-sheet:${id}`, s);
+        setSheet(s);
+      })
+      .catch(() => setSheet((current) => current ?? null));
   }, [id]);
 
   const handleUploadSheet = async () => {

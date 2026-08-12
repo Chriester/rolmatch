@@ -62,7 +62,7 @@ import {
 } from '@/lib/groups';
 import { fetchGroupMatches, matchChannelUrl, type GroupMatch } from '@/lib/matches';
 import { boostGroup, isBoostActive } from '@/lib/premium';
-import { warmGroupTabs } from '@/lib/prefetch';
+import { warmCandidates, warmGroupTabs } from '@/lib/prefetch';
 import { hasCompletedOnboarding } from '@/lib/profile';
 import { cacheGet, cacheSet } from '@/lib/screen-cache';
 import { fetchRatedSince } from '@/lib/ratings';
@@ -353,7 +353,11 @@ function GroupDetailScreen() {
             (r) => `${r.group_id}:${r.user_id}`
           )
         );
-        setApplicantsCount(pendingApplicants(likes.data ?? [], resolved).get(id)?.count ?? 0);
+        const count = pendingApplicants(likes.data ?? [], resolved).get(id)?.count ?? 0;
+        setApplicantsCount(count);
+        // con solicitudes a la vista, la cola se precalienta: tocar la
+        // bandeja abre candidatos con el deck ya cargado
+        if (count > 0 && session) warmCandidates(id, session.user.id);
       })
       .catch(() => {});
   }, [id, session, group?.owner_id]);

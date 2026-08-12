@@ -23,6 +23,7 @@ import { showAlert } from '@/lib/alert';
 import { FORMAT_LABELS, archiveGroup, confirmGroupAlive } from '@/lib/groups';
 import { fetchMyTablesOverview, type MyTableRow, type MyTablesOverview } from '@/lib/my-tables';
 import { warmGroup } from '@/lib/prefetch';
+import { cacheGet, cacheSet } from '@/lib/screen-cache';
 
 function timeLabel(iso: string) {
   return new Date(iso).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
@@ -139,17 +140,24 @@ function TableCard({ table, onVitality }: { table: MyTableRow; onVitality: () =>
 
 export default function MyGroupsScreen() {
   const session = useSession();
-  const [overview, setOverview] = useState<MyTablesOverview | undefined>(undefined);
+  // arranca con lo último visto (o lo precalentado por warmHomeTabs) y
+  // refresca en silencio: la rueda solo sale sin nada en caché
+  const [overview, setOverview] = useState<MyTablesOverview | undefined>(() =>
+    session ? cacheGet(`my-tables:${session.user.id}`) : undefined
+  );
 
   const load = useCallback(() => {
     if (!session) return;
+    const cached = cacheGet<MyTablesOverview>(`my-tables:${session.user.id}`);
+    if (cached) setOverview((current) => current ?? cached);
     fetchMyTablesOverview(session.user.id)
       .then((data) => {
+        cacheSet(`my-tables:${session.user.id}`, data);
         setOverview(data);
         // precalienta las fichas: tocar una mesa abre el hub sin página en blanco
         data.tables.slice(0, 8).forEach((t) => warmGroup(t.id));
       })
-      .catch(() => setOverview({ tables: [], today: null }));
+      .catch(() => setOverview((current) => current ?? { tables: [], today: null }));
   }, [session]);
 
   useFocusEffect(load);

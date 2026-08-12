@@ -12,24 +12,10 @@ import { ThemedView } from '@/components/themed-view';
 import { ListRow, OutlineButton, ScreenTitle } from '@/components/ui';
 import { MaxContentWidth, Rolder, RolderFonts, Spacing } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
-import { fetchMyDmChats, type DmSummary } from '@/lib/dm';
-import { fetchMyChats, type ChatSummary } from '@/lib/messages';
+import { fetchChatRows, type ChatRow } from '@/lib/chats-overview';
 import { warmGroupChat } from '@/lib/prefetch';
 import { cacheGet, cacheSet } from '@/lib/screen-cache';
 import { webPushState } from '@/lib/web-push';
-
-// Mesas e hilos 1-a-1 conviven en la misma lista, ordenados por actividad
-type ChatRow =
-  | ({ kind: 'group' } & ChatSummary)
-  | ({ kind: 'dm' } & DmSummary);
-
-function sortByActivity(a: ChatRow, b: ChatRow) {
-  if (a.lastMessage && b.lastMessage)
-    return b.lastMessage.created_at.localeCompare(a.lastMessage.created_at);
-  if (a.lastMessage) return -1;
-  if (b.lastMessage) return 1;
-  return a.name.localeCompare(b.name);
-}
 
 function timeLabel(iso: string) {
   const date = new Date(iso);
@@ -64,16 +50,8 @@ export default function ChatsScreen() {
     const cacheKey = `chats:${session.user.id}`;
     const cached = cacheGet<ChatRow[]>(cacheKey);
     if (cached) setChats((current) => current ?? cached);
-    Promise.all([
-      fetchMyChats(session.user.id),
-      // degrada a [] por sí sola si la migración 00025 no está aplicada
-      fetchMyDmChats(session.user.id),
-    ])
-      .then(([groups, dms]) => {
-        const merged = [
-          ...groups.map((g) => ({ kind: 'group' as const, ...g })),
-          ...dms.map((d) => ({ kind: 'dm' as const, ...d })),
-        ].sort(sortByActivity);
+    fetchChatRows(session.user.id)
+      .then((merged) => {
         cacheSet(cacheKey, merged);
         setChats(merged);
         // precalienta las mesas más activas: tocar un chat abre el hub con

@@ -23,9 +23,11 @@ import {
   deleteGroup,
   fetchGroup,
   updateGroup,
+  type GroupDetail,
   type GroupFormat,
 } from '@/lib/groups';
 import { fetchSystems, type ExperienceLevel, type System, type VttType } from '@/lib/profile';
+import { cacheGet } from '@/lib/screen-cache';
 
 const FORMATS: { value: GroupFormat; label: string }[] = [
   { value: 'campaign', label: 'Campaña' },
@@ -68,7 +70,11 @@ export default function EditGroupScreen() {
   useEffect(() => {
     fetchSystems().then(setSystems).catch(() => {});
     if (!id) return;
-    fetchGroup(id)
+    // se llega desde el hub con la mesa recién cargada: usar esa copia evita
+    // la espera Y que un fetch tardío pise lo que el usuario ya haya tecleado
+    // (solo el dueño edita su mesa, la caché no puede estar desfasada por otro)
+    const cached = cacheGet<GroupDetail>(`group:${id}`);
+    (cached ? Promise.resolve(cached) : fetchGroup(id))
       .then((g) => {
         setName(g.name);
         setImageUrl(g.image_url);

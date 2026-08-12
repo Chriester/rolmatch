@@ -14,21 +14,26 @@ import { ScreenBlurb, ScreenTitle } from '@/components/ui';
 import { MaxContentWidth, Rolder, RolderFonts, Spacing } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
 import { fetchActivity, markActivitySeen, type ActivityItem } from '@/lib/activity';
+import { cacheGet, cacheSet } from '@/lib/screen-cache';
 
 export default function NovedadesScreen() {
   const session = useSession();
   const userId = session?.user.id ?? null;
-  const [items, setItems] = useState<ActivityItem[] | undefined>(undefined);
+  // arranca con lo último visto y refresca en silencio (patrón screen-cache)
+  const [items, setItems] = useState<ActivityItem[] | undefined>(() =>
+    userId ? cacheGet(`novedades:${userId}`) : undefined
+  );
 
   const load = useCallback(() => {
     if (!userId) return;
     fetchActivity(userId)
       .then((activity) => {
+        cacheSet(`novedades:${userId}`, activity);
         setItems(activity);
         // todo lo que se enseña queda visto: apaga el punto de la campana
         markActivitySeen(activity);
       })
-      .catch(() => setItems([]));
+      .catch(() => setItems((current) => current ?? []));
   }, [userId]);
 
   useEffect(load, [load]);

@@ -1,5 +1,5 @@
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -25,6 +25,7 @@ import { fetchGroupCandidates, type PlayerCandidate } from '@/lib/feed';
 import { fetchGroup, type GroupDetail } from '@/lib/groups';
 import { blockUser } from '@/lib/moderation';
 import { fetchPremiumStatus } from '@/lib/premium';
+import { cacheGet, cacheSet } from '@/lib/screen-cache';
 import { groupSwipeOnUser, undoGroupSwipeOnUser } from '@/lib/swipes';
 
 const DECK_MAX_WIDTH = 420;
@@ -40,27 +41,52 @@ export default function GroupCandidatesScreen() {
   const session = useSession();
   const deckRef = useRef<SwipeDeckHandle | null>(null);
 
-  const [group, setGroup] = useState<GroupDetail | null>(null);
-  const [candidates, setCandidates] = useState<PlayerCandidate[] | undefined>(undefined);
+  // arranca con la cola precalentada por el hub (si la hay) y refresca en
+  // silencio; el deck solo se resetea si la cola cambió de verdad
+  const [group, setGroup] = useState<GroupDetail | null>(
+    () => (id ? cacheGet<GroupDetail>(`group:${id}`) ?? null : null)
+  );
+  const [candidates, setCandidates] = useState<PlayerCandidate[] | undefined>(() =>
+    id ? cacheGet(`candidates:${id}`) : undefined
+  );
   const [loadError, setLoadError] = useState(false);
   const [index, setIndex] = useState(0);
   const [matchWith, setMatchWith] = useState<PlayerCandidate | null>(null);
   const [premium, setPremium] = useState(false);
   const [lastSwiped, setLastSwiped] = useState<PlayerCandidate | null>(null);
+  const candidatesRef = useRef<PlayerCandidate[] | undefined>(candidates);
+  useEffect(() => {
+    candidatesRef.current = candidates;
+  }, [candidates]);
 
   const load = useCallback(() => {
     if (!id || !session) return;
     setLoadError(false);
-    setCandidates(undefined);
-    setIndex(0);
-    setLastSwiped(null);
     // solo la cola de solicitudes (likes recibidos); el descubrimiento de
     // compatibles vive en el feed principal
     fetchGroupCandidates(id, session.user.id, { onlyApplicants: true })
-      .then(setCandidates)
-      .catch(() => setLoadError(true));
+      .then((list) => {
+        cacheSet(`candidates:${id}`, list);
+        // misma cola → no tocar el deck (ni su índice ni el rebobinado);
+        // cola distinta → deck nuevo desde arriba
+        const current = candidatesRef.current;
+        const same =
+          current !== undefined &&
+          current.length === list.length &&
+          current.every((c, i) => c.player.id === list[i]?.player.id);
+        if (same) return;
+        setCandidates(list);
+        setIndex(0);
+        setLastSwiped(null);
+      })
+      .catch(() => {
+        if (candidatesRef.current === undefined) setLoadError(true);
+      });
     fetchGroup(id)
-      .then(setGroup)
+      .then((g) => {
+        cacheSet(`group:${id}`, g);
+        setGroup(g);
+      })
       .catch(() => {});
     fetchPremiumStatus(session.user.id)
       .then((status) => setPremium(status.active))
