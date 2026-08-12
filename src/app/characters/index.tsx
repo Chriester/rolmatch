@@ -13,6 +13,7 @@ import { ListRow, OutlineButton, ScreenBlurb, ScreenTitle, StatusPill } from '@/
 import { MaxContentWidth, Rolder, RolderFonts, Spacing } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
 import { fetchMyCharacters, type Character, type CharacterStatus } from '@/lib/characters';
+import { cacheGet, cacheSet } from '@/lib/screen-cache';
 
 const STATUS_PILL: Record<CharacterStatus, { label: string; tone: 'violet' | 'green' | 'gray' }> = {
   playing: { label: 'EN JUEGO', tone: 'violet' },
@@ -22,15 +23,23 @@ const STATUS_PILL: Record<CharacterStatus, { label: string; tone: 'violet' | 'gr
 
 export default function MyCharactersScreen() {
   const session = useSession();
-  const [characters, setCharacters] = useState<Character[] | undefined>(undefined);
+  // arranca con lo último visto (o lo precalentado por warmHomeTabs) y
+  // refresca en silencio: la rueda solo sale sin nada en caché
+  const [characters, setCharacters] = useState<Character[] | undefined>(() =>
+    session ? cacheGet(`characters:${session.user.id}`) : undefined
+  );
   const [loadError, setLoadError] = useState(false);
 
   const load = useCallback(() => {
     if (!session) return;
     setLoadError(false);
-    setCharacters(undefined);
+    const cached = cacheGet<Character[]>(`characters:${session.user.id}`);
+    if (cached) setCharacters((current) => current ?? cached);
     fetchMyCharacters(session.user.id)
-      .then(setCharacters)
+      .then((list) => {
+        cacheSet(`characters:${session.user.id}`, list);
+        setCharacters(list);
+      })
       .catch(() => setLoadError(true));
   }, [session]);
 

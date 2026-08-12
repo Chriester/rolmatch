@@ -21,6 +21,7 @@ import { ensureCommunityMembership } from '@/lib/auth';
 import { DISCORD_ENABLED } from '@/lib/config';
 import { BottomNavBar } from '@/components/bottom-nav-bar';
 import { ErrorBoundary } from '@/components/error-boundary';
+import { RouteFade } from '@/components/route-fade';
 import { UpdateBanner } from '@/components/update-banner';
 import { UpdateOverlay } from '@/components/update-overlay';
 import { useNotificationTapRouting } from '@/lib/notifications';
@@ -111,7 +112,7 @@ export default function RootLayout() {
       <ErrorBoundary>
       <ThemeProvider value={RolderNavTheme}>
         <View style={styles.appRoot}>
-          <View style={styles.stackArea}>
+          <RouteFade style={styles.stackArea}>
             <Stack screenOptions={{ headerShown: false }}>
             <Stack.Protected guard={!!session}>
               <Stack.Screen name="(tabs)" />
@@ -146,7 +147,7 @@ export default function RootLayout() {
                   sesión o no. Es la única ruta con parte pública. */}
               <Stack.Screen name="groups/[id]/index" />
             </Stack>
-          </View>
+          </RouteFade>
           {/* Espacio real (no flotante) reservado para el escudo/dado/chat:
               se ve en TODAS las pantallas, no solo dentro de (tabs) — la
               propia barra decide cuándo ocultarse (sin sesión, onboarding). */}

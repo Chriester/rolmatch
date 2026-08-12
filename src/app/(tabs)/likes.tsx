@@ -16,24 +16,35 @@ import { useSession } from '@/hooks/use-session';
 import { emitLikesSeenChanged } from '@/lib/likes-events';
 import { markLikesSeenNow } from '@/lib/likes-seen';
 import { fetchPremiumStatus, fetchReceivedLikes, type ReceivedLike } from '@/lib/premium';
+import { cacheGet, cacheSet } from '@/lib/screen-cache';
+
+type LikesCache = { likes: ReceivedLike[]; premium: boolean };
 
 const MAX_WIDTH = 480;
 
 export default function LikesScreen() {
   const session = useSession();
-  const [likes, setLikes] = useState<ReceivedLike[] | undefined>(undefined);
-  const [premium, setPremium] = useState(false);
+  // arranca con lo último visto (o lo precalentado por warmHomeTabs) y
+  // refresca en silencio: la rueda solo sale sin nada en caché
+  const cachedAtMount = session ? cacheGet<LikesCache>(`likes:${session.user.id}`) : undefined;
+  const [likes, setLikes] = useState<ReceivedLike[] | undefined>(cachedAtMount?.likes);
+  const [premium, setPremium] = useState(cachedAtMount?.premium ?? false);
   const [loadError, setLoadError] = useState(false);
 
   const load = useCallback(() => {
     if (!session) return;
     setLoadError(false);
-    setLikes(undefined);
+    const cached = cacheGet<LikesCache>(`likes:${session.user.id}`);
+    if (cached) {
+      setLikes((current) => current ?? cached.likes);
+      setPremium((current) => current || cached.premium);
+    }
     Promise.all([
       fetchReceivedLikes(session.user.id),
       fetchPremiumStatus(session.user.id),
     ])
       .then(([received, status]) => {
+        cacheSet(`likes:${session.user.id}`, { likes: received, premium: status.active });
         setLikes(received);
         setPremium(status.active);
         // se han visto ya: el badge del tab se apaga al instante

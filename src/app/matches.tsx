@@ -14,18 +14,24 @@ import { MaxContentWidth, Rolder, RolderFonts, Spacing } from '@/constants/theme
 import { useSession } from '@/hooks/use-session';
 import { DISCORD_ENABLED } from '@/lib/config';
 import { fetchMyMatches, matchChannelUrl, type MyMatch } from '@/lib/matches';
+import { cacheGet, cacheSet } from '@/lib/screen-cache';
 
 export default function MatchesScreen() {
   const session = useSession();
-  const [matches, setMatches] = useState<MyMatch[] | undefined>(undefined);
+  // arranca con lo último visto y refresca en silencio (patrón screen-cache)
+  const [matches, setMatches] = useState<MyMatch[] | undefined>(() =>
+    session ? cacheGet(`matches:${session.user.id}`) : undefined
+  );
   const [loadError, setLoadError] = useState(false);
 
   const load = useCallback(() => {
     if (!session) return;
     setLoadError(false);
-    setMatches(undefined);
     fetchMyMatches(session.user.id)
-      .then(setMatches)
+      .then((list) => {
+        cacheSet(`matches:${session.user.id}`, list);
+        setMatches(list);
+      })
       .catch(() => setLoadError(true));
   }, [session]);
 

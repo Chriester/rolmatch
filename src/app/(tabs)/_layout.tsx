@@ -4,8 +4,22 @@
 // sola vez en la raíz de la app (src/app/_layout.tsx) para que se vea en
 // todas las pantallas, no solo aquí dentro. Ver bottom-nav-bar.tsx.
 import { Tabs } from 'expo-router';
+import { useEffect } from 'react';
+
+import { useSession } from '@/hooks/use-session';
+import { warmHomeTabs } from '@/lib/prefetch';
 
 export default function TabsLayout() {
+  const session = useSession();
+  const userId = session?.user.id ?? null;
+
+  // Con la sesión lista se precalientan los otros tabs en segundo plano:
+  // el primer toque en Mesas, Encuentros, Chats o Personajes pinta al
+  // instante en vez de enseñar la rueda.
+  useEffect(() => {
+    if (userId) warmHomeTabs(userId);
+  }, [userId]);
+
   return (
     <Tabs
       screenOptions={{
