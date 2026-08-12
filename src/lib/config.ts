@@ -15,3 +15,10 @@ export const APP_URL = 'https://rolmatch.vercel.app';
  * en el dashboard de Supabase; esto solo apaga el lado del cliente.
  */
 export const DISCORD_ENABLED = false;
+
+/**
+ * Página de apoyo voluntario (Ko-fi/BuyMeACoffee). Con null, el botón
+ * «Apóyanos» de Opciones no se pinta — pegar aquí la URL cuando Chris cree
+ * la página (plan de monetización: medir intención de pago en la beta).
+ */
+export const SUPPORT_URL: string | null = null;
