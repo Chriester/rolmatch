@@ -164,6 +164,10 @@ export default function RootLayout() {
 const styles = StyleSheet.create({
   appRoot: {
     flex: 1,
+    // detrás del RouteFade tiene que haber página oscura: al bajar la
+    // opacidad del Stack, sin esto asomaba el blanco del documento (web)
+    // y el fundido era un destello que cegaba
+    backgroundColor: Rolder.page,
   },
   stackArea: {
     flex: 1,
