@@ -20,9 +20,13 @@ verify_jwt = false
 [functions.discord-cleanup]
 verify_jwt = false
 
-# Invocadas desde la app con la sesión del usuario
+# Invocadas desde la app con la sesión del usuario. OJO: verify_jwt de la
+# pasarela solo entiende los JWT legacy HS256; este proyecto firma con las
+# claves nuevas asimétricas (ES256) y la pasarela devolvía
+# UNAUTHORIZED_ASYMMETRIC_JWT a todos los usuarios. Ambas funciones validan
+# la sesión por dentro (auth.getUser) — la pasarela queda abierta a propósito.
 [functions.discord-join]
-verify_jwt = true
+verify_jwt = false
 
 [functions.redeem-promo]
-verify_jwt = true
+verify_jwt = false

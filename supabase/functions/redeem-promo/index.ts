@@ -1,6 +1,9 @@
 // Edge Function: redeem-promo
 // Canjea un código promocional de premium. La app la invoca con la sesión
-// del usuario: DESPLEGAR CON "Verify JWT" ACTIVADO (como discord-join).
+// del usuario. Verify JWT de la pasarela va DESACTIVADO: solo entiende los
+// JWT legacy HS256 y este proyecto firma con claves asimétricas (ES256) —
+// con él activado devolvía UNAUTHORIZED_ASYMMETRIC_JWT a todo el mundo.
+// La sesión se valida aquí dentro con auth.getUser(jwt).
 // Body: { code: string }
 // Secrets: SB_SECRET_KEY (los códigos solo los ve el service role).
 
