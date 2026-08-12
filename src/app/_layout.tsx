@@ -1,6 +1,7 @@
 import {
   Nunito_900Black,
 } from '@expo-google-fonts/nunito';
+import { Poppins_600SemiBold } from '@expo-google-fonts/poppins';
 import {
   Sora_400Regular,
   Sora_600SemiBold,
@@ -56,6 +57,7 @@ export default function RootLayout() {
     Sora_700Bold,
     Sora_800ExtraBold,
     Nunito_900Black,
+    Poppins_600SemiBold,
   });
 
   useEffect(() => {
