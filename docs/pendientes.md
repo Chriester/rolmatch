@@ -12,10 +12,9 @@ proponer una mejora, mirar aquí: si ya está listada, no es un hallazgo nuevo.
   Editor. Lleva pendiente desde su PR — verificado por REST (2026-08-11) que
   el bucket sigue sin existir; hasta entonces las fotos de chat siguen yendo
   al bucket público `avatars`. Las 00045-00054 están todas aplicadas ✔.
-- **Redesplegar la Edge Function `push-notify`** con el código del PR #164:
-  ganó el caso `nudges`, y hasta el redeploy los toques se insertan pero no
-  llegan como push. No se puede verificar desde fuera — si ya está hecho,
-  borrar esta línea.
+  (Nota: los «redespliega la función» de los PRs ya no son tarea — desde el
+  PR #114 Actions despliega las 7 Edge Functions en cada merge; verificado
+  en el log del run de #164, `push-notify` incluida.)
 - **Migrar las fotos de chat viejas** del bucket público `avatars` a
   `chat-media` (privado). No se puede desde SQL: script contra la API de
   Storage, objeto a objeto. El cliente ya distingue ambas formas (URL completa
