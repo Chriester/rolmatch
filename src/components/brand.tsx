@@ -1,7 +1,9 @@
-// Marca rolder: logo hexágono d20 con gradiente y wordmark con gradiente.
-// Todo SVG (react-native-svg): idéntico en web, iOS y Android, sin assets.
+// Marca Roldr (logo 2026-08): wordmark «R⟐ldr» con el d20 de facetas como
+// «o», en gradiente carmesí→púrpura. El dado es SVG (react-native-svg);
+// las letras son <Text> planos porque sus colores son sólidos — así la
+// versión web (brand.web.tsx) comparte forma. Mantener exports en paralelo.
 
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import Svg, {
   Defs,
   LinearGradient as SvgGradient,
@@ -10,36 +12,51 @@ import Svg, {
   Text as SvgText,
 } from 'react-native-svg';
 
-import { Rolder } from '@/constants/theme';
+import { Rolder, RolderFonts } from '@/constants/theme';
+
+// Gradiente propio del logo — más profundo que los acentos coral/violeta
+// de la UI, que no cambian.
+export const BRAND_CRIMSON = '#DE1458';
+export const BRAND_PURPLE = '#8E44AD';
+const DIE_FROM = '#F50747';
+const DIE_TO = '#7A4FC0';
 
 type LogoProps = {
   /** ancho en px; el alto mantiene el ratio 44:48 del hexágono */
   width?: number;
+  /** color de las juntas entre facetas (por defecto, el fondo de página) */
+  line?: string;
 };
 
-/** Hexágono d20 con «20» centrado — el icono de la app */
-export function RolderLogo({ width = 24 }: LogoProps) {
+/** El d20 de facetas — icono de la marca (la «o» del wordmark) */
+export function RolderLogo({ width = 24, line }: LogoProps) {
   const height = (width * 48) / 44;
+  const stroke = line ?? Rolder.page;
+  const joint = Math.max(1.4, width * 0.055);
   return (
     <Svg width={width} height={height} viewBox="0 0 44 48">
       <Defs>
-        <SvgGradient id="rolder-hex" x1="0" y1="0" x2="1" y2="1">
-          <Stop offset="0" stopColor={Rolder.coral} />
-          <Stop offset="1" stopColor={Rolder.violet} />
+        <SvgGradient id="roldr-die" x1="0" y1="0" x2="1" y2="1">
+          <Stop offset="0" stopColor={DIE_FROM} />
+          <Stop offset="1" stopColor={DIE_TO} />
         </SvgGradient>
       </Defs>
-      <Polygon points="22,0 44,12 44,36 22,48 0,36 0,12" fill="url(#rolder-hex)" />
-      <SvgText
-        x="22"
-        y="24"
-        fill="#FFFFFF"
-        fontFamily="Sora_800ExtraBold"
-        fontSize={width >= 40 ? 17 : 15}
-        fontWeight="800"
-        textAnchor="middle"
-        alignmentBaseline="central">
-        20
-      </SvgText>
+      <Polygon points="22,1 43,13 43,35 22,47 1,35 1,13" fill="url(#roldr-die)" />
+      {/* la estrella de facetas: las dos caras trianguladas del d20 */}
+      <Polygon
+        points="22,1 43,35 1,35"
+        fill="none"
+        stroke={stroke}
+        strokeWidth={joint}
+        strokeLinejoin="round"
+      />
+      <Polygon
+        points="1,13 43,13 22,47"
+        fill="none"
+        stroke={stroke}
+        strokeWidth={joint}
+        strokeLinejoin="round"
+      />
     </Svg>
   );
 }
@@ -49,30 +66,14 @@ type WordmarkProps = {
   size?: number;
 };
 
-/** «rolder» en Sora 800 con gradiente coral→violeta */
+/** «Roldr» con el d20 como «o» — carmesí a la izquierda, púrpura a la derecha */
 export function RolderWordmark({ size = 21 }: WordmarkProps) {
-  // ancho estimado del texto: ~3.55 caracteres de media a 0.62em
-  const width = size * 3.6;
-  const height = size * 1.4;
   return (
-    <Svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
-      <Defs>
-        <SvgGradient id="rolder-word" x1="0" y1="0" x2="1" y2="0">
-          <Stop offset="0" stopColor={Rolder.coral} />
-          <Stop offset="1" stopColor={Rolder.violet} />
-        </SvgGradient>
-      </Defs>
-      <SvgText
-        x="0"
-        y={size * 1.05}
-        fill="url(#rolder-word)"
-        fontFamily="Sora_800ExtraBold"
-        fontSize={size}
-        fontWeight="800"
-        letterSpacing={-size * 0.02}>
-        rolder
-      </SvgText>
-    </Svg>
+    <View style={[styles.row, { gap: size * 0.13 }]}>
+      <Text style={[styles.letters, { fontSize: size, color: BRAND_CRIMSON }]}>R</Text>
+      <RolderLogo width={size * 0.92} />
+      <Text style={[styles.letters, { fontSize: size, color: BRAND_PURPLE }]}>ldr</Text>
+    </View>
   );
 }
 
@@ -83,15 +84,15 @@ export function RolderGradientText({ text, size = 34 }: { text: string; size?: n
   return (
     <Svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
       <Defs>
-        <SvgGradient id="rolder-gtext" x1="0" y1="0" x2="1" y2="0">
-          <Stop offset="0" stopColor={Rolder.coral} />
-          <Stop offset="1" stopColor={Rolder.violet} />
+        <SvgGradient id="roldr-gtext" x1="0" y1="0" x2="1" y2="0">
+          <Stop offset="0" stopColor={BRAND_CRIMSON} />
+          <Stop offset="1" stopColor={BRAND_PURPLE} />
         </SvgGradient>
       </Defs>
       <SvgText
         x={width / 2}
         y={size * 1.05}
-        fill="url(#rolder-gtext)"
+        fill="url(#roldr-gtext)"
         fontFamily="Sora_800ExtraBold"
         fontSize={size}
         fontWeight="800"
@@ -102,26 +103,26 @@ export function RolderGradientText({ text, size = 34 }: { text: string; size?: n
   );
 }
 
-/** Logo + wordmark en fila, el lockup de las cabeceras */
+/** El lockup de las cabeceras: ahora es el propio wordmark (dado integrado) */
 export function RolderBrand({
-  logoWidth = 24,
+  logoWidth: _logoWidth = 24,
   wordmarkSize = 21,
 }: {
   logoWidth?: number;
   wordmarkSize?: number;
 }) {
-  return (
-    <View style={styles.row}>
-      <RolderLogo width={logoWidth} />
-      <RolderWordmark size={wordmarkSize} />
-    </View>
-  );
+  return <RolderWordmark size={wordmarkSize + 3} />;
 }
 
 const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+  },
+  letters: {
+    fontFamily: RolderFonts.bold,
+    fontWeight: '700',
+    letterSpacing: -0.5,
+    includeFontPadding: false,
   },
 });

@@ -1,6 +1,6 @@
 {
-  "name": "rolder",
-  "short_name": "rolder",
+  "name": "Roldr",
+  "short_name": "Roldr",
   "description": "Matchmaking de rol de mesa en español",
   "start_url": "/",
   "display": "standalone",
