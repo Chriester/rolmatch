@@ -53,69 +53,6 @@ export function RolderLogo({ width = 24, line }: { width?: number; line?: string
   );
 }
 
-/**
- * El d20 con su anillo orbital — la versión «planeta» del arte de marca
- * (roldr-logo-v2). El anillo pasa por detrás del dado arriba a la derecha
- * y por delante abajo a la izquierda; las juntas de las facetas van en el
- * color del fondo, como recortadas.
- */
-export function RolderDieOrbit({ width = 64, line }: { width?: number; line?: string }) {
-  // id único por instancia — mismo motivo que en RolderLogo
-  const uid = useId().replace(/:/g, '');
-  const dieId = `roldr-orbit-die-${uid}`;
-  const ringId = `roldr-orbit-ring-${uid}`;
-  const height = (width * 64) / 72;
-  const stroke = line ?? Rolder.page;
-  return (
-    <svg width={width} height={height} viewBox="0 0 72 64" style={{ flexShrink: 0 }}>
-      <defs>
-        <linearGradient id={dieId} x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor={DIE_FROM} />
-          <stop offset="1" stopColor={DIE_TO} />
-        </linearGradient>
-        <linearGradient id={ringId} x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0" stopColor={BRAND_CRIMSON} />
-          <stop offset="1" stopColor={BRAND_PURPLE} />
-        </linearGradient>
-      </defs>
-      <g transform="translate(36,32) rotate(-16)">
-        <path
-          d="M -34 0 A 34 11 0 0 1 34 0"
-          fill="none"
-          stroke={`url(#${ringId})`}
-          strokeWidth={2.4}
-          strokeLinecap="round"
-          opacity={0.9}
-        />
-      </g>
-      <polygon points="36,8 55,19 55,45 36,56 17,45 17,19" fill={`url(#${dieId})`} />
-      <polygon
-        points="36,8 55,45 17,45"
-        fill="none"
-        stroke={stroke}
-        strokeWidth={2}
-        strokeLinejoin="round"
-      />
-      <polygon
-        points="17,19 55,19 36,56"
-        fill="none"
-        stroke={stroke}
-        strokeWidth={2}
-        strokeLinejoin="round"
-      />
-      <g transform="translate(36,32) rotate(-16)">
-        <path
-          d="M 34 0 A 34 11 0 0 1 -34 0"
-          fill="none"
-          stroke={`url(#${ringId})`}
-          strokeWidth={2.4}
-          strokeLinecap="round"
-        />
-      </g>
-    </svg>
-  );
-}
-
 /** «Roldr» con el d20 como «o» — carmesí a la izquierda, púrpura a la derecha */
 export function RolderWordmark({ size = 21 }: { size?: number }) {
   const letter = (color: string): CSSProperties => ({
