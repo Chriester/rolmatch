@@ -10,7 +10,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { RolderBrand } from '@/components/brand';
 import { Rolder, Spacing } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
-import { hasUnseenActivity } from '@/lib/activity';
+import { hasUnseenActivityCached, newsDot } from '@/lib/activity';
 import { fetchUnreadTotal } from '@/lib/messages';
 import { onUnreadChanged } from '@/lib/unread-events';
 import { fetchProfileData } from '@/lib/profile';
@@ -31,14 +31,27 @@ export function AppHeader({ onBack, right, extra }: AppHeaderProps) {
   /** enciende el punto de la campana: hay novedades sin ver */
   const [hasNews, setHasNews] = useState(false);
 
-  // El punto de la campana se recalcula en CADA focus de la pantalla: al
-  // volver de Novedades tiene que apagarse ya, no en el siguiente montaje.
+  // El punto de la campana se mira en cada focus, pero contra la versión
+  // cacheada (la tubería real de consultas corre como mucho una vez por
+  // minuto, no en cada pantalla); markActivitySeen invalida y emite newsDot
+  // para que se apague al instante al salir de Novedades.
   useFocusEffect(
     useCallback(() => {
       if (!session) return;
-      hasUnseenActivity(session.user.id)
-        .then(setHasNews)
-        .catch(() => {});
+      let alive = true;
+      const refresh = () => {
+        hasUnseenActivityCached(session.user.id)
+          .then((value) => {
+            if (alive) setHasNews(value);
+          })
+          .catch(() => {});
+      };
+      refresh();
+      const off = newsDot.on(refresh);
+      return () => {
+        alive = false;
+        off();
+      };
     }, [session])
   );
 
@@ -72,7 +85,9 @@ export function AppHeader({ onBack, right, extra }: AppHeaderProps) {
         {session && (
           <Pressable
             accessibilityLabel="Novedades"
-            onPress={() => router.push('/novedades')}
+            // navigate, no push: desde la propia Novedades (o a doble toque)
+            // no debe apilarse otra copia de la pantalla
+            onPress={() => router.navigate('/novedades')}
             style={({ pressed }) => pressed && styles.bellPressed}>
             <Text style={styles.bell}>🔔</Text>
             {hasNews && <View style={styles.bellDot} />}

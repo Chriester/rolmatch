@@ -46,8 +46,9 @@ export function RolderWordmark({ size = 21 }: { size?: number }) {
 export function RolderGradientText({ text, size = 34 }: { text: string; size?: number }) {
   // id único por instancia: con id fijo, durante la transición de ruta
   // conviven dos <defs> iguales y al desmontarse el viejo el url(#...) se
-  // rompe (texto invisible hasta recargar)
-  const textId = `roldr-gtext-${useId().replace(/:/g, '')}`;
+  // rompe (texto invisible hasta recargar). OJO: useId en React 19 devuelve
+  // «r0» (guillemetes, ya no :r0:) — se filtra todo lo no alfanumérico.
+  const textId = `roldr-gtext-${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`;
   const width = Math.max(text.length * size * 0.62, size * 4);
   const height = size * 1.4;
   return (

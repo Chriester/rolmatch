@@ -77,6 +77,15 @@ proponer una mejora, mirar aquí: si ya está listada, no es un hallazgo nuevo.
   plegadas con el valor actual de resumen) es su propia PR. Señal: al
   retomar pulido, o si los testers editan mucho.
 
+## Discord: integración desactivada por completo (decisión de 2026-08-12)
+
+No se va a usar de la forma planeada en un futuro cercano. `DISCORD_ENABLED
+= false` en el cliente, webhooks y cron pausados en el dashboard; el login
+OAuth con Discord sigue activo como simple proveedor de identidad. La skill
+**bot-discord** lleva el aviso. Señal de reactivación: decisión explícita
+de Chris (si llega, revisar antes el rol de Administrador del bot — sigue
+sin rebajarse a permisos mínimos).
+
 ## Esperando a la estrategia de marca (decisión de 2026-08)
 
 Los tres van juntos: hasta que la encargada de marketing fije nombre final

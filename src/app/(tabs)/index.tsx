@@ -142,6 +142,10 @@ export default function HomeScreen() {
   const [lastSwiped, setLastSwiped] = useState<FeedItem | null>(null);
   /** cuándo y para quién se cargó el feed (para no rehacerlo en cada focus) */
   const lastLoad = useRef<{ userId: string; at: number } | null>(null);
+  /** una recarga a la vez: el tirón y el dado son fáciles de repetir */
+  const feedInFlight = useRef(false);
+  /** el registro del push token (permisos + token nativo) va una vez por sesión */
+  const pushRegisteredFor = useRef<string | null>(null);
 
   // Volver de un perfil o de un chat NO debe rehacer el feed: era la consulta
   // más cara de la app, dejaba la pantalla en la rueda y devolvía el mazo a la
@@ -154,6 +158,9 @@ export default function HomeScreen() {
         lastLoad.current?.userId === session.user.id &&
         Date.now() - lastLoad.current.at < FEED_FRESH_MS;
       if (!options?.force && fresh) return;
+      // doble toque al dado / tirón repetido: no lanzar cargas que compitan
+      if (feedInFlight.current) return;
+      feedInFlight.current = true;
       setLoadError(false);
       setLoadErrorDetail(null);
       setItems(undefined);
@@ -163,7 +170,10 @@ export default function HomeScreen() {
       hasCompletedOnboarding(session.user.id)
         .then(setOnboarded)
         .catch(() => setOnboarded(true));
-      registerPushToken(session.user.id);
+      if (pushRegisteredFor.current !== session.user.id) {
+        pushRegisteredFor.current = session.user.id;
+        registerPushToken(session.user.id);
+      }
       fetchPremiumStatus(session.user.id)
         .then((status) => setPremium(status.active))
         .catch(() => {});
@@ -179,6 +189,9 @@ export default function HomeScreen() {
         .catch((error) => {
           setLoadError(true);
           setLoadErrorDetail(error instanceof Error ? error.message : String(error));
+        })
+        .finally(() => {
+          feedInFlight.current = false;
         });
       fetchMyCharacters(session.user.id)
         .then((all) => setMyCharacters(all.filter((c) => c.status === 'looking')))
