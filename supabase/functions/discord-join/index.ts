@@ -3,8 +3,10 @@
 // login. El OAuth de la app pide el scope `guilds.join`, así que el bot puede
 // añadirlo con su access token — sin invitaciones manuales.
 //
-// Se invoca desde la app (supabase.functions.invoke) con el JWT del usuario:
-// DESPLEGAR CON "Verify JWT" ACTIVADO (al contrario que discord-match).
+// Se invoca desde la app (supabase.functions.invoke) con el JWT del usuario.
+// Verify JWT de la pasarela va DESACTIVADO (solo entiende HS256 legacy y el
+// proyecto firma ES256 — devolvía UNAUTHORIZED_ASYMMETRIC_JWT); la sesión se
+// valida aquí dentro con auth.getUser(jwt).
 // Body: { provider_token: string } — el access token de Discord del login.
 //
 // Secrets (compartidos con discord-match): DISCORD_BOT_TOKEN,
