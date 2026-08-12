@@ -12,13 +12,12 @@
 // secciones (mantiene el estado/scroll de cada una), pero su barra visual
 // está apagada (tabBarStyle: display none) para no duplicar esta.
 
-import { LinearGradient } from 'expo-linear-gradient';
 import { router, usePathname } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { RolderLogo } from '@/components/brand';
+import { RolderDieOrbit } from '@/components/brand';
 import { Rolder, RolderFonts } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
 import { setAppBadge } from '@/lib/badge';
@@ -80,14 +79,12 @@ function TabIcon({
 
 function FeedIcon({ active }: { active: boolean }) {
   return (
-    <LinearGradient
-      colors={Rolder.brandGradient}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={[styles.feedButton, active && styles.feedButtonActive]}>
-      {/* el d20 de la marca, con las juntas en blanco sobre el gradiente */}
-      <RolderLogo width={26} line="#FFFFFF" />
-    </LinearGradient>
+    <View style={styles.feedButton}>
+      {/* halo violeta cuando el feed es la pestaña activa */}
+      {active && <View style={styles.feedGlow} />}
+      {/* el d20 orbital de la marca: el propio dado es el botón, sin círculo */}
+      <RolderDieOrbit width={66} />
+    </View>
   );
 }
 
@@ -235,19 +232,19 @@ const styles = StyleSheet.create({
     backgroundColor: Rolder.violetSoft,
   },
   feedButton: {
-    width: 62,
+    width: 66,
     height: 62,
-    borderRadius: 31,
-    marginTop: -26,
+    marginTop: -24,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.25)',
-    boxShadow: '0 6px 20px rgba(139,108,255,0.45)',
   },
-  feedButtonActive: {
-    borderColor: 'rgba(255,255,255,0.85)',
-    boxShadow: '0 6px 26px rgba(255,90,95,0.55)',
+  feedGlow: {
+    position: 'absolute',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(139,108,255,0.3)',
+    boxShadow: '0 0 26px 10px rgba(139,108,255,0.4)',
   },
   badge: {
     position: 'absolute',

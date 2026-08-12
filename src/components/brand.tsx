@@ -6,13 +6,15 @@
 import { StyleSheet, Text, View } from 'react-native';
 import Svg, {
   Defs,
+  G,
   LinearGradient as SvgGradient,
+  Path,
   Polygon,
   Stop,
   Text as SvgText,
 } from 'react-native-svg';
 
-import { Rolder, RolderFonts } from '@/constants/theme';
+import { Rolder } from '@/constants/theme';
 
 // Gradiente propio del logo — más profundo que los acentos coral/violeta
 // de la UI, que no cambian.
@@ -20,6 +22,11 @@ export const BRAND_CRIMSON = '#DE1458';
 export const BRAND_PURPLE = '#8E44AD';
 const DIE_FROM = '#F50747';
 const DIE_TO = '#7A4FC0';
+
+// Las letras del wordmark van en Poppins (geométrica: cuencos circulares,
+// pata recta de la R) — el arte de marca 2026-08 no es Sora, que sigue
+// siendo la fuente del resto de la UI.
+const WORDMARK_FONT = 'Poppins_600SemiBold';
 
 type LogoProps = {
   /** ancho en px; el alto mantiene el ratio 44:48 del hexágono */
@@ -57,6 +64,67 @@ export function RolderLogo({ width = 24, line }: LogoProps) {
         strokeWidth={joint}
         strokeLinejoin="round"
       />
+    </Svg>
+  );
+}
+
+/**
+ * El d20 con su anillo orbital — la versión «planeta» del arte de marca
+ * (roldr-logo-v2). El anillo pasa por detrás del dado arriba a la derecha
+ * y por delante abajo a la izquierda; las juntas de las facetas van en el
+ * color del fondo, como recortadas.
+ */
+export function RolderDieOrbit({ width = 64, line }: LogoProps) {
+  const height = (width * 64) / 72;
+  const stroke = line ?? Rolder.page;
+  return (
+    <Svg width={width} height={height} viewBox="0 0 72 64">
+      <Defs>
+        <SvgGradient id="roldr-orbit-die" x1="0" y1="0" x2="1" y2="1">
+          <Stop offset="0" stopColor={DIE_FROM} />
+          <Stop offset="1" stopColor={DIE_TO} />
+        </SvgGradient>
+        <SvgGradient id="roldr-orbit-ring" x1="0" y1="0" x2="1" y2="0">
+          <Stop offset="0" stopColor={BRAND_CRIMSON} />
+          <Stop offset="1" stopColor={BRAND_PURPLE} />
+        </SvgGradient>
+      </Defs>
+      {/* mitad trasera del anillo */}
+      <G transform="translate(36,32) rotate(-16)">
+        <Path
+          d="M -34 0 A 34 11 0 0 1 34 0"
+          fill="none"
+          stroke="url(#roldr-orbit-ring)"
+          strokeWidth={2.4}
+          strokeLinecap="round"
+          opacity={0.9}
+        />
+      </G>
+      <Polygon points="36,8 55,19 55,45 36,56 17,45 17,19" fill="url(#roldr-orbit-die)" />
+      <Polygon
+        points="36,8 55,45 17,45"
+        fill="none"
+        stroke={stroke}
+        strokeWidth={2}
+        strokeLinejoin="round"
+      />
+      <Polygon
+        points="17,19 55,19 36,56"
+        fill="none"
+        stroke={stroke}
+        strokeWidth={2}
+        strokeLinejoin="round"
+      />
+      {/* mitad delantera del anillo */}
+      <G transform="translate(36,32) rotate(-16)">
+        <Path
+          d="M 34 0 A 34 11 0 0 1 -34 0"
+          fill="none"
+          stroke="url(#roldr-orbit-ring)"
+          strokeWidth={2.4}
+          strokeLinecap="round"
+        />
+      </G>
     </Svg>
   );
 }
@@ -120,8 +188,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   letters: {
-    fontFamily: RolderFonts.bold,
-    fontWeight: '700',
+    fontFamily: WORDMARK_FONT,
+    fontWeight: '600',
     letterSpacing: -0.5,
     includeFontPadding: false,
   },
