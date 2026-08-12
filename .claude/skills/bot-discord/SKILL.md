@@ -5,6 +5,13 @@ description: Integración con Discord de RolMatch — Edge Functions, webhooks, 
 
 # Bot de Discord (Edge Functions)
 
+> **⛔ INTEGRACIÓN DESACTIVADA POR COMPLETO hasta nuevo aviso** (decisión de
+> Chris, 2026-08-12: no se va a usar de la forma planeada en un futuro
+> cercano). `DISCORD_ENABLED = false` en `src/lib/config.ts`, webhooks y
+> cron pausados en el dashboard. El login OAuth con Discord SÍ sigue activo
+> (es solo un proveedor de identidad). No construir nada sobre esta
+> integración sin que Chris la reactive explícitamente.
+
 ## Arquitectura
 - Sin proceso persistente: Edge Functions + API REST de Discord con token de bot.
 - `discord-match`: Database Webhook en INSERT de `matches`. Modelo de canales:
@@ -14,7 +21,10 @@ description: Integración con Discord de RolMatch — Edge Functions, webhooks, 
   **Verify JWT DESACTIVADO**; auth = cabecera `x-webhook-secret`.
 - `discord-join`: la app la invoca tras login (el OAuth pide scope
   `guilds.join`) y el bot une al usuario al servidor comunitario.
-  Desplegar con **Verify JWT ACTIVADO**.
+  **Verify JWT DESACTIVADO** (desde 2026-08-12, PR #181): la pasarela solo
+  valida JWT legacy HS256 y el proyecto firma ES256 — con él activado
+  rechazaba a todos con UNAUTHORIZED_ASYMMETRIC_JWT. La sesión se valida
+  DENTRO de la función con auth.getUser; no reactivar el toggle.
 
 ## Secrets (Edge Functions → Secrets)
 `DISCORD_BOT_TOKEN` (de la MISMA app cuyo bot está en el servidor — hubo un
@@ -22,8 +32,9 @@ bug por tener dos apps), `DISCORD_GUILD_ID`, `WEBHOOK_SECRET`, `SB_SECRET_KEY`
 (clave sb_secret_..., no el service_role legado → PGRST303).
 
 ## Deploy y prueba
-- No hay CLI vinculada: **el usuario pega el código en el editor del
-  dashboard y redespliega**. Decírselo siempre que cambie una función.
+- Desde el PR #114, **mergear a main despliega las 7 funciones solo** (paso
+  de Actions con `supabase functions deploy`; el flag verify_jwt por función
+  vive en `supabase/config.toml`). Ya no se pega código en el dashboard.
 - Probar la función a mano:
   `curl -X POST <url>/functions/v1/discord-match -H "x-webhook-secret: <s>" -d '{"type":"INSERT","table":"matches","record":{...}}'`
 - Re-disparar un match sin la app: `delete from matches ...; insert into matches (user_id, group_id) select ...` en el SQL Editor.

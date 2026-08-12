@@ -10,6 +10,7 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+import { createEmitter } from '@/lib/emitter';
 import { hasColumn, supabase } from '@/lib/supabase';
 
 export type ActivityKind = 'match' | 'applicant' | 'poll' | 'session' | 'warning';
@@ -266,10 +267,35 @@ export async function hasUnseenActivity(userId: string): Promise<boolean> {
   }
 }
 
+// ——— Versión con caché para la campana de AppHeader ———
+//
+// La campana vive en la cabecera de TODAS las pantallas: sin esto, cada
+// focus de cada pantalla relanzaría la tubería completa de fetchActivity
+// (~8 consultas) solo para decidir si pintar un punto. El resultado se
+// cachea un rato; markActivitySeen lo invalida y avisa (newsDot) para que
+// el punto se apague al instante en la cabecera al salir de Novedades.
+
+const NEWS_FRESH_MS = 60_000;
+let newsCache: { userId: string; at: number; value: boolean } | null = null;
+
+/** Avisa a las cabeceras de que el estado del punto ha cambiado. */
+export const newsDot = createEmitter();
+
+export async function hasUnseenActivityCached(userId: string): Promise<boolean> {
+  if (newsCache && newsCache.userId === userId && Date.now() - newsCache.at < NEWS_FRESH_MS) {
+    return newsCache.value;
+  }
+  const value = await hasUnseenActivity(userId);
+  newsCache = { userId, at: Date.now(), value };
+  return value;
+}
+
 /** Novedades abierta: todo lo que se enseñó queda como visto. */
 export async function markActivitySeen(items: ActivityItem[]): Promise<void> {
   try {
     await AsyncStorage.setItem(SEEN_KEY, JSON.stringify(fingerprints(items)));
+    if (newsCache) newsCache = { ...newsCache, value: false, at: Date.now() };
+    newsDot.emit();
   } catch {
     // sin storage: el punto se verá otra vez, no pasa nada
   }

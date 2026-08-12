@@ -3,8 +3,8 @@
 // acabará viviendo aquí.
 
 import Constants from 'expo-constants';
-import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useEffect, useState } from 'react';
 import { Linking, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -113,12 +113,16 @@ function PremiumSection() {
   const session = useSession();
   const [status, setStatus] = useState<PremiumStatus | undefined>(undefined);
 
-  useEffect(() => {
-    if (!session) return;
-    fetchPremiumStatus(session.user.id)
-      .then(setStatus)
-      .catch(() => setStatus({ active: false, until: null }));
-  }, [session]);
+  // En cada focus, no solo al montar: al volver de canjear el código en
+  // /promo la caja tiene que reflejar el premium recién activado.
+  useFocusEffect(
+    useCallback(() => {
+      if (!session) return;
+      fetchPremiumStatus(session.user.id)
+        .then(setStatus)
+        .catch(() => setStatus({ active: false, until: null }));
+    }, [session])
+  );
 
   const until = status?.until;
   const untilLabel =
