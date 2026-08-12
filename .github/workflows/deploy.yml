@@ -64,7 +64,9 @@ jobs:
       # el dashboard. Solo corre si existe el secret SUPABASE_ACCESS_TOKEN
       # (supabase.com → Account → Access Tokens).
       # --use-api: empaquetado en el servidor de Supabase — el runner de
-      # Actions no tiene el Docker de edge-runtime y su registro limita pulls
+      # Actions no tiene el Docker de edge-runtime y su registro limita pulls.
+      # Versión FIJADA: la 2.114.0 se publicó sin binario linux-x64 y tiraba
+      # el deploy; subirla es un cambio consciente, no un npx a ciegas.
       - name: Deploy Edge Functions (Supabase)
         if: ${{ env.SUPABASE_ACCESS_TOKEN != '' }}
-        run: npx supabase functions deploy --use-api --project-ref pyysoeztdtxwbtpxwdnl
+        run: npx supabase@2.113.0 functions deploy --use-api --project-ref pyysoeztdtxwbtpxwdnl
