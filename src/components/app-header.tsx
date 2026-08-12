@@ -3,13 +3,14 @@
 // Perfil (la navegación principal vive en la barra de pestañas inferior).
 
 import { Image } from 'expo-image';
-import { router } from 'expo-router';
-import { useEffect, useState, type ReactNode } from 'react';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { RolderBrand } from '@/components/brand';
 import { Rolder, Spacing } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
+import { hasUnseenActivity } from '@/lib/activity';
 import { fetchUnreadTotal } from '@/lib/messages';
 import { onUnreadChanged } from '@/lib/unread-events';
 import { fetchProfileData } from '@/lib/profile';
@@ -27,6 +28,19 @@ export function AppHeader({ onBack, right, extra }: AppHeaderProps) {
   const session = useSession();
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [unread, setUnread] = useState(0);
+  /** enciende el punto de la campana: hay novedades sin ver */
+  const [hasNews, setHasNews] = useState(false);
+
+  // El punto de la campana se recalcula en CADA focus de la pantalla: al
+  // volver de Novedades tiene que apagarse ya, no en el siguiente montaje.
+  useFocusEffect(
+    useCallback(() => {
+      if (!session) return;
+      hasUnseenActivity(session.user.id)
+        .then(setHasNews)
+        .catch(() => {});
+    }, [session])
+  );
 
   useEffect(() => {
     if (!session) return;
@@ -53,6 +67,17 @@ export function AppHeader({ onBack, right, extra }: AppHeaderProps) {
       </View>
 
       <View style={styles.right}>
+        {/* la campana de novedades vive en la cabecera compartida: visible
+            en todas las pantallas, no solo en el feed */}
+        {session && (
+          <Pressable
+            accessibilityLabel="Novedades"
+            onPress={() => router.push('/novedades')}
+            style={({ pressed }) => pressed && styles.bellPressed}>
+            <Text style={styles.bell}>🔔</Text>
+            {hasNews && <View style={styles.bellDot} />}
+          </Pressable>
+        )}
         {/* el hueco extra NO pisa al avatar: es la navegación principal */}
         {extra}
         {right ??
@@ -132,6 +157,24 @@ const styles = StyleSheet.create({
     width: 12,
     height: 12,
     borderRadius: 6,
+    backgroundColor: Rolder.coral,
+    borderWidth: 2,
+    borderColor: Rolder.page,
+  },
+  bell: {
+    fontSize: 20,
+  },
+  bellPressed: {
+    opacity: 0.6,
+  },
+  // mismo lenguaje que el punto de no-leídos del avatar
+  bellDot: {
+    position: 'absolute',
+    top: -2,
+    right: -4,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
     backgroundColor: Rolder.coral,
     borderWidth: 2,
     borderColor: Rolder.page,

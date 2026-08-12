@@ -64,6 +64,11 @@ const NEXT_CARD_SCALE = 0.95;
 // cuentan como like/pass (solo lo claramente vertical mueve la tira)
 const AXIS_LOCK_DISTANCE = 12;
 const VERTICAL_BIAS = 1.4;
+// Tirar hacia abajo (tarjeta cerrada) = recargar el feed: el dedo arrastra
+// con resistencia hasta un tope y al soltar pasado el umbral se dispara
+const PULL_RESISTANCE = 2.4;
+const PULL_MAX = 96;
+const PULL_TRIGGER = 64;
 
 type TopCardHandle = {
   fly: (dir: 1 | -1) => void;
@@ -80,10 +85,12 @@ type TopCardProps = {
   onSwiped: (choice: SwipeChoice) => void;
   card: ReactNode;
   details?: ReactNode;
+  /** tirar hacia abajo con la tarjeta cerrada dispara esto (recargar) */
+  onPullRefresh?: () => void;
 };
 
 const TopCard = forwardRef<TopCardHandle, TopCardProps>(function TopCard(
-  { width, height, enabled, progress, likeLabel, passLabel, onSwiped, card, details },
+  { width, height, enabled, progress, likeLabel, passLabel, onSwiped, card, details, onPullRefresh },
   ref
 ) {
   const tx = useSharedValue(0);
@@ -94,11 +101,21 @@ const TopCard = forwardRef<TopCardHandle, TopCardProps>(function TopCard(
   const axis = useSharedValue(0);
   // 1 mientras el arrastre supera el umbral (para el tick háptico)
   const armed = useSharedValue(0);
+  // px de tirón hacia abajo (con resistencia), para recargar
+  const pull = useSharedValue(0);
+  const pullArmed = useSharedValue(0);
   const threshold = width * THRESHOLD_FRACTION;
   const exitDistance = Math.max(width * 1.6, Dimensions.get('window').width * 1.1);
   const hasDetails = details !== undefined;
+  // booleano capturable por los worklets (la función en sí va por runOnJS)
+  const canPull = onPullRefresh !== undefined;
 
   const finish = (dir: number) => onSwiped(dir > 0 ? 'like' : 'pass');
+
+  const triggerRefresh = () => {
+    hapticSwipe();
+    onPullRefresh?.();
+  };
 
   const fly = (dir: 1 | -1) => {
     hapticSwipe();
@@ -142,11 +159,23 @@ const TopCard = forwardRef<TopCardHandle, TopCardProps>(function TopCard(
           armed.value = isArmed;
           if (isArmed === 1) runOnJS(hapticArm)();
         }
-      } else if (axis.value === 2 && hasDetails && height > 0) {
-        sheet.value = Math.min(
-          Math.max(sheetAtStart.value - event.translationY / height, 0),
-          1
-        );
+      } else if (axis.value === 2) {
+        // Con la tarjeta cerrada, el tramo hacia abajo es el tirón de
+        // recarga (resistencia + tope); hacia arriba sigue abriendo la tira
+        if (canPull && sheetAtStart.value === 0) {
+          pull.value = Math.min(Math.max(event.translationY, 0) / PULL_RESISTANCE, PULL_MAX);
+          const isPullArmed = pull.value > PULL_TRIGGER ? 1 : 0;
+          if (isPullArmed !== pullArmed.value) {
+            pullArmed.value = isPullArmed;
+            if (isPullArmed === 1) runOnJS(hapticArm)();
+          }
+        }
+        if (hasDetails && height > 0) {
+          sheet.value = Math.min(
+            Math.max(sheetAtStart.value - event.translationY / height, 0),
+            1
+          );
+        }
       }
     })
     .onEnd((event) => {
@@ -172,6 +201,10 @@ const TopCard = forwardRef<TopCardHandle, TopCardProps>(function TopCard(
           : sheet.value > 0.5 ? 1
           : 0;
         sheet.value = withTiming(hasDetails ? target : 0, SHEET_TIMING);
+        // Tirón soltado pasado el umbral: recarga (la tarjeta vuelve seca)
+        if (pull.value > PULL_TRIGGER) runOnJS(triggerRefresh)();
+        pull.value = withTiming(0, SHEET_TIMING);
+        pullArmed.value = 0;
       }
       axis.value = 0;
     });
@@ -179,6 +212,7 @@ const TopCard = forwardRef<TopCardHandle, TopCardProps>(function TopCard(
   const frameStyle = useAnimatedStyle(() => ({
     transform: [
       { translateX: tx.value },
+      { translateY: pull.value },
       {
         rotate: `${interpolate(
           tx.value,
@@ -186,6 +220,15 @@ const TopCard = forwardRef<TopCardHandle, TopCardProps>(function TopCard(
           [-MAX_ROTATION_DEG, 0, MAX_ROTATION_DEG]
         )}deg`,
       },
+    ],
+  }));
+
+  // Indicador del tirón: aparece con el arrastre y gira hasta armarse
+  const pullBadgeStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(pull.value, [8, PULL_TRIGGER], [0, 1], Extrapolation.CLAMP),
+    transform: [
+      { rotate: `${interpolate(pull.value, [0, PULL_MAX], [0, 180])}deg` },
+      { scale: interpolate(pull.value, [PULL_TRIGGER, PULL_MAX], [1, 1.15], Extrapolation.CLAMP) },
     ],
   }));
 
@@ -242,6 +285,11 @@ const TopCard = forwardRef<TopCardHandle, TopCardProps>(function TopCard(
         <Animated.View style={[styles.stamp, styles.stampPass, passStampStyle]}>
           <Text style={[styles.stampText, styles.stampTextPass]}>{passLabel}</Text>
         </Animated.View>
+        {canPull && (
+          <Animated.View style={[styles.pullBadge, pullBadgeStyle]}>
+            <Text style={styles.pullGlyph}>↻</Text>
+          </Animated.View>
+        )}
       </Animated.View>
     </GestureDetector>
   );
@@ -260,6 +308,8 @@ type SwipeDeckProps<T> = {
   passLabel?: string;
   /** ref imperativa para botones: swipe('like'|'pass') y toggleDetails() */
   deckRef?: MutableRefObject<SwipeDeckHandle | null>;
+  /** tirar hacia abajo con la tarjeta cerrada dispara esto (recargar) */
+  onPullRefresh?: () => void;
 };
 
 export function SwipeDeck<T>({
@@ -273,6 +323,7 @@ export function SwipeDeck<T>({
   likeLabel = '🎲 ¡CRÍTICO!',
   passLabel = '💀 PIFIA',
   deckRef,
+  onPullRefresh,
 }: SwipeDeckProps<T>) {
   const [size, setSize] = useState({ width: 0, height: 0 });
   const progress = useSharedValue(0);
@@ -343,6 +394,7 @@ export function SwipeDeck<T>({
           onSwiped={handleSwiped}
           card={renderCard(current, true)}
           details={renderDetails ? renderDetails(current) : undefined}
+          onPullRefresh={onPullRefresh}
         />
       )}
     </View>
@@ -403,5 +455,23 @@ const styles = StyleSheet.create({
   },
   stampTextPass: {
     color: '#3D0A0C',
+  },
+  pullBadge: {
+    position: 'absolute',
+    top: 16,
+    alignSelf: 'center',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(11,11,18,0.75)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.25)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pullGlyph: {
+    color: '#B9A6FF',
+    fontSize: 20,
+    fontWeight: '700',
   },
 });
