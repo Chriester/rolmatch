@@ -5,7 +5,7 @@
 import Constants from 'expo-constants';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
+import { Linking, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { confirmAction, showAlert } from '@/lib/alert';
@@ -16,9 +16,10 @@ import { ListRow, OutlineButton, ScreenBlurb, ScreenTitle } from '@/components/u
 import { MaxContentWidth, Rolder, RolderFonts, Spacing } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
 import { track } from '@/lib/analytics';
-import { APP_URL } from '@/lib/config';
+import { APP_URL, SUPPORT_URL } from '@/lib/config';
 import { fetchMyOwnedGroups } from '@/lib/groups';
 import { amIModerator } from '@/lib/moderation';
+import { fetchPremiumStatus, type PremiumStatus } from '@/lib/premium';
 import { fetchSearching, setSearching } from '@/lib/profile';
 import { shareLink } from '@/lib/share';
 import { enableWebPush, webPushState, type WebPushState } from '@/lib/web-push';
@@ -95,6 +96,70 @@ function SearchingSection() {
           trackColor={{ true: Rolder.like, false: 'rgba(255,255,255,0.15)' }}
         />
       </View>
+    </View>
+  );
+}
+
+// Qué incluye premium y en qué estado está el tuyo. En la alpha nadie paga:
+// el premium llega por código promocional (los testers lo tienen incluido).
+const PREMIUM_PERKS: { icon: string; label: string }[] = [
+  { icon: '↩️', label: 'Rewind: deshaz el último swipe si te arrepientes' },
+  { icon: '🔭', label: 'Encuentros al descubierto: ve quién te ha dado like antes de swipear' },
+  { icon: '🚀', label: 'Boost: destaca tu mesa 7 días, la primera de los feeds' },
+  { icon: '🎨', label: 'Temas premium para las hojas de personaje' },
+];
+
+function PremiumSection() {
+  const session = useSession();
+  const [status, setStatus] = useState<PremiumStatus | undefined>(undefined);
+
+  useEffect(() => {
+    if (!session) return;
+    fetchPremiumStatus(session.user.id)
+      .then(setStatus)
+      .catch(() => setStatus({ active: false, until: null }));
+  }, [session]);
+
+  const until = status?.until;
+  const untilLabel =
+    until === 'infinity' || until == null
+      ? 'para siempre'
+      : `hasta el ${new Date(until).toLocaleDateString('es-ES')}`;
+
+  return (
+    <View style={styles.pushBox}>
+      <Text style={styles.pushTitle}>✨ Premium</Text>
+      <Text style={styles.pushDetail}>
+        {status?.active
+          ? `✅ Activo ${untilLabel}. Tienes desbloqueado:`
+          : 'Qué desbloquea el premium de rolder:'}
+      </Text>
+      <View style={styles.perksList}>
+        {PREMIUM_PERKS.map((perk) => (
+          <View key={perk.label} style={styles.perkRow}>
+            <Text style={styles.perkIcon}>{perk.icon}</Text>
+            <Text style={styles.perkLabel}>{perk.label}</Text>
+          </View>
+        ))}
+      </View>
+      {status !== undefined && !status.active && (
+        <OutlineButton
+          label="✨ Canjear mi código de tester"
+          onPress={() => router.push('/promo')}
+        />
+      )}
+      {SUPPORT_URL && (
+        <>
+          <Text style={styles.pushDetail}>
+            rolder es gratis y sin anuncios. Si te está encontrando mesa, puedes invitarnos a
+            un café:
+          </Text>
+          <OutlineButton
+            label="☕ Apóyanos"
+            onPress={() => SUPPORT_URL && Linking.openURL(SUPPORT_URL)}
+          />
+        </>
+      )}
     </View>
   );
 }
@@ -214,6 +279,7 @@ export default function SettingsScreen() {
 
           <SearchingSection />
           <WebPushSection />
+          <PremiumSection />
 
           {OPTIONS.map((option) => (
             <ListRow key={option.label} onPress={() => router.push(option.route as never)}>
@@ -344,6 +410,25 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.three,
+  },
+  perksList: {
+    gap: 6,
+  },
+  perkRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+  },
+  perkIcon: {
+    fontSize: 14,
+    marginTop: 1,
+  },
+  perkLabel: {
+    flex: 1,
+    color: Rolder.textSecondary,
+    fontSize: 12.5,
+    fontFamily: RolderFonts.regular,
+    lineHeight: 18,
   },
   searchingText: {
     flex: 1,
