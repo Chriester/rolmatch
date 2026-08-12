@@ -3,6 +3,7 @@
 // las letras son <Text> planos porque sus colores son sólidos — así la
 // versión web (brand.web.tsx) comparte forma. Mantener exports en paralelo.
 
+import { useId } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Svg, {
   Defs,
@@ -37,18 +38,22 @@ type LogoProps = {
 
 /** El d20 de facetas — icono de la marca (la «o» del wordmark) */
 export function RolderLogo({ width = 24, line }: LogoProps) {
+  // id único por instancia: con id fijo, durante la transición de ruta
+  // conviven dos <defs> iguales y al desmontarse el viejo el url(#...) del
+  // dado que queda se rompe (hexágono invisible hasta recargar)
+  const dieId = `roldr-die-${useId().replace(/:/g, '')}`;
   const height = (width * 48) / 44;
   const stroke = line ?? Rolder.page;
   const joint = Math.max(1.4, width * 0.055);
   return (
     <Svg width={width} height={height} viewBox="0 0 44 48">
       <Defs>
-        <SvgGradient id="roldr-die" x1="0" y1="0" x2="1" y2="1">
+        <SvgGradient id={dieId} x1="0" y1="0" x2="1" y2="1">
           <Stop offset="0" stopColor={DIE_FROM} />
           <Stop offset="1" stopColor={DIE_TO} />
         </SvgGradient>
       </Defs>
-      <Polygon points="22,1 43,13 43,35 22,47 1,35 1,13" fill="url(#roldr-die)" />
+      <Polygon points="22,1 43,13 43,35 22,47 1,35 1,13" fill={`url(#${dieId})`} />
       {/* la estrella de facetas: las dos caras trianguladas del d20 */}
       <Polygon
         points="22,1 43,35 1,35"
@@ -75,16 +80,20 @@ export function RolderLogo({ width = 24, line }: LogoProps) {
  * color del fondo, como recortadas.
  */
 export function RolderDieOrbit({ width = 64, line }: LogoProps) {
+  // id único por instancia — mismo motivo que en RolderLogo
+  const uid = useId().replace(/:/g, '');
+  const dieId = `roldr-orbit-die-${uid}`;
+  const ringId = `roldr-orbit-ring-${uid}`;
   const height = (width * 64) / 72;
   const stroke = line ?? Rolder.page;
   return (
     <Svg width={width} height={height} viewBox="0 0 72 64">
       <Defs>
-        <SvgGradient id="roldr-orbit-die" x1="0" y1="0" x2="1" y2="1">
+        <SvgGradient id={dieId} x1="0" y1="0" x2="1" y2="1">
           <Stop offset="0" stopColor={DIE_FROM} />
           <Stop offset="1" stopColor={DIE_TO} />
         </SvgGradient>
-        <SvgGradient id="roldr-orbit-ring" x1="0" y1="0" x2="1" y2="0">
+        <SvgGradient id={ringId} x1="0" y1="0" x2="1" y2="0">
           <Stop offset="0" stopColor={BRAND_CRIMSON} />
           <Stop offset="1" stopColor={BRAND_PURPLE} />
         </SvgGradient>
@@ -94,13 +103,13 @@ export function RolderDieOrbit({ width = 64, line }: LogoProps) {
         <Path
           d="M -34 0 A 34 11 0 0 1 34 0"
           fill="none"
-          stroke="url(#roldr-orbit-ring)"
+          stroke={`url(#${ringId})`}
           strokeWidth={2.4}
           strokeLinecap="round"
           opacity={0.9}
         />
       </G>
-      <Polygon points="36,8 55,19 55,45 36,56 17,45 17,19" fill="url(#roldr-orbit-die)" />
+      <Polygon points="36,8 55,19 55,45 36,56 17,45 17,19" fill={`url(#${dieId})`} />
       <Polygon
         points="36,8 55,45 17,45"
         fill="none"
@@ -120,7 +129,7 @@ export function RolderDieOrbit({ width = 64, line }: LogoProps) {
         <Path
           d="M 34 0 A 34 11 0 0 1 -34 0"
           fill="none"
-          stroke="url(#roldr-orbit-ring)"
+          stroke={`url(#${ringId})`}
           strokeWidth={2.4}
           strokeLinecap="round"
         />
@@ -147,12 +156,14 @@ export function RolderWordmark({ size = 21 }: WordmarkProps) {
 
 /** Texto arbitrario con el gradiente de marca (p. ej. «¡Es un match!») */
 export function RolderGradientText({ text, size = 34 }: { text: string; size?: number }) {
+  // id único por instancia — mismo motivo que en RolderLogo
+  const textId = `roldr-gtext-${useId().replace(/:/g, '')}`;
   const width = Math.max(text.length * size * 0.62, size * 4);
   const height = size * 1.4;
   return (
     <Svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
       <Defs>
-        <SvgGradient id="roldr-gtext" x1="0" y1="0" x2="1" y2="0">
+        <SvgGradient id={textId} x1="0" y1="0" x2="1" y2="0">
           <Stop offset="0" stopColor={BRAND_CRIMSON} />
           <Stop offset="1" stopColor={BRAND_PURPLE} />
         </SvgGradient>
@@ -160,7 +171,7 @@ export function RolderGradientText({ text, size = 34 }: { text: string; size?: n
       <SvgText
         x={width / 2}
         y={size * 1.05}
-        fill="url(#roldr-gtext)"
+        fill={`url(#${textId})`}
         fontFamily="Sora_800ExtraBold"
         fontSize={size}
         fontWeight="800"
