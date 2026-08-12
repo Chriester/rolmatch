@@ -29,6 +29,7 @@ import { ChatInfoPanel } from '@/components/chat-info-panel';
 import { ChatPollBanner } from '@/components/chat-poll-banner';
 import { DiceRoller } from '@/components/dice-roller';
 import { MessageActions } from '@/components/message-actions';
+import { Reveal } from '@/components/reveal';
 import { RollBubble } from '@/components/roll-bubble';
 import { parseRoll, type DiceRoll } from '@/lib/dice';
 import { fetchPolls, subscribeToPolls, unsubscribeFromPolls, type SessionPoll } from '@/lib/polls';
@@ -587,14 +588,20 @@ export function GroupChatPanel({ id }: { id: string }) {
               </View>
             )}
             {pickerTab !== null && pickerTab !== 'dice' && (
-              <ChatMediaPickers
-                tab={pickerTab}
-                onEmoji={(e) => setDraft((d) => d + e)}
-                onSticker={(s) => handleSendMedia('sticker', { body: s })}
-                onGif={(url) => handleSendMedia('gif', { mediaUrl: url })}
-              />
+              <Reveal switchKey={pickerTab} distance={8}>
+                <ChatMediaPickers
+                  tab={pickerTab}
+                  onEmoji={(e) => setDraft((d) => d + e)}
+                  onSticker={(s) => handleSendMedia('sticker', { body: s })}
+                  onGif={(url) => handleSendMedia('gif', { mediaUrl: url })}
+                />
+              </Reveal>
             )}
-            {pickerTab === 'dice' && <DiceRoller onRoll={handleSendRoll} busy={sending} />}
+            {pickerTab === 'dice' && (
+              <Reveal distance={8}>
+                <DiceRoller onRoll={handleSendRoll} busy={sending} />
+              </Reveal>
+            )}
             {/* Composer de DOS botones (3b): el dado siempre a la vista —
                 es identidad de producto — y ＋ agrupa el resto. Cinco
                 botones del mismo peso era ninguno importante. */}
@@ -615,7 +622,7 @@ export function GroupChatPanel({ id }: { id: string }) {
                 <Text style={styles.tabGlyph}>🎲</Text>
               </Pressable>
               {attachOpen && (
-                <>
+                <Reveal distance={4} style={styles.attachReveal}>
                   <Pressable
                     style={[styles.tabButton, pickerTab === 'emoji' && styles.tabActive]}
                     onPress={() => setPickerTab(pickerTab === 'emoji' ? null : 'emoji')}
@@ -643,7 +650,7 @@ export function GroupChatPanel({ id }: { id: string }) {
                     accessibilityLabel="Enviar foto">
                     <Text style={styles.tabGlyph}>📷</Text>
                   </Pressable>
-                </>
+                </Reveal>
               )}
             </View>
             <View style={styles.composerRow}>
@@ -990,6 +997,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 6,
     paddingTop: Spacing.two,
+  },
+  attachReveal: {
+    flexDirection: 'row',
+    gap: 6,
   },
   tabButton: {
     borderRadius: 10,

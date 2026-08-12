@@ -14,8 +14,10 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, {
+  Easing,
   Extrapolation,
   interpolate,
+  ReduceMotion,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
@@ -30,6 +32,7 @@ import { APP_URL, DISCORD_ENABLED } from '@/lib/config';
 import { AppHeader } from '@/components/app-header';
 import { AvatarStack } from '@/components/avatar-stack';
 import { PublicGroupInvite } from '@/components/public-group-invite';
+import { Reveal } from '@/components/reveal';
 import { TableTabs, type TableTabKey } from '@/components/table-tabs';
 import { GroupChatPanel } from './chat';
 import { GroupSchedulePanel } from './schedule';
@@ -164,8 +167,14 @@ function GroupDetailScreen() {
   // El hero encoge al salir de la pestaña Mesa: misma cabecera, más sitio.
   const heroH = useSharedValue(tab === 'mesa' ? HERO_FULL : HERO_MINI);
   useEffect(() => {
-     
-    heroH.value = withTiming(tab === 'mesa' ? HERO_FULL : HERO_MINI, { duration: 240 });
+
+    // ReduceMotion.Never: con los efectos del sistema apagados (Windows a
+    // menudo) Reanimated saltaría el timing y el hero cambiaría en seco
+    heroH.value = withTiming(tab === 'mesa' ? HERO_FULL : HERO_MINI, {
+      duration: 260,
+      easing: Easing.inOut(Easing.cubic),
+      reduceMotion: ReduceMotion.Never,
+    });
   }, [tab, heroH]);
   const heroAnimStyle = useAnimatedStyle(() => ({ height: heroH.value }));
   const heroDetailStyle = useAnimatedStyle(() => ({
@@ -505,6 +514,9 @@ function GroupDetailScreen() {
           )}
         </View>
 
+        {/* El panel activo aparece con un fade+deslizamiento corto: el
+            cambio de pestaña se lee como movimiento, no como corte */}
+        <Reveal switchKey={tab} style={styles.panelReveal}>
         {tab === 'chat' && <GroupChatPanel id={group.id} />}
         {tab === 'agenda' && <GroupSchedulePanel id={group.id} />}
         {tab === 'diario' && (
@@ -767,6 +779,7 @@ function GroupDetailScreen() {
               </Pressable>
             )}
             {seatsDetail && (
+            <Reveal distance={6}>
             <View style={styles.seatsRow}>
               {group.group_members.map((member) => {
                 const isMe = member.user_id === session?.user.id;
@@ -865,6 +878,7 @@ function GroupDetailScreen() {
                 </Pressable>
               ))}
             </View>
+            </Reveal>
             )}
             {group.experience_wanted && (
               <Text style={styles.bodySoft}>
@@ -1056,8 +1070,9 @@ function GroupDetailScreen() {
                   />
                 )}
               </View>
-              {transferOpen &&
-                group.group_members
+              {transferOpen && (
+                <Reveal distance={6} style={styles.transferList}>
+                {group.group_members
                   .filter((m) => m.user_id !== session!.user.id)
                   .map((member) => (
                     <Pressable
@@ -1092,6 +1107,8 @@ function GroupDetailScreen() {
                       <Text style={styles.transferHint}>Hacer GM ›</Text>
                     </Pressable>
                   ))}
+                </Reveal>
+              )}
             </View>
           )}
 
@@ -1141,6 +1158,7 @@ function GroupDetailScreen() {
           )}
         </ScrollView>
         )}
+        </Reveal>
       </SafeAreaView>
     </ThemedView>
   );
@@ -1171,6 +1189,9 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingTop: Spacing.three,
     gap: Spacing.three,
+  },
+  panelReveal: {
+    flex: 1,
   },
   block: {
     gap: 8,
@@ -1568,6 +1589,9 @@ const styles = StyleSheet.create({
     color: Rolder.textSecondary,
     fontSize: 13,
     lineHeight: 19,
+  },
+  transferList: {
+    gap: 8,
   },
   transferRow: {
     flexDirection: 'row',

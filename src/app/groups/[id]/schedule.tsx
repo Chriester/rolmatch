@@ -18,6 +18,7 @@ import {
 import { CalendarPicker } from '@/components/calendar-picker';
 import { Chip } from '@/components/chip';
 import { OrganizarCoach } from '@/components/organizar-coach';
+import { Reveal } from '@/components/reveal';
 import { TimeField, type TimeValue } from '@/components/time-field';
 import { OutlineButton, PrimaryButton, SectionLabel } from '@/components/ui';
 import { MaxContentWidth, Rolder, RolderFonts, Spacing } from '@/constants/theme';
@@ -401,6 +402,7 @@ export function GroupSchedulePanel({ id }: { id: string }) {
                     )}
                   </View>
                   {editingSession?.id === s.id && (
+                    <Reveal distance={6}>
                     <View style={styles.formBlock}>
                       <CalendarPicker
                         selected={editDay ? new Set([editDay]) : new Set()}
@@ -433,6 +435,7 @@ export function GroupSchedulePanel({ id }: { id: string }) {
                         />
                       </View>
                     </View>
+                    </Reveal>
                   )}
                   <View style={styles.rsvpRow}>
                     <Pressable
@@ -591,6 +594,7 @@ export function GroupSchedulePanel({ id }: { id: string }) {
                       </Text>
                     ))}
                     {proposingFor === poll.id ? (
+                      <Reveal distance={6}>
                       <View style={styles.formBlock}>
                         <SectionLabel>Tu fecha propuesta</SectionLabel>
                         <CalendarPicker
@@ -618,6 +622,7 @@ export function GroupSchedulePanel({ id }: { id: string }) {
                           />
                         </View>
                       </View>
+                      </Reveal>
                     ) : (
                       <OutlineButton
                         label="➕ Proponer otra fecha"
@@ -647,6 +652,7 @@ export function GroupSchedulePanel({ id }: { id: string }) {
                 onPress={() => setComposing(true)}
               />
             ) : (
+              <Reveal distance={8}>
               <View style={styles.formBlock}>
                 <SectionLabel>Fechas propuestas</SectionLabel>
                 <CalendarPicker
@@ -779,6 +785,7 @@ export function GroupSchedulePanel({ id }: { id: string }) {
                   disabled={busy || days.size === 0}
                 />
               </View>
+              </Reveal>
             ))}
 
           {!isOwner && openPolls.length === 0 && (
