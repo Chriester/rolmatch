@@ -7,7 +7,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 
 import { humanizeError, showAlert } from '@/lib/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { RolderLogo, RolderWordmark } from '@/components/brand';
+import { RolderWordmark } from '@/components/brand';
 import { ThemedView } from '@/components/themed-view';
 import { Rolder, RolderFonts } from '@/constants/theme';
 import { signInWithDiscord, signInWithEmail, signInWithGoogle } from '@/lib/auth';
@@ -56,7 +56,8 @@ export default function LoginScreen() {
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.brand}>
-          <RolderLogo width={40} />
+          {/* solo el wordmark: ya integra el dado como «o» — el icono suelto
+              al lado lo duplicaba */}
           <RolderWordmark size={38} />
         </View>
         <Text style={styles.tagline}>Encuentra mesa. Encuentra grupo. Juega.</Text>
