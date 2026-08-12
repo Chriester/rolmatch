@@ -25,6 +25,7 @@ import { useSession } from '@/hooks/use-session';
 import { confirmAction, humanizeError, showAlert } from '@/lib/alert';
 import { fetchGroup, type GroupDetail } from '@/lib/groups';
 import { fetchNudged, sendNudge } from '@/lib/nudges';
+import { cacheGet, cacheSet } from '@/lib/screen-cache';
 import { markCoachSeen } from '@/lib/tutorial';
 import {
   closePoll,
@@ -88,12 +89,20 @@ export function GroupSchedulePanel({ id }: { id: string }) {
   // la suscripción depende del id, no del objeto session: supabase-js emite
   // una sesión nueva en cada refresco de token y la rehacía sin motivo
   const userId = session?.user.id ?? null;
-  const [group, setGroup] = useState<GroupDetail | null>(null);
-  const [sessions, setSessions] = useState<GameSession[]>([]);
+  // arranca con lo último visto (caché compartida con el hub y el chat) para
+  // no enseñar la rueda en cada visita a la pestaña; el load refresca detrás
+  const [group, setGroup] = useState<GroupDetail | null>(
+    () => (id ? cacheGet<GroupDetail>(`group:${id}`) ?? null : null)
+  );
+  const [sessions, setSessions] = useState<GameSession[]>(
+    () => (id ? cacheGet<GameSession[]>(`group-sessions:${id}`) ?? [] : [])
+  );
   const [rsvps, setRsvps] = useState<Map<string, SessionRsvps>>(new Map());
   /** por sesión, a quién ya se le dio un toque (migr. 00054) */
   const [nudged, setNudged] = useState<Map<string, Set<string>>>(new Map());
-  const [polls, setPolls] = useState<SessionPoll[] | undefined>(undefined);
+  const [polls, setPolls] = useState<SessionPoll[] | undefined>(
+    () => (id ? cacheGet<SessionPoll[]>(`group-polls:${id}`) : undefined)
+  );
   const [busy, setBusy] = useState(false);
 
   // composer del GM
@@ -118,15 +127,26 @@ export function GroupSchedulePanel({ id }: { id: string }) {
   const load = useCallback(() => {
     if (!id || !session) return;
     const viewerId = session.user.id;
-    fetchGroup(id).then(setGroup).catch(() => {});
+    fetchGroup(id)
+      .then((g) => {
+        cacheSet(`group:${id}`, g);
+        setGroup(g);
+      })
+      .catch(() => {});
     fetchUpcomingSessions(id)
       .then((list) => {
+        cacheSet(`group-sessions:${id}`, list);
         setSessions(list);
         fetchRsvps(list.map((s) => s.id), viewerId).then(setRsvps);
         fetchNudged('confirm', list.map((s) => s.id)).then(setNudged);
       })
       .catch(() => {});
-    fetchPolls(id, viewerId).then(setPolls).catch(() => setPolls([]));
+    fetchPolls(id, viewerId)
+      .then((list) => {
+        cacheSet(`group-polls:${id}`, list);
+        setPolls(list);
+      })
+      .catch(() => setPolls((current) => current ?? []));
   }, [id, session]);
 
   useFocusEffect(load);
@@ -136,7 +156,12 @@ export function GroupSchedulePanel({ id }: { id: string }) {
   useEffect(() => {
     if (!id || !userId) return;
     const channel = subscribeToPolls(id, () => {
-      fetchPolls(id, userId).then(setPolls).catch(() => {});
+      fetchPolls(id, userId)
+        .then((list) => {
+          cacheSet(`group-polls:${id}`, list);
+          setPolls(list);
+        })
+        .catch(() => {});
     });
     return () => unsubscribeFromPolls(channel);
   }, [id, userId]);
