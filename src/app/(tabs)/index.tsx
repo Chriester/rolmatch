@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { hasUnseenActivity } from '@/lib/activity';
+import { onFeedRefresh } from '@/lib/feed-events';
 import { confirmAction, humanizeError, showAlert } from '@/lib/alert';
 import { track } from '@/lib/analytics';
 import { AppHeader } from '@/components/app-header';
@@ -140,8 +140,6 @@ export default function HomeScreen() {
   const [myAvatar, setMyAvatar] = useState<string | null>(null);
   const [premium, setPremium] = useState(false);
   const [lastSwiped, setLastSwiped] = useState<FeedItem | null>(null);
-  /** enciende el punto de la campana: hay novedades sin ver */
-  const [hasNews, setHasNews] = useState(false);
   /** cuándo y para quién se cargó el feed (para no rehacerlo en cada focus) */
   const lastLoad = useRef<{ userId: string; at: number } | null>(null);
 
@@ -152,9 +150,6 @@ export default function HomeScreen() {
   const load = useCallback(
     (options?: { force?: boolean }) => {
       if (!session) return;
-      // el punto de la campana se recalcula en CADA focus, fuera del
-      // throttle del feed: al volver de Novedades tiene que apagarse ya
-      hasUnseenActivity(session.user.id).then(setHasNews);
       const fresh =
         lastLoad.current?.userId === session.user.id &&
         Date.now() - lastLoad.current.at < FEED_FRESH_MS;
@@ -196,6 +191,9 @@ export default function HomeScreen() {
   );
 
   const reload = useCallback(() => load({ force: true }), [load]);
+
+  // El dado de la barra inferior, tocado estando ya en el feed, recarga
+  useEffect(() => onFeedRefresh(reload), [reload]);
 
   // Un feed vacío que solo dice «no hay nada» deja al usuario sin saber qué
   // tocar. Si hay mesas que se han caído por un filtro duro, lo decimos y
@@ -654,27 +652,9 @@ export default function HomeScreen() {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        <AppHeader
-          extra={
-            <>
-              {/* refresco manual: sin esto solo refrescaba al volver con el
-                  feed viejo (>2 min) — «acabo de crear mi mesa, mírala» */}
-              <Pressable
-                accessibilityLabel="Actualizar el feed"
-                onPress={reload}
-                style={({ pressed }) => pressed && styles.bellPressed}>
-                <Text style={styles.refreshGlyph}>↻</Text>
-              </Pressable>
-              <Pressable
-                accessibilityLabel="Novedades"
-                onPress={() => router.push('/novedades')}
-                style={({ pressed }) => pressed && styles.bellPressed}>
-                <Text style={styles.bell}>🔔</Text>
-                {hasNews && <View style={styles.bellDot} />}
-              </Pressable>
-            </>
-          }
-        />
+        {/* la recarga manual vive ahora en el dado de la barra inferior y en
+            el tirón hacia abajo de la tarjeta; la campana, en AppHeader */}
+        <AppHeader />
 
         {loadError ? (
           <View style={styles.centerBox}>
@@ -731,6 +711,7 @@ export default function HomeScreen() {
               <SwipeDeck
                 items={items}
                 index={index}
+                onPullRefresh={reload}
                 keyFor={itemKey}
                 renderCard={renderCard}
                 renderDetails={(item) => {
@@ -890,31 +871,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontFamily: RolderFonts.semibold,
     fontWeight: '600',
-  },
-  bell: {
-    fontSize: 20,
-  },
-  refreshGlyph: {
-    color: Rolder.violetSoft,
-    fontSize: 24,
-    fontFamily: RolderFonts.semibold,
-    fontWeight: '700',
-    marginTop: -2,
-  },
-  bellPressed: {
-    opacity: 0.6,
-  },
-  // mismo lenguaje que el punto de no-leídos del avatar (app-header)
-  bellDot: {
-    position: 'absolute',
-    top: -2,
-    right: -4,
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: Rolder.coral,
-    borderWidth: 2,
-    borderColor: Rolder.page,
   },
   emptyAction: {
     color: Rolder.violetSoft,

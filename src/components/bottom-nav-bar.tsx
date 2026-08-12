@@ -20,6 +20,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Rolder, RolderFonts } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
 import { setAppBadge } from '@/lib/badge';
+import { emitFeedRefresh } from '@/lib/feed-events';
 import { hapticTap } from '@/lib/haptics';
 import { onLikesSeenChanged } from '@/lib/likes-events';
 import { getLastSeenLikesAt } from '@/lib/likes-seen';
@@ -145,7 +146,12 @@ export function BottomNavBar() {
   const active = resolveActiveTab(pathname);
 
   const go = (tab: TabKey) => {
-    if (TAB_PATH[tab] === pathname) return;
+    if (TAB_PATH[tab] === pathname) {
+      // volver a tocar el dado estando ya en el feed = recargarlo (el ↻ de
+      // la cabecera se retiró; esta es ahora la recarga manual principal)
+      if (tab === 'index') emitFeedRefresh();
+      return;
+    }
     router.navigate(TAB_PATH[tab] as never);
   };
 
