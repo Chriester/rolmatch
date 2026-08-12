@@ -39,6 +39,13 @@ as $$
   select value ~ '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$';
 $$;
 
+-- Un intento anterior dejó estas policies creadas sin el bucket (borrar un
+-- bucket desde el dashboard no borra sus policies): drop primero para que
+-- la migración entre de una pieza se aplique desde donde se aplique.
+drop policy if exists "chat-media: leer si eres de la conversacion" on storage.objects;
+drop policy if exists "chat-media: subir a lo tuyo" on storage.objects;
+drop policy if exists "chat-media: borrar lo tuyo" on storage.objects;
+
 -- Puede mirar quien esté en esa conversación: miembros de la mesa, o
 -- cualquiera de los dos lados del privado.
 create policy "chat-media: leer si eres de la conversacion" on storage.objects
