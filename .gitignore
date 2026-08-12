@@ -47,3 +47,6 @@ example
 App de rol y busqueda de mesas*
 App de rol y búsqueda de mesas*
 *.zip
+
+# graft's local graph cache — regenerable, not committed (run `graft build`).
+graft/
