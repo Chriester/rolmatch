@@ -14,11 +14,24 @@
 
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
+// La invoca el navegador (supabase.functions.invoke desde la web): sin
+// contestar el preflight OPTIONS con estas cabeceras, el POST real nunca
+// llega y la app solo ve un error opaco.
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+const jsonHeaders = { 'Content-Type': 'application/json', ...corsHeaders };
+
 Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   const jwt = (req.headers.get('Authorization') ?? '').replace('Bearer ', '');
   const { provider_token } = await req.json().catch(() => ({ provider_token: null }));
   if (!provider_token) {
-    return new Response(JSON.stringify({ error: 'falta provider_token' }), { status: 400 });
+    return new Response(JSON.stringify({ error: 'falta provider_token' }), {
+      status: 400,
+      headers: jsonHeaders,
+    });
   }
 
   const supabase = createClient(
@@ -29,7 +42,10 @@ Deno.serve(async (req) => {
   const { data: userData, error: userError } = await supabase.auth.getUser(jwt);
   const userId = userData?.user?.id;
   if (userError || !userId) {
-    return new Response(JSON.stringify({ error: 'no autenticado' }), { status: 401 });
+    return new Response(JSON.stringify({ error: 'no autenticado' }), {
+      status: 401,
+      headers: jsonHeaders,
+    });
   }
 
   const { data: profile } = await supabase
@@ -38,7 +54,10 @@ Deno.serve(async (req) => {
     .eq('id', userId)
     .single();
   if (!profile?.discord_id) {
-    return new Response(JSON.stringify({ status: 'sin discord vinculado' }), { status: 200 });
+    return new Response(JSON.stringify({ status: 'sin discord vinculado' }), {
+      status: 200,
+      headers: jsonHeaders,
+    });
   }
 
   const guildId = Deno.env.get('DISCORD_GUILD_ID')!;
@@ -60,6 +79,6 @@ Deno.serve(async (req) => {
   else console.error(`fallo al unir: ${response.status} ${await response.text()}`);
 
   return new Response(JSON.stringify({ status: response.status }), {
-    headers: { 'Content-Type': 'application/json' },
+    headers: jsonHeaders,
   });
 });
