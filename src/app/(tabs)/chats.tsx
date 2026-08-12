@@ -14,6 +14,7 @@ import { MaxContentWidth, Rolder, RolderFonts, Spacing } from '@/constants/theme
 import { useSession } from '@/hooks/use-session';
 import { fetchMyDmChats, type DmSummary } from '@/lib/dm';
 import { fetchMyChats, type ChatSummary } from '@/lib/messages';
+import { warmGroupChat } from '@/lib/prefetch';
 import { cacheGet, cacheSet } from '@/lib/screen-cache';
 import { webPushState } from '@/lib/web-push';
 
@@ -75,6 +76,12 @@ export default function ChatsScreen() {
         ].sort(sortByActivity);
         cacheSet(cacheKey, merged);
         setChats(merged);
+        // precalienta las mesas más activas: tocar un chat abre el hub con
+        // la ficha y el historial ya en caché, sin página en blanco
+        merged
+          .filter((c) => c.kind === 'group')
+          .slice(0, 6)
+          .forEach((c) => c.kind === 'group' && warmGroupChat(c.groupId));
       })
       .catch(() => setLoadError(true));
   }, [session]);

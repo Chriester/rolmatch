@@ -59,6 +59,7 @@ import {
 } from '@/lib/groups';
 import { fetchGroupMatches, matchChannelUrl, type GroupMatch } from '@/lib/matches';
 import { boostGroup, isBoostActive } from '@/lib/premium';
+import { warmGroupTabs } from '@/lib/prefetch';
 import { hasCompletedOnboarding } from '@/lib/profile';
 import { cacheGet, cacheSet } from '@/lib/screen-cache';
 import { fetchRatedSince } from '@/lib/ratings';
@@ -169,6 +170,10 @@ function GroupDetailScreen() {
   const heroAnimStyle = useAnimatedStyle(() => ({ height: heroH.value }));
   const heroDetailStyle = useAnimatedStyle(() => ({
     opacity: interpolate(heroH.value, [HERO_MINI, HERO_FULL], [0, 1], Extrapolation.CLAMP),
+    // compacto: los chips no solo se desvanecen — dejan de ocupar sitio;
+    // invisibles pero con altura empujaban el nombre fuera de la banda
+    maxHeight: interpolate(heroH.value, [HERO_MINI, HERO_FULL], [0, 80], Extrapolation.CLAMP),
+    overflow: 'hidden' as const,
   }));
   /** aviso de inactividad (migr. 00052): null = sin aviso o sin migración */
   const [vitality, setVitality] = useState<GroupVitality | null>(null);
@@ -243,7 +248,10 @@ function GroupDetailScreen() {
       })
       .catch(() => setGroup((current) => current ?? null));
     fetchUpcomingSessions(id)
-      .then(setSessions)
+      .then((list) => {
+        cacheSet(`group-sessions:${id}`, list);
+        setSessions(list);
+      })
       .catch(() => {});
     fetchGroupVitality(id)
       .then(setVitality)
@@ -256,6 +264,16 @@ function GroupDetailScreen() {
       .then(setMySwipe)
       .catch(() => setMySwipe(null));
   }, [id, session]);
+
+  // Con el hub recién abierto se precalientan las otras pestañas en segundo
+  // plano: cambiar a chat, agenda o diario no enseña la rueda ni la primera
+  // vez. Solo con plaza en la mesa (a un visitante la RLS le daría vacío).
+  const viewerHasSeat = group != null && session != null && !lockedView;
+  const viewerIdForWarm = session?.user.id ?? null;
+  useEffect(() => {
+    if (!id || !viewerIdForWarm || !viewerHasSeat) return;
+    warmGroupTabs(id, viewerIdForWarm);
+  }, [id, viewerIdForWarm, viewerHasSeat]);
 
   // Invitación por enlace con perfil sin completar: primero el onboarding;
   // guardamos esta ruta para reanudar la solicitud al terminar el perfil.

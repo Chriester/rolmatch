@@ -22,6 +22,7 @@ import { useSession } from '@/hooks/use-session';
 import { showAlert } from '@/lib/alert';
 import { FORMAT_LABELS, archiveGroup, confirmGroupAlive } from '@/lib/groups';
 import { fetchMyTablesOverview, type MyTableRow, type MyTablesOverview } from '@/lib/my-tables';
+import { warmGroup } from '@/lib/prefetch';
 
 function timeLabel(iso: string) {
   return new Date(iso).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
@@ -143,7 +144,11 @@ export default function MyGroupsScreen() {
   const load = useCallback(() => {
     if (!session) return;
     fetchMyTablesOverview(session.user.id)
-      .then(setOverview)
+      .then((data) => {
+        setOverview(data);
+        // precalienta las fichas: tocar una mesa abre el hub sin página en blanco
+        data.tables.slice(0, 8).forEach((t) => warmGroup(t.id));
+      })
       .catch(() => setOverview({ tables: [], today: null }));
   }, [session]);
 

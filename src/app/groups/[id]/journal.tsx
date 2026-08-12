@@ -36,6 +36,7 @@ import {
   groupJournalEntries,
   type JournalEntry,
 } from '@/lib/journal';
+import { cacheGet, cacheSet } from '@/lib/screen-cache';
 import { fetchTodaySession, formatSessionDay, type GameSession } from '@/lib/sessions';
 
 function formatEntryTime(iso: string) {
@@ -58,8 +59,14 @@ export function GroupJournalPanel({
   onGoAgenda?: () => void;
 }) {
   const session = useSession();
-  const [group, setGroup] = useState<GroupDetail | null | undefined>(undefined);
-  const [entries, setEntries] = useState<JournalEntry[] | undefined>(undefined);
+  // arranca con lo último visto (caché compartida con el hub) para no enseñar
+  // la rueda en cada visita a la pestaña; el fetch de abajo refresca detrás
+  const [group, setGroup] = useState<GroupDetail | null | undefined>(() =>
+    id ? cacheGet(`group:${id}`) : undefined
+  );
+  const [entries, setEntries] = useState<JournalEntry[] | undefined>(() =>
+    id ? cacheGet(`group-journal:${id}`) : undefined
+  );
   const [todaySession, setTodaySession] = useState<GameSession | null | undefined>(undefined);
   const [draft, setDraft] = useState('');
   const [pendingImage, setPendingImage] = useState<string | null>(null);
@@ -79,13 +86,20 @@ export function GroupJournalPanel({
   useEffect(() => {
     if (!id) return;
     fetchGroup(id)
-      .then(setGroup)
-      .catch(() => setGroup(null));
+      .then((g) => {
+        cacheSet(`group:${id}`, g);
+        setGroup(g);
+      })
+      .catch(() => setGroup((current) => current ?? null));
     fetchJournalEntries(id)
-      .then(setEntries)
+      .then((list) => {
+        cacheSet(`group-journal:${id}`, list);
+        setEntries(list);
+      })
       .catch(() => {
-        setEntries([]);
-        showAlert('No se pudo cargar el historico', 'Vuelve a entrar en unos segundos.');
+        const cached = cacheGet<JournalEntry[]>(`group-journal:${id}`);
+        if (!cached) showAlert('No se pudo cargar el historico', 'Vuelve a entrar en unos segundos.');
+        setEntries((current) => current ?? cached ?? []);
       });
     fetchTodaySession(id)
       .then(setTodaySession)
@@ -101,7 +115,10 @@ export function GroupJournalPanel({
     if (hasHeader) return;
     ensureTodayHeader(id, session.user.id, formatSessionDay(todaySession.starts_at))
       .then(() => fetchJournalEntries(id))
-      .then(setEntries)
+      .then((list) => {
+        cacheSet(`group-journal:${id}`, list);
+        setEntries(list);
+      })
       .catch(() => {});
   }, [id, session, todaySession, entries]);
 
@@ -124,7 +141,11 @@ export function GroupJournalPanel({
     setPosting(true);
     try {
       const entry = await addJournalEntry(id, session.user.id, draft, pendingImage);
-      setEntries((list) => [...(list ?? []), entry]);
+      setEntries((list) => {
+        const next = [...(list ?? []), entry];
+        cacheSet(`group-journal:${id}`, next);
+        return next;
+      });
       setDraft('');
       setPendingImage(null);
     } catch (error) {
@@ -137,7 +158,11 @@ export function GroupJournalPanel({
   const handleDelete = async (entryId: string) => {
     try {
       await deleteJournalEntry(entryId);
-      setEntries((list) => list?.filter((e) => e.id !== entryId));
+      setEntries((list) => {
+        const next = list?.filter((e) => e.id !== entryId);
+        if (next) cacheSet(`group-journal:${id}`, next);
+        return next;
+      });
     } catch (error) {
       showAlert('No se pudo borrar', error instanceof Error ? error.message : String(error));
     }
