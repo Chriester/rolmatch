@@ -80,6 +80,9 @@ type TopCardProps = {
   height: number;
   enabled: boolean;
   progress: SharedValue<number>;
+  /** px de tirón hacia abajo — vive en el deck: el mazo ENTERO baja con él
+      (si solo bajara la tarjeta superior, la siguiente asomaría por arriba) */
+  pull: SharedValue<number>;
   likeLabel: string;
   passLabel: string;
   onSwiped: (choice: SwipeChoice) => void;
@@ -90,7 +93,19 @@ type TopCardProps = {
 };
 
 const TopCard = forwardRef<TopCardHandle, TopCardProps>(function TopCard(
-  { width, height, enabled, progress, likeLabel, passLabel, onSwiped, card, details, onPullRefresh },
+  {
+    width,
+    height,
+    enabled,
+    progress,
+    pull,
+    likeLabel,
+    passLabel,
+    onSwiped,
+    card,
+    details,
+    onPullRefresh,
+  },
   ref
 ) {
   const tx = useSharedValue(0);
@@ -101,8 +116,6 @@ const TopCard = forwardRef<TopCardHandle, TopCardProps>(function TopCard(
   const axis = useSharedValue(0);
   // 1 mientras el arrastre supera el umbral (para el tick háptico)
   const armed = useSharedValue(0);
-  // px de tirón hacia abajo (con resistencia), para recargar
-  const pull = useSharedValue(0);
   const pullArmed = useSharedValue(0);
   const threshold = width * THRESHOLD_FRACTION;
   const exitDistance = Math.max(width * 1.6, Dimensions.get('window').width * 1.1);
@@ -212,7 +225,6 @@ const TopCard = forwardRef<TopCardHandle, TopCardProps>(function TopCard(
   const frameStyle = useAnimatedStyle(() => ({
     transform: [
       { translateX: tx.value },
-      { translateY: pull.value },
       {
         rotate: `${interpolate(
           tx.value,
@@ -327,6 +339,9 @@ export function SwipeDeck<T>({
 }: SwipeDeckProps<T>) {
   const [size, setSize] = useState({ width: 0, height: 0 });
   const progress = useSharedValue(0);
+  // el tirón de recarga baja el mazo COMPLETO (tarjeta + siguiente): si solo
+  // bajara la superior, la de detrás asomaría por el hueco de arriba
+  const pull = useSharedValue(0);
   const topRef = useRef<TopCardHandle>(null);
 
   const current = items[index];
@@ -368,35 +383,42 @@ export function SwipeDeck<T>({
     ],
   }));
 
+  const deckShiftStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: pull.value }],
+  }));
+
   return (
     <View
       style={styles.container}
       onLayout={(e) =>
         setSize({ width: e.nativeEvent.layout.width, height: e.nativeEvent.layout.height })
       }>
-      {next !== undefined && (
-        <Animated.View
-          key={`next-${keyFor(next)}`}
-          style={[StyleSheet.absoluteFill, styles.frame, nextCardStyle]}>
-          {renderCard(next, false)}
-        </Animated.View>
-      )}
-      {current !== undefined && size.width > 0 && (
-        <TopCard
-          key={keyFor(current)}
-          ref={topRef}
-          width={size.width}
-          height={size.height}
-          enabled={enabled}
-          progress={progress}
-          likeLabel={likeLabel}
-          passLabel={passLabel}
-          onSwiped={handleSwiped}
-          card={renderCard(current, true)}
-          details={renderDetails ? renderDetails(current) : undefined}
-          onPullRefresh={onPullRefresh}
-        />
-      )}
+      <Animated.View style={[StyleSheet.absoluteFill, deckShiftStyle]}>
+        {next !== undefined && (
+          <Animated.View
+            key={`next-${keyFor(next)}`}
+            style={[StyleSheet.absoluteFill, styles.frame, nextCardStyle]}>
+            {renderCard(next, false)}
+          </Animated.View>
+        )}
+        {current !== undefined && size.width > 0 && (
+          <TopCard
+            key={keyFor(current)}
+            ref={topRef}
+            width={size.width}
+            height={size.height}
+            enabled={enabled}
+            progress={progress}
+            pull={pull}
+            likeLabel={likeLabel}
+            passLabel={passLabel}
+            onSwiped={handleSwiped}
+            card={renderCard(current, true)}
+            details={renderDetails ? renderDetails(current) : undefined}
+            onPullRefresh={onPullRefresh}
+          />
+        )}
+      </Animated.View>
     </View>
   );
 }
