@@ -77,9 +77,9 @@ function TabIcon({
   );
 }
 
-// El arte original de marca (assets/roldr-logo-v2.png), tal cual — no se
-// recrea en SVG: es un diseño entregado y no se toca.
-const DIE_ART = require('../../assets/roldr-logo-v2.png');
+// El arte original de marca (logoicon a 256px), tal cual — no se recrea
+// en SVG: es un diseño entregado y no se toca.
+const DIE_ART = require('../../assets/logoicon-ui.png');
 
 function FeedIcon({ active }: { active: boolean }) {
   return (
@@ -246,11 +246,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  // el canvas del arte trae ~33% de margen transparente: se pinta a 92px
+  // el canvas del arte trae ~20% de margen transparente: se pinta a 78px
   // para que el dado visible quede en torno a 60px
   feedDie: {
-    width: 92,
-    height: 92,
+    width: 78,
+    height: 78,
   },
   feedGlow: {
     position: 'absolute',
