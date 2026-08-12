@@ -49,5 +49,8 @@ App de rol y búsqueda de mesas*
 *.zip
 
 # graft's local graph cache — regenerable, not committed (run `graft build`).
-# Anclado a la raíz: sin la barra inicial también ignoraba .claude/skills/graft/.
-/graft/
+# La línea SIN anclar es la que exige graft: ensureGitignored busca exactamente
+# «graft/» y si no la ve la re-añade en cada build. La negación de debajo
+# readmite la skill, que es lo único que esa línea ignoraba por error (#174).
+graft/
+!.claude/skills/graft/
