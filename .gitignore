@@ -49,4 +49,5 @@ App de rol y búsqueda de mesas*
 *.zip
 
 # graft's local graph cache — regenerable, not committed (run `graft build`).
-graft/
+# Anclado a la raíz: sin la barra inicial también ignoraba .claude/skills/graft/.
+/graft/
