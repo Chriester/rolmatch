@@ -18,6 +18,7 @@ import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { RolderLogo } from '@/components/brand';
 import { Rolder, RolderFonts } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
 import { setAppBadge } from '@/lib/badge';
@@ -84,7 +85,8 @@ function FeedIcon({ active }: { active: boolean }) {
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
       style={[styles.feedButton, active && styles.feedButtonActive]}>
-      <Text style={styles.feedEmoji}>🎲</Text>
+      {/* el d20 de la marca, con las juntas en blanco sobre el gradiente */}
+      <RolderLogo width={26} line="#FFFFFF" />
     </LinearGradient>
   );
 }
@@ -246,9 +248,6 @@ const styles = StyleSheet.create({
   feedButtonActive: {
     borderColor: 'rgba(255,255,255,0.85)',
     boxShadow: '0 6px 26px rgba(255,90,95,0.55)',
-  },
-  feedEmoji: {
-    fontSize: 28,
   },
   badge: {
     position: 'absolute',
