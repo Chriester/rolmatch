@@ -142,7 +142,7 @@ function PremiumSection() {
         {PREMIUM_PERKS.map((perk) => (
           <View key={perk.label} style={styles.perkRow}>
             <Text style={styles.perkIcon}>{perk.icon}</Text>
-            <Text style={styles.perkLabel}>{perk.label}</Text>
+            <Text style={[styles.pushDetail, styles.perkLabel]}>{perk.label}</Text>
           </View>
         ))}
       </View>
@@ -427,12 +427,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginTop: 1,
   },
+  // el cuerpo del texto lo pone pushDetail (composición en el JSX)
   perkLabel: {
     flex: 1,
-    color: Rolder.textSecondary,
-    fontSize: 12.5,
-    fontFamily: RolderFonts.regular,
-    lineHeight: 18,
   },
   searchingText: {
     flex: 1,

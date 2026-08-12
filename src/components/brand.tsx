@@ -1,46 +1,19 @@
-// Marca Roldr (arte 2026-08 v3): logoicon.png (d20 icosaedro con la R y
-// anillo orbital) y logotext.png (wordmark «Roldr» con el dado como «o»).
-// Son los PNG entregados TAL CUAL — no se recrean en SVG; logotext-trim.png
-// es el mismo arte recortado a su caja real (el lienzo original trae ~74%
-// de margen transparente que rompería el layout de las cabeceras).
+// Marca Roldr — versión NATIVA. El logo y el wordmark (PNG del arte
+// original) viven en brand-art.tsx, compartidos con web; aquí solo se
+// define el texto con gradiente, que en nativo va por react-native-svg.
 // Mantener exports en paralelo con brand.web.tsx.
 
-import { Image } from 'react-native';
+import { useId } from 'react';
 import Svg, {
   Defs,
   LinearGradient as SvgGradient,
   Stop,
   Text as SvgText,
 } from 'react-native-svg';
-import { useId } from 'react';
 
-// Gradiente de textos de marca (p. ej. «¡Es un match!») — sigue el arte.
-export const BRAND_CRIMSON = '#DE1458';
-export const BRAND_PURPLE = '#8E44AD';
+import { BRAND_CRIMSON, BRAND_PURPLE } from '@/components/brand-art';
 
-// logoicon-ui es el mismo arte a 256px: el master de 2048 pesa 1 MB y en
-// la UI nunca se pinta a más de ~80px (el master queda para los iconos)
-const LOGO_ICON = require('../../assets/logoicon-ui.png');
-const LOGO_TEXT = require('../../assets/logotext-trim.png');
-// caja real del wordmark recortado (1000×288)
-const WORDMARK_RATIO = 1000 / 288;
-
-/** El d20 orbital de la marca (logoicon.png, arte original) */
-export function RolderLogo({ width = 24 }: { width?: number }) {
-  return <Image source={LOGO_ICON} style={{ width, height: width }} resizeMode="contain" />;
-}
-
-/** «Roldr» con el d20 como «o» (logotext.png, arte original) */
-export function RolderWordmark({ size = 21 }: { size?: number }) {
-  const height = size * 1.15;
-  return (
-    <Image
-      source={LOGO_TEXT}
-      style={{ width: height * WORDMARK_RATIO, height }}
-      resizeMode="contain"
-    />
-  );
-}
+export { BRAND_CRIMSON, BRAND_PURPLE, RolderBrand, RolderLogo, RolderWordmark } from '@/components/brand-art';
 
 /** Texto arbitrario con el gradiente de marca (p. ej. «¡Es un match!») */
 export function RolderGradientText({ text, size = 34 }: { text: string; size?: number }) {
@@ -71,15 +44,4 @@ export function RolderGradientText({ text, size = 34 }: { text: string; size?: n
       </SvgText>
     </Svg>
   );
-}
-
-/** El lockup de las cabeceras: ahora es el propio wordmark (dado integrado) */
-export function RolderBrand({
-  logoWidth: _logoWidth = 24,
-  wordmarkSize = 21,
-}: {
-  logoWidth?: number;
-  wordmarkSize?: number;
-}) {
-  return <RolderWordmark size={wordmarkSize + 3} />;
 }

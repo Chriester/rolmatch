@@ -7,16 +7,20 @@ import { supabase } from '@/lib/supabase';
 export type PremiumStatus = { active: boolean; until: string | null };
 
 /**
- * ¿Está vivo un premium que caduca en `until`? Postgres serializa el
- * timestamptz 'infinity' (el premium sin caducidad de los testers) como la
- * cadena "infinity", que new Date() NO parsea (NaN > now = false): hay que
- * tratarla aparte o ningún tester tendría premium en el cliente.
+ * ¿Sigue vivo un plazo «hasta X»? EL predicado para cualquier timestamptz
+ * de caducidad que venga de la DB (premium_until, boosted_until…): Postgres
+ * serializa 'infinity' (los plazos sin caducidad, p. ej. el premium de los
+ * testers) como la cadena "infinity", que new Date() NO parsea (NaN > now
+ * = false) — sin el caso especial, esos plazos evaluarían a inactivos.
  */
-export function isPremiumActive(until: string | null): boolean {
+export function isActiveUntil(until: string | null): boolean {
   if (until === null) return false;
   if (until === 'infinity') return true;
   return new Date(until).getTime() > Date.now();
 }
+
+/** Alias semántico para el estado premium. */
+export const isPremiumActive = isActiveUntil;
 
 export async function fetchPremiumStatus(userId: string): Promise<PremiumStatus> {
   const { data, error } = await supabase
@@ -30,9 +34,7 @@ export async function fetchPremiumStatus(userId: string): Promise<PremiumStatus>
 }
 
 /** ¿Sigue activo un boost? (fuera de componentes: Date.now no es puro en render) */
-export function isBoostActive(until: string | null): boolean {
-  return until !== null && new Date(until).getTime() > Date.now();
-}
+export const isBoostActive = isActiveUntil;
 
 const BOOST_DAYS = 7;
 

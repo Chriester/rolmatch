@@ -14,11 +14,12 @@
 
 import { router, usePathname } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Rolder, RolderFonts } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
+import { RolderLogo } from '@/components/brand';
 import { setAppBadge } from '@/lib/badge';
 import { emitFeedRefresh } from '@/lib/feed-events';
 import { hapticTap } from '@/lib/haptics';
@@ -77,16 +78,14 @@ function TabIcon({
   );
 }
 
-// El arte original de marca (logoicon a 256px), tal cual — no se recrea
-// en SVG: es un diseño entregado y no se toca.
-const DIE_ART = require('../../assets/logoicon-ui.png');
-
 function FeedIcon({ active }: { active: boolean }) {
   return (
     <View style={styles.feedButton}>
       {/* halo violeta cuando el feed es la pestaña activa */}
       {active && <View style={styles.feedGlow} />}
-      <Image source={DIE_ART} style={styles.feedDie} resizeMode="contain" />
+      {/* el arte original de marca, vía el componente compartido; el canvas
+          trae ~20% de margen: a 78px el dado visible queda en torno a 60px */}
+      <RolderLogo width={78} />
     </View>
   );
 }
@@ -245,12 +244,6 @@ const styles = StyleSheet.create({
     marginTop: -30,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  // el canvas del arte trae ~20% de margen transparente: se pinta a 78px
-  // para que el dado visible quede en torno a 60px
-  feedDie: {
-    width: 78,
-    height: 78,
   },
   feedGlow: {
     position: 'absolute',
