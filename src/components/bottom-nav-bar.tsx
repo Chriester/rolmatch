@@ -14,10 +14,9 @@
 
 import { router, usePathname } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { RolderDieOrbit } from '@/components/brand';
 import { Rolder, RolderFonts } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
 import { setAppBadge } from '@/lib/badge';
@@ -77,13 +76,16 @@ function TabIcon({
   );
 }
 
+// El arte original de marca (assets/roldr-logo-v2.png), tal cual — no se
+// recrea en SVG: es un diseño entregado y no se toca.
+const DIE_ART = require('../../assets/roldr-logo-v2.png');
+
 function FeedIcon({ active }: { active: boolean }) {
   return (
     <View style={styles.feedButton}>
       {/* halo violeta cuando el feed es la pestaña activa */}
       {active && <View style={styles.feedGlow} />}
-      {/* el d20 orbital de la marca: el propio dado es el botón, sin círculo */}
-      <RolderDieOrbit width={66} />
+      <Image source={DIE_ART} style={styles.feedDie} resizeMode="contain" />
     </View>
   );
 }
@@ -232,11 +234,17 @@ const styles = StyleSheet.create({
     backgroundColor: Rolder.violetSoft,
   },
   feedButton: {
-    width: 66,
-    height: 62,
-    marginTop: -24,
+    width: 92,
+    height: 84,
+    marginTop: -30,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  // el canvas del arte trae ~33% de margen transparente: se pinta a 92px
+  // para que el dado visible quede en torno a 60px
+  feedDie: {
+    width: 92,
+    height: 92,
   },
   feedGlow: {
     position: 'absolute',
