@@ -3,7 +3,7 @@
 // spans con color sólido. La versión nativa vive en brand.tsx — mantener
 // los exports de ambos archivos en paralelo.
 
-import { type CSSProperties } from 'react';
+import { type CSSProperties, useId } from 'react';
 
 import { Rolder } from '@/constants/theme';
 
@@ -19,18 +19,22 @@ const WORDMARK_FONT = 'Poppins_600SemiBold, Poppins, sans-serif';
 
 /** El d20 de facetas — icono de la marca (la «o» del wordmark) */
 export function RolderLogo({ width = 24, line }: { width?: number; line?: string }) {
+  // id único por instancia: con id fijo, durante la transición de ruta
+  // conviven dos <defs> iguales y al desmontarse el viejo el url(#...) del
+  // dado que queda se rompe (hexágono invisible hasta recargar)
+  const dieId = `roldr-die-${useId().replace(/:/g, '')}`;
   const height = (width * 48) / 44;
   const stroke = line ?? Rolder.page;
   const joint = Math.max(1.4, width * 0.055);
   return (
     <svg width={width} height={height} viewBox="0 0 44 48" style={{ flexShrink: 0 }}>
       <defs>
-        <linearGradient id="roldr-die-web" x1="0" y1="0" x2="1" y2="1">
+        <linearGradient id={dieId} x1="0" y1="0" x2="1" y2="1">
           <stop offset="0" stopColor={DIE_FROM} />
           <stop offset="1" stopColor={DIE_TO} />
         </linearGradient>
       </defs>
-      <polygon points="22,1 43,13 43,35 22,47 1,35 1,13" fill="url(#roldr-die-web)" />
+      <polygon points="22,1 43,13 43,35 22,47 1,35 1,13" fill={`url(#${dieId})`} />
       <polygon
         points="22,1 43,35 1,35"
         fill="none"
@@ -56,16 +60,20 @@ export function RolderLogo({ width = 24, line }: { width?: number; line?: string
  * color del fondo, como recortadas.
  */
 export function RolderDieOrbit({ width = 64, line }: { width?: number; line?: string }) {
+  // id único por instancia — mismo motivo que en RolderLogo
+  const uid = useId().replace(/:/g, '');
+  const dieId = `roldr-orbit-die-${uid}`;
+  const ringId = `roldr-orbit-ring-${uid}`;
   const height = (width * 64) / 72;
   const stroke = line ?? Rolder.page;
   return (
     <svg width={width} height={height} viewBox="0 0 72 64" style={{ flexShrink: 0 }}>
       <defs>
-        <linearGradient id="roldr-orbit-die-web" x1="0" y1="0" x2="1" y2="1">
+        <linearGradient id={dieId} x1="0" y1="0" x2="1" y2="1">
           <stop offset="0" stopColor={DIE_FROM} />
           <stop offset="1" stopColor={DIE_TO} />
         </linearGradient>
-        <linearGradient id="roldr-orbit-ring-web" x1="0" y1="0" x2="1" y2="0">
+        <linearGradient id={ringId} x1="0" y1="0" x2="1" y2="0">
           <stop offset="0" stopColor={BRAND_CRIMSON} />
           <stop offset="1" stopColor={BRAND_PURPLE} />
         </linearGradient>
@@ -74,13 +82,13 @@ export function RolderDieOrbit({ width = 64, line }: { width?: number; line?: st
         <path
           d="M -34 0 A 34 11 0 0 1 34 0"
           fill="none"
-          stroke="url(#roldr-orbit-ring-web)"
+          stroke={`url(#${ringId})`}
           strokeWidth={2.4}
           strokeLinecap="round"
           opacity={0.9}
         />
       </g>
-      <polygon points="36,8 55,19 55,45 36,56 17,45 17,19" fill="url(#roldr-orbit-die-web)" />
+      <polygon points="36,8 55,19 55,45 36,56 17,45 17,19" fill={`url(#${dieId})`} />
       <polygon
         points="36,8 55,45 17,45"
         fill="none"
@@ -99,7 +107,7 @@ export function RolderDieOrbit({ width = 64, line }: { width?: number; line?: st
         <path
           d="M 34 0 A 34 11 0 0 1 -34 0"
           fill="none"
-          stroke="url(#roldr-orbit-ring-web)"
+          stroke={`url(#${ringId})`}
           strokeWidth={2.4}
           strokeLinecap="round"
         />
