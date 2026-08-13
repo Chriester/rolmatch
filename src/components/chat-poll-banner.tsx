@@ -79,9 +79,9 @@ export function ChatPollBanner({ groupId, poll, viewerId, onChanged }: ChatPollB
 
 const styles = StyleSheet.create({
   banner: {
-    backgroundColor: 'rgba(139,108,255,0.12)',
+    backgroundColor: 'rgba(199,125,255,0.12)',
     borderWidth: 1,
-    borderColor: 'rgba(139,108,255,0.45)',
+    borderColor: 'rgba(199,125,255,0.45)',
     borderRadius: 14,
     marginBottom: 8,
     overflow: 'hidden',
@@ -118,8 +118,8 @@ const styles = StyleSheet.create({
     gap: 5,
   },
   optionMine: {
-    borderColor: 'rgba(139,108,255,0.8)',
-    backgroundColor: 'rgba(139,108,255,0.14)',
+    borderColor: 'rgba(199,125,255,0.8)',
+    backgroundColor: 'rgba(199,125,255,0.14)',
   },
   optionRow: {
     flexDirection: 'row',

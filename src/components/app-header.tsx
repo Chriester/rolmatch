@@ -151,10 +151,10 @@ const styles = StyleSheet.create({
     height: 38,
     borderRadius: 19,
     borderWidth: 2,
-    borderColor: 'rgba(123,92,255,0.7)',
+    borderColor: 'rgba(199,125,255,0.7)',
   },
   avatarFallback: {
-    backgroundColor: 'rgba(139,108,255,0.25)',
+    backgroundColor: 'rgba(199,125,255,0.25)',
     alignItems: 'center',
     justifyContent: 'center',
   },

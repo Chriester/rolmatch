@@ -163,7 +163,7 @@ const styles = StyleSheet.create({
   },
   today: {
     borderWidth: 1,
-    borderColor: 'rgba(139,108,255,0.6)',
+    borderColor: 'rgba(199,125,255,0.6)',
   },
   daySelected: {
     backgroundColor: Rolder.violet,

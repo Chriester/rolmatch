@@ -358,9 +358,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: Spacing.two,
-    backgroundColor: 'rgba(139,108,255,0.08)',
+    backgroundColor: 'rgba(199,125,255,0.08)',
     borderWidth: 1,
-    borderColor: 'rgba(139,108,255,0.3)',
+    borderColor: 'rgba(199,125,255,0.3)',
     borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 8,
@@ -413,8 +413,8 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   modeCardActive: {
-    backgroundColor: 'rgba(139,108,255,0.14)',
-    borderColor: 'rgba(139,108,255,0.8)',
+    backgroundColor: 'rgba(199,125,255,0.14)',
+    borderColor: 'rgba(199,125,255,0.8)',
   },
   modeEmoji: {
     fontSize: 20,

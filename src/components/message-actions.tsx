@@ -114,7 +114,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
   },
   pressed: {
-    backgroundColor: 'rgba(139,108,255,0.15)',
+    backgroundColor: 'rgba(199,125,255,0.15)',
   },
   actionLabel: {
     color: '#fff',

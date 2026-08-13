@@ -132,10 +132,10 @@ const styles = StyleSheet.create({
     height: 92,
     borderRadius: 46,
     borderWidth: 2,
-    borderColor: 'rgba(123,92,255,0.7)',
+    borderColor: 'rgba(199,125,255,0.7)',
   },
   avatarFallback: {
-    backgroundColor: 'rgba(139,108,255,0.2)',
+    backgroundColor: 'rgba(199,125,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
   },

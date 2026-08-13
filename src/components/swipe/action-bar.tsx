@@ -94,7 +94,7 @@ const styles = StyleSheet.create({
     borderColor: Rolder.pass,
   },
   like: {
-    boxShadow: '0 6px 18px rgba(59,209,111,0.35)',
+    boxShadow: '0 6px 18px rgba(63,191,143,0.35)',
   },
   rewindGlyph: {
     color: Rolder.gold,

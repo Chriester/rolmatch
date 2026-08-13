@@ -223,9 +223,9 @@ const styles = StyleSheet.create({
     gap: Spacing.three,
   },
   pushBanner: {
-    backgroundColor: 'rgba(139,108,255,0.15)',
+    backgroundColor: 'rgba(199,125,255,0.15)',
     borderWidth: 1,
-    borderColor: 'rgba(139,108,255,0.4)',
+    borderColor: 'rgba(199,125,255,0.4)',
     borderRadius: 12,
     paddingVertical: 10,
     paddingHorizontal: 14,
@@ -272,7 +272,7 @@ const styles = StyleSheet.create({
   },
   filterActive: {
     borderColor: Rolder.violetSoft,
-    backgroundColor: 'rgba(139,108,255,0.18)',
+    backgroundColor: 'rgba(199,125,255,0.18)',
   },
   filterLabel: {
     color: Rolder.textSecondary,
@@ -311,7 +311,7 @@ const styles = StyleSheet.create({
     borderRadius: 27,
   },
   thumbFallback: {
-    backgroundColor: 'rgba(139,108,255,0.2)',
+    backgroundColor: 'rgba(199,125,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
   },

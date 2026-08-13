@@ -36,7 +36,7 @@ export async function registerPushToken(userId: string) {
         name: 'Notificaciones',
         importance: Notifications.AndroidImportance.MAX,
         vibrationPattern: [0, 250, 250, 250],
-        lightColor: '#8B6CFF',
+        lightColor: '#C77DFF',
       });
     }
 

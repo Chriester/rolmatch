@@ -357,7 +357,7 @@ const styles = StyleSheet.create({
     borderRadius: 24,
   },
   portraitFallback: {
-    backgroundColor: 'rgba(255,90,95,0.18)',
+    backgroundColor: 'rgba(229,72,77,0.18)',
     alignItems: 'center',
     justifyContent: 'center',
   },

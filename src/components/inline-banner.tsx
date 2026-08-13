@@ -11,9 +11,9 @@ import { Rolder, RolderFonts } from '@/constants/theme';
 export type InlineBannerTone = 'amber' | 'green' | 'violet';
 
 const TONES: Record<InlineBannerTone, { bg: string; border: string; title: string }> = {
-  amber: { bg: 'rgba(245,166,35,0.08)', border: 'rgba(245,166,35,0.4)', title: '#F5A623' },
-  green: { bg: 'rgba(59,209,111,0.08)', border: 'rgba(59,209,111,0.4)', title: Rolder.like },
-  violet: { bg: 'rgba(139,108,255,0.08)', border: 'rgba(139,108,255,0.4)', title: Rolder.violetSoft },
+  amber: { bg: 'rgba(232,164,76,0.08)', border: 'rgba(232,164,76,0.4)', title: '#E8A44C' },
+  green: { bg: 'rgba(63,191,143,0.08)', border: 'rgba(63,191,143,0.4)', title: Rolder.like },
+  violet: { bg: 'rgba(199,125,255,0.08)', border: 'rgba(199,125,255,0.4)', title: Rolder.violetSoft },
 };
 
 export type InlineBannerAction = {

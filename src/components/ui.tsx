@@ -41,8 +41,10 @@ export function PrimaryButton({
       onPress={onPress}
       disabled={disabled}
       style={({ pressed }) => [disabled && styles.disabled, pressed && styles.pressed, style]}>
+      {/* CTA primario = gradiente de marca (Roldr: uno por pantalla; el
+          verde queda para éxito y swipe-yes) */}
       <LinearGradient
-        colors={Rolder.likeGradient}
+        colors={Rolder.brandGradient}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.primary}>
@@ -67,7 +69,7 @@ export function OutlineButton({
   style?: StyleProp<ViewStyle>;
 }) {
   const border =
-    tone === 'violet' ? 'rgba(139,108,255,0.8)'
+    tone === 'violet' ? 'rgba(199,125,255,0.8)'
     : tone === 'red' ? Rolder.pass
     : tone === 'gold' ? Rolder.gold
     : 'rgba(255,255,255,0.3)';
@@ -175,9 +177,9 @@ export function StatusPill({
   tone: 'violet' | 'green' | 'gray' | 'gold';
 }) {
   const bg =
-    tone === 'violet' ? 'rgba(139,108,255,0.25)'
+    tone === 'violet' ? 'rgba(199,125,255,0.25)'
     : tone === 'green' ? Rolder.likeChipBg
-    : tone === 'gold' ? 'rgba(245,166,35,0.22)'
+    : tone === 'gold' ? 'rgba(232,164,76,0.22)'
     : 'rgba(255,255,255,0.08)';
   const color =
     tone === 'violet' ? Rolder.violetSofter
@@ -217,7 +219,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 18,
     alignItems: 'center',
-    boxShadow: '0 6px 18px rgba(59,209,111,0.25)',
+    boxShadow: '0 6px 18px rgba(63,191,143,0.25)',
   },
   primaryLabel: {
     color: '#fff',
@@ -257,7 +259,7 @@ const styles = StyleSheet.create({
   rowDashed: {
     backgroundColor: 'transparent',
     borderStyle: 'dashed',
-    borderColor: 'rgba(139,108,255,0.5)',
+    borderColor: 'rgba(199,125,255,0.5)',
     justifyContent: 'center',
   },
   axisBlock: {

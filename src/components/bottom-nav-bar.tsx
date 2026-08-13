@@ -214,7 +214,7 @@ const styles = StyleSheet.create({
     borderRadius: 31,
   },
   itemPressed: {
-    backgroundColor: 'rgba(139,108,255,0.22)',
+    backgroundColor: 'rgba(199,125,255,0.22)',
     transform: [{ scale: 0.94 }],
   },
   button: {
@@ -250,8 +250,8 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(139,108,255,0.3)',
-    boxShadow: '0 0 26px 10px rgba(139,108,255,0.4)',
+    backgroundColor: 'rgba(199,125,255,0.3)',
+    boxShadow: '0 0 26px 10px rgba(199,125,255,0.4)',
   },
   badge: {
     position: 'absolute',

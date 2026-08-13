@@ -367,10 +367,10 @@ const styles = StyleSheet.create({
     height: 96,
     borderRadius: 48,
     borderWidth: 2,
-    borderColor: 'rgba(123,92,255,0.7)',
+    borderColor: 'rgba(199,125,255,0.7)',
   },
   avatarFallback: {
-    backgroundColor: 'rgba(139,108,255,0.2)',
+    backgroundColor: 'rgba(199,125,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -403,7 +403,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   portraitFallback: {
-    backgroundColor: 'rgba(255,90,95,0.18)',
+    backgroundColor: 'rgba(229,72,77,0.18)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -436,7 +436,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   groupThumbFallback: {
-    backgroundColor: 'rgba(139,108,255,0.18)',
+    backgroundColor: 'rgba(199,125,255,0.18)',
     alignItems: 'center',
     justifyContent: 'center',
   },

@@ -851,12 +851,12 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
   },
   rsvpYesActive: {
-    backgroundColor: 'rgba(59,209,111,0.15)',
-    borderColor: 'rgba(59,209,111,0.7)',
+    backgroundColor: 'rgba(63,191,143,0.15)',
+    borderColor: 'rgba(63,191,143,0.7)',
   },
   rsvpNoActive: {
-    backgroundColor: 'rgba(255,90,95,0.12)',
-    borderColor: 'rgba(255,90,95,0.6)',
+    backgroundColor: 'rgba(229,72,77,0.12)',
+    borderColor: 'rgba(229,72,77,0.6)',
   },
   rsvpLabel: {
     color: 'rgba(255,255,255,0.85)',
@@ -909,7 +909,7 @@ const styles = StyleSheet.create({
   pollBox: {
     backgroundColor: Rolder.surface,
     borderWidth: 1,
-    borderColor: 'rgba(139,108,255,0.35)',
+    borderColor: 'rgba(199,125,255,0.35)',
     borderRadius: 16,
     padding: 14,
     gap: 10,
@@ -933,8 +933,8 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   optionMine: {
-    borderColor: 'rgba(139,108,255,0.8)',
-    backgroundColor: 'rgba(139,108,255,0.12)',
+    borderColor: 'rgba(199,125,255,0.8)',
+    backgroundColor: 'rgba(199,125,255,0.12)',
   },
   optionHeader: {
     flexDirection: 'row',
@@ -973,9 +973,9 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   proposalBox: {
-    backgroundColor: 'rgba(139,108,255,0.08)',
+    backgroundColor: 'rgba(199,125,255,0.08)',
     borderWidth: 1,
-    borderColor: 'rgba(139,108,255,0.3)',
+    borderColor: 'rgba(199,125,255,0.3)',
     borderRadius: 12,
     padding: 10,
     gap: 8,
@@ -1023,7 +1023,7 @@ const styles = StyleSheet.create({
     height: 30,
     borderRadius: 15,
     borderWidth: 1,
-    borderColor: 'rgba(139,108,255,0.6)',
+    borderColor: 'rgba(199,125,255,0.6)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1118,8 +1118,8 @@ const styles = StyleSheet.create({
   },
   nudgeChip: {
     borderWidth: 1,
-    borderColor: 'rgba(245,166,35,0.5)',
-    backgroundColor: 'rgba(245,166,35,0.1)',
+    borderColor: 'rgba(232,164,76,0.5)',
+    backgroundColor: 'rgba(232,164,76,0.1)',
     borderRadius: 999,
     paddingVertical: 6,
     paddingHorizontal: 12,
@@ -1129,7 +1129,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   nudgeChipText: {
-    color: '#F5C34D',
+    color: '#F0BE7A',
     fontSize: 12.5,
     fontFamily: RolderFonts.semibold,
     fontWeight: '600',

@@ -465,13 +465,13 @@ const styles = StyleSheet.create({
   // aunque la tarjeta se desplace y rote con el arrastre.
   stampLike: {
     right: '14%',
-    backgroundColor: '#3BD16F',
+    backgroundColor: '#3FBF8F',
     borderColor: '#0B2416',
     boxShadow: '4px 4px 0 rgba(0,0,0,0.35)',
   },
   stampPass: {
     left: '14%',
-    backgroundColor: '#FF5A5F',
+    backgroundColor: '#E5484D',
     borderColor: '#3D0A0C',
     boxShadow: '4px 4px 0 rgba(0,0,0,0.35)',
   },
@@ -501,7 +501,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   pullGlyph: {
-    color: '#B9A6FF',
+    color: '#D8A9FF',
     fontSize: 20,
     fontWeight: '700',
   },

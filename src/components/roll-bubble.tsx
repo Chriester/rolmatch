@@ -56,9 +56,9 @@ const styles = StyleSheet.create({
     // sin maxWidth propio: lo limita el messageCol del chat (un % aquí
     // se resolvería contra un padre content-sized y desbordaría)
     maxWidth: '100%',
-    backgroundColor: 'rgba(245,166,35,0.08)',
+    backgroundColor: 'rgba(232,164,76,0.08)',
     borderWidth: 1.5,
-    borderColor: 'rgba(245,166,35,0.45)',
+    borderColor: 'rgba(232,164,76,0.45)',
     borderRadius: 16,
     paddingVertical: 10,
     paddingHorizontal: 13,
@@ -105,12 +105,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   dieMax: {
-    borderColor: 'rgba(59,209,111,0.8)',
-    backgroundColor: 'rgba(59,209,111,0.12)',
+    borderColor: 'rgba(63,191,143,0.8)',
+    backgroundColor: 'rgba(63,191,143,0.12)',
   },
   dieMin: {
-    borderColor: 'rgba(255,90,95,0.8)',
-    backgroundColor: 'rgba(255,90,95,0.12)',
+    borderColor: 'rgba(229,72,77,0.8)',
+    backgroundColor: 'rgba(229,72,77,0.12)',
   },
   dieValue: {
     color: '#fff',
