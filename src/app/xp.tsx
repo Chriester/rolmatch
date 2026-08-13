@@ -4,7 +4,7 @@
 
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppHeader } from '@/components/app-header';
@@ -12,6 +12,16 @@ import { ThemedView } from '@/components/themed-view';
 import { ScreenBlurb, ScreenTitle, SectionLabel, XpBar } from '@/components/ui';
 import { MaxContentWidth, Rolder, RolderFonts, Spacing } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
+import { showAlert } from '@/lib/alert';
+import {
+  AVATAR_FLAIRS,
+  CARD_FRAMES,
+  cosmeticUnlockLabel,
+  fetchUserCosmetics,
+  isCosmeticUnlocked,
+  setMyCosmetic,
+  type MyCosmetics,
+} from '@/lib/cosmetics';
 import { fetchPremiumStatus } from '@/lib/premium';
 import { SHEET_THEMES, unlockLabel } from '@/lib/sheet-schema';
 import {
@@ -28,6 +38,7 @@ export default function XpScreen() {
   const [xp, setXp] = useState(0);
   const [breakdown, setBreakdown] = useState<Map<string, MissionProgress>>(new Map());
   const [isPremium, setIsPremium] = useState(false);
+  const [cosmetics, setCosmetics] = useState<MyCosmetics>({ cardFrame: null, avatarFlair: null });
 
   useEffect(() => {
     if (!session) return;
@@ -41,7 +52,24 @@ export default function XpScreen() {
     fetchPremiumStatus(userId)
       .then((status) => setIsPremium(status.active))
       .catch(() => {});
+    fetchUserCosmetics(userId)
+      .then(setCosmetics)
+      .catch(() => {});
   }, [session]);
+
+  // Equipar/quitar: optimista (la elección es cosmética; si falla, se repone)
+  const equip = async (kind: 'card_frame' | 'avatar_flair', id: string | null) => {
+    if (!session) return;
+    const previous = cosmetics;
+    const key = kind === 'card_frame' ? 'cardFrame' : 'avatarFlair';
+    setCosmetics({ ...cosmetics, [key]: id });
+    try {
+      await setMyCosmetic(session.user.id, kind, id);
+    } catch (error) {
+      setCosmetics(previous);
+      showAlert('No se pudo guardar', error instanceof Error ? error.message : String(error));
+    }
+  };
 
   const info = levelInfoFromXp(xp);
   const doneOnce = MISSIONS.filter((m) => m.once && (breakdown.get(m.kind)?.times ?? 0) > 0);
@@ -144,6 +172,55 @@ export default function XpScreen() {
               </View>
             );
           })}
+          <SectionLabel>Marcos de tarjeta</SectionLabel>
+          <Text style={styles.equipHelp}>
+            El marco rodea tu tarjeta en el feed. Toca uno desbloqueado para lucirlo (o para
+            quitártelo).
+          </Text>
+          {CARD_FRAMES.map((frame) => {
+            const unlocked = isCosmeticUnlocked(frame.unlock, info.level);
+            const equipped = cosmetics.cardFrame === frame.id;
+            return (
+              <Pressable
+                key={frame.id}
+                disabled={!unlocked}
+                onPress={() => equip('card_frame', equipped ? null : frame.id)}
+                style={[styles.equipRow, equipped && styles.equipRowActive]}>
+                <View style={[styles.frameSwatch, { borderColor: frame.color }]} />
+                <Text style={[styles.rewardTitle, !unlocked && styles.rewardLocked]}>
+                  {unlocked ? (equipped ? `✅ ${frame.name}` : frame.name) : `🔒 ${frame.name}`}
+                </Text>
+                <Text style={styles.equipMeta}>
+                  {equipped ? 'En uso' : (cosmeticUnlockLabel(frame.unlock) ?? '')}
+                </Text>
+              </Pressable>
+            );
+          })}
+
+          <SectionLabel>Flair de avatar</SectionLabel>
+          <Text style={styles.equipHelp}>
+            Un emblema junto a tu alias en las tarjetas y perfiles.
+          </Text>
+          {AVATAR_FLAIRS.map((flair) => {
+            const unlocked = isCosmeticUnlocked(flair.unlock, info.level);
+            const equipped = cosmetics.avatarFlair === flair.id;
+            return (
+              <Pressable
+                key={flair.id}
+                disabled={!unlocked}
+                onPress={() => equip('avatar_flair', equipped ? null : flair.id)}
+                style={[styles.equipRow, equipped && styles.equipRowActive]}>
+                <Text style={styles.flairEmoji}>{flair.emoji}</Text>
+                <Text style={[styles.rewardTitle, !unlocked && styles.rewardLocked]}>
+                  {unlocked ? (equipped ? `✅ ${flair.name}` : flair.name) : `🔒 ${flair.name}`}
+                </Text>
+                <Text style={styles.equipMeta}>
+                  {equipped ? 'En uso' : (cosmeticUnlockLabel(flair.unlock) ?? '')}
+                </Text>
+              </Pressable>
+            );
+          })}
+
           <Text style={styles.footNote}>
             El nivel es cosmético: presume de veteranía, no cambia el matching.
           </Text>
@@ -272,5 +349,43 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: Spacing.two,
     marginBottom: Spacing.four,
+  },
+  equipHelp: {
+    color: Rolder.textSecondary,
+    fontSize: 12,
+    fontFamily: RolderFonts.regular,
+    marginTop: -6,
+  },
+  equipRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: Rolder.surface,
+    borderWidth: 1,
+    borderColor: Rolder.surfaceBorder,
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  equipRowActive: {
+    borderColor: Rolder.violet,
+  },
+  frameSwatch: {
+    width: 26,
+    height: 34,
+    borderRadius: 6,
+    borderWidth: 3,
+    backgroundColor: Rolder.input,
+  },
+  flairEmoji: {
+    fontSize: 22,
+    width: 26,
+    textAlign: 'center',
+  },
+  equipMeta: {
+    marginLeft: 'auto',
+    color: Rolder.textTertiary,
+    fontSize: 11.5,
+    fontFamily: RolderFonts.semibold,
   },
 });
