@@ -41,6 +41,7 @@ const STATUS_PILL = {
   playing: { label: 'EN JUEGO', tone: 'violet' as const },
   looking: { label: 'BUSCANDO MESA', tone: 'green' as const },
   retired: { label: 'RETIRADA', tone: 'gray' as const },
+  fallen: { label: 'CAÍDO EN COMBATE', tone: 'gray' as const },
 };
 
 export default function PlayerProfileScreen() {

@@ -21,9 +21,10 @@ import { CharacterSheetView } from '@/components/character-sheet-view';
 import { PrimaryButton } from '@/components/ui';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { MaxContentWidth, Rolder, Spacing } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
 import {
+  characterMilestone,
   deleteCharacter,
   fetchCharacter,
   updateCharacter,
@@ -203,6 +204,20 @@ export default function EditCharacterScreen() {
                 </View>
               )}
               <ThemedText type="title">{character.name}</ThemedText>
+              {(character.sessions_lived > 0 || characterMilestone(character.sessions_lived)) && (
+                <ThemedText type="small" style={styles.lifeLine}>
+                  {[
+                    character.sessions_lived > 0
+                      ? `🕯️ ${character.sessions_lived} ${
+                          character.sessions_lived === 1 ? 'sesión vivida' : 'sesiones vividas'
+                        }`
+                      : null,
+                    characterMilestone(character.sessions_lived),
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')}
+                </ThemedText>
+              )}
             </View>
 
             <CharacterSheetView character={character} />
@@ -279,6 +294,9 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     justifyContent: 'center',
+  },
+  lifeLine: {
+    color: Rolder.gold,
   },
   safeArea: {
     flex: 1,
