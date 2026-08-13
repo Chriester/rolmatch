@@ -114,7 +114,7 @@ const styles = StyleSheet.create({
   dieLabel: {
     color: 'rgba(255,255,255,0.8)',
     fontSize: 13,
-    fontFamily: RolderFonts.bold,
+    fontFamily: RolderFonts.monoBold,
     fontWeight: '700',
   },
   dieLabelSelected: {

@@ -15,8 +15,8 @@ export function RolderGradientText({ text, size = 34 }: { text: string; size?: n
   return (
     <span
       style={{
-        fontFamily: 'Sora_800ExtraBold, Sora, sans-serif',
-        fontWeight: 800,
+        fontFamily: 'Outfit_700Bold, Outfit, sans-serif',
+        fontWeight: 700,
         fontSize: size,
         backgroundImage: GRADIENT,
         WebkitBackgroundClip: 'text',

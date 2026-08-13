@@ -36,9 +36,9 @@ export function RolderGradientText({ text, size = 34 }: { text: string; size?: n
         x={width / 2}
         y={size * 1.05}
         fill={`url(#${textId})`}
-        fontFamily="Sora_800ExtraBold"
+        fontFamily="Outfit_700Bold"
         fontSize={size}
-        fontWeight="800"
+        fontWeight="700"
         textAnchor="middle">
         {text}
       </SvgText>
