@@ -27,11 +27,22 @@ import { SHEET_THEMES, unlockLabel } from '@/lib/sheet-schema';
 import {
   MISSIONS,
   TITLE_MILESTONES,
+  WEEKLY_CHAIN_XP,
   fetchMyXpBreakdown,
+  fetchWeeklyChain,
   fetchXpTotals,
   levelInfoFromXp,
   type MissionProgress,
+  type WeeklyChain,
 } from '@/lib/xp';
+
+const CHAIN_STEPS: { key: keyof Omit<WeeklyChain, 'bonusEarned'>; icon: string; label: string }[] =
+  [
+    { key: 'rsvp', icon: '✋', label: 'Responde «¿vienes?» a una sesión' },
+    { key: 'played', icon: '🕯️', label: 'Confirma una sesión jugada' },
+    { key: 'journal', icon: '📖', label: 'Escribe una crónica en el histórico' },
+    { key: 'rated', icon: '🎲', label: 'Valora a un compañero de mesa' },
+  ];
 
 export default function XpScreen() {
   const session = useSession();
@@ -39,10 +50,14 @@ export default function XpScreen() {
   const [breakdown, setBreakdown] = useState<Map<string, MissionProgress>>(new Map());
   const [isPremium, setIsPremium] = useState(false);
   const [cosmetics, setCosmetics] = useState<MyCosmetics>({ cardFrame: null, avatarFlair: null });
+  const [chain, setChain] = useState<WeeklyChain | null>(null);
 
   useEffect(() => {
     if (!session) return;
     const userId = session.user.id;
+    fetchWeeklyChain(userId)
+      .then(setChain)
+      .catch(() => {});
     fetchXpTotals([userId])
       .then((totals) => setXp(totals.get(userId) ?? 0))
       .catch(() => {});
@@ -99,6 +114,30 @@ export default function XpScreen() {
                 : ' · título máximo alcanzado'}
             </Text>
           </View>
+
+          {chain && (
+            <View style={styles.chainBlock}>
+              <Text style={styles.chainTitle}>
+                🔗 Cadena semanal{' '}
+                {chain.bonusEarned ? '· ✅ completada' : `· +${WEEKLY_CHAIN_XP} XP al cerrarla`}
+              </Text>
+              <Text style={styles.chainHelp}>
+                El ciclo de jugar, de lunes a domingo: cada paso da su XP y cerrar los cuatro paga
+                el bonus.
+              </Text>
+              {CHAIN_STEPS.map((step) => (
+                <View key={step.key} style={styles.chainStep}>
+                  <Text style={styles.chainStepIcon}>{step.icon}</Text>
+                  <Text
+                    style={[styles.chainStepLabel, chain[step.key] && styles.chainStepDone]}
+                    numberOfLines={1}>
+                    {step.label}
+                  </Text>
+                  <Text style={styles.chainStepCheck}>{chain[step.key] ? '✅' : '⬜'}</Text>
+                </View>
+              ))}
+            </View>
+          )}
 
           <SectionLabel>Misiones en curso</SectionLabel>
           {active.map((mission) => {
@@ -355,6 +394,48 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: RolderFonts.regular,
     marginTop: -6,
+  },
+  chainBlock: {
+    backgroundColor: Rolder.surface,
+    borderWidth: 1,
+    borderColor: Rolder.surfaceBorder,
+    borderRadius: 16,
+    padding: 14,
+    gap: 8,
+  },
+  chainTitle: {
+    color: '#fff',
+    fontSize: 14.5,
+    fontFamily: RolderFonts.bold,
+    fontWeight: '700',
+  },
+  chainHelp: {
+    color: Rolder.textSecondary,
+    fontSize: 12,
+    fontFamily: RolderFonts.regular,
+    lineHeight: 16,
+  },
+  chainStep: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  chainStepIcon: {
+    fontSize: 16,
+    width: 22,
+    textAlign: 'center',
+  },
+  chainStepLabel: {
+    color: 'rgba(255,255,255,0.9)',
+    fontSize: 13,
+    fontFamily: RolderFonts.semibold,
+    flex: 1,
+  },
+  chainStepDone: {
+    color: Rolder.likeChipText,
+  },
+  chainStepCheck: {
+    fontSize: 14,
   },
   equipRow: {
     flexDirection: 'row',

@@ -1,4 +1,4 @@
-import { levelFromXp, levelInfoFromXp, titleForLevel, xpForLevel } from '@/lib/xp';
+import { levelFromXp, levelInfoFromXp, titleForLevel, weekStartUtc, xpForLevel } from '@/lib/xp';
 
 describe('xpForLevel', () => {
   it('el nivel 1 es gratis y la curva crece cuadrática', () => {
@@ -60,6 +60,23 @@ describe('titleForLevel', () => {
     for (let i = 1; i < milestones.length; i++) {
       expect(milestones[i] - milestones[i - 1]).toBeLessThanOrEqual(4);
     }
+  });
+});
+
+describe('weekStartUtc', () => {
+  it('devuelve el lunes 00:00 UTC (espejo de date_trunc week)', () => {
+    // jueves → lunes de esa semana
+    expect(weekStartUtc(new Date('2026-08-13T10:00:00Z')).toISOString()).toBe(
+      '2026-08-10T00:00:00.000Z'
+    );
+    // domingo → sigue siendo el lunes anterior
+    expect(weekStartUtc(new Date('2026-08-16T23:59:00Z')).toISOString()).toBe(
+      '2026-08-10T00:00:00.000Z'
+    );
+    // lunes a primera hora → ese mismo lunes
+    expect(weekStartUtc(new Date('2026-08-10T00:30:00Z')).toISOString()).toBe(
+      '2026-08-10T00:00:00.000Z'
+    );
   });
 });
 
