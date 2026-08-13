@@ -79,13 +79,13 @@ const styles = StyleSheet.create({
   formula: {
     color: 'rgba(255,255,255,0.9)',
     fontSize: 13.5,
-    fontFamily: RolderFonts.bold,
+    fontFamily: RolderFonts.monoBold,
     fontWeight: '700',
   },
   total: {
     color: Rolder.gold,
     fontSize: 24,
-    fontFamily: RolderFonts.extrabold,
+    fontFamily: RolderFonts.monoBold,
     fontWeight: '800',
   },
   diceRow: {
@@ -115,7 +115,7 @@ const styles = StyleSheet.create({
   dieValue: {
     color: '#fff',
     fontSize: 14,
-    fontFamily: RolderFonts.bold,
+    fontFamily: RolderFonts.mono,
     fontWeight: '700',
   },
   dieValueMax: {
@@ -127,7 +127,7 @@ const styles = StyleSheet.create({
   modifier: {
     color: Rolder.textSecondary,
     fontSize: 14,
-    fontFamily: RolderFonts.bold,
+    fontFamily: RolderFonts.mono,
     fontWeight: '700',
     marginLeft: 3,
   },

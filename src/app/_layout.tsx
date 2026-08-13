@@ -1,13 +1,12 @@
+import { JetBrainsMono_400Regular, JetBrainsMono_700Bold } from '@expo-google-fonts/jetbrains-mono';
 import {
-  Nunito_900Black,
-} from '@expo-google-fonts/nunito';
-import {
-  Sora_400Regular,
-  Sora_600SemiBold,
-  Sora_700Bold,
-  Sora_800ExtraBold,
+  Manrope_400Regular,
+  Manrope_600SemiBold,
+  Manrope_700Bold,
   useFonts,
-} from '@expo-google-fonts/sora';
+} from '@expo-google-fonts/manrope';
+import { Nunito_900Black } from '@expo-google-fonts/nunito';
+import { Outfit_700Bold } from '@expo-google-fonts/outfit';
 import { DarkTheme, Stack, ThemeProvider, router } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useRef } from 'react';
@@ -50,11 +49,16 @@ export default function RootLayout() {
   const updating = useOtaUpdates();
   const webUpdateReady = useWebVersionCheck();
   useQuickActions();
+  // Tipografía Roldr: Manrope (cuerpo/UI), Outfit (display), JetBrains Mono
+  // (notación de dados). Nunito sigue SOLO en los sellos ¡CRÍTICO!/PIFIA
+  // (excepción deliberada — plan F2, pendiente de validar con la diseñadora).
   const [fontsLoaded] = useFonts({
-    Sora_400Regular,
-    Sora_600SemiBold,
-    Sora_700Bold,
-    Sora_800ExtraBold,
+    Manrope_400Regular,
+    Manrope_600SemiBold,
+    Manrope_700Bold,
+    Outfit_700Bold,
+    JetBrainsMono_400Regular,
+    JetBrainsMono_700Bold,
     Nunito_900Black,
   });
 

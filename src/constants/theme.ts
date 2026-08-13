@@ -55,12 +55,16 @@ export const Rolder = {
   goldGradient: ['#F0BE7A', '#C98634'] as const,
 } as const;
 
-/** Familias tipográficas cargadas en _layout (Sora para todo; Nunito en sellos) */
+/** Familias tipográficas cargadas en _layout — sistema Roldr: Manrope para
+ *  cuerpo/UI, Outfit para display (títulos), JetBrains Mono para notación de
+ *  dados (2d6+3, CD 15). Nunito solo en los sellos ¡CRÍTICO!/PIFIA. */
 export const RolderFonts = {
-  regular: 'Sora_400Regular',
-  semibold: 'Sora_600SemiBold',
-  bold: 'Sora_700Bold',
-  extrabold: 'Sora_800ExtraBold',
+  regular: 'Manrope_400Regular',
+  semibold: 'Manrope_600SemiBold',
+  bold: 'Manrope_700Bold',
+  extrabold: 'Outfit_700Bold',
+  mono: 'JetBrainsMono_400Regular',
+  monoBold: 'JetBrainsMono_700Bold',
   sticker: 'Nunito_900Black',
 } as const;
 
@@ -85,22 +89,22 @@ export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
 
 export const Fonts = Platform.select({
   ios: {
-    sans: 'Sora_400Regular',
+    sans: 'Manrope_400Regular',
     serif: 'ui-serif',
     rounded: 'ui-rounded',
-    mono: 'ui-monospace',
+    mono: 'JetBrainsMono_400Regular',
   },
   default: {
-    sans: 'Sora_400Regular',
+    sans: 'Manrope_400Regular',
     serif: 'serif',
     rounded: 'normal',
-    mono: 'monospace',
+    mono: 'JetBrainsMono_400Regular',
   },
   web: {
-    sans: 'Sora_400Regular, var(--font-display)',
+    sans: 'Manrope_400Regular, var(--font-display)',
     serif: 'var(--font-serif)',
     rounded: 'var(--font-rounded)',
-    mono: 'var(--font-mono)',
+    mono: 'JetBrainsMono_400Regular, var(--font-mono)',
   },
 });
 
