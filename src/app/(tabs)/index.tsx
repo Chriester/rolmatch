@@ -57,6 +57,7 @@ import { blockUser } from '@/lib/moderation';
 import { registerPushToken } from '@/lib/notifications';
 import { DISCORD_ENABLED } from '@/lib/config';
 import { shouldShowTutorial } from '@/lib/tutorial';
+import { serviceCardLine } from '@/components/service-stats';
 import { flairFor, frameFor } from '@/lib/cosmetics';
 import { levelFromXp, titleForLevel } from '@/lib/xp';
 import { fetchPremiumStatus, isBoostActive } from '@/lib/premium';
@@ -491,6 +492,9 @@ export default function HomeScreen() {
             <Text style={cardText.blurb} numberOfLines={2}>
               {c.player.bio}
             </Text>
+          )}
+          {serviceCardLine(c.player.service) && (
+            <Text style={cardText.soft}>{serviceCardLine(c.player.service)}</Text>
           )}
           <Text style={cardText.compat}>
             ⏱ Coincide {c.result.overlapHours} h con vuestra sesión

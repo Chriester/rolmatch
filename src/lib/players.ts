@@ -7,6 +7,7 @@ import { fetchUserCosmetics, type MyCosmetics } from '@/lib/cosmetics';
 import { fetchMyGroups, type GroupSummary } from '@/lib/groups';
 import { fetchProfileData, type ProfileData } from '@/lib/profile';
 import { fetchReliability, type ReliabilitySummary } from '@/lib/ratings';
+import { fetchServiceStats, type ServiceStats } from '@/lib/service';
 import { supabase } from '@/lib/supabase';
 import { fetchXpTotals } from '@/lib/xp';
 
@@ -19,6 +20,7 @@ export type PlayerProfile = ProfileData & {
   groups: GroupSummary[];
   xpTotal: number;
   cosmetics: MyCosmetics;
+  service: ServiceStats | null;
 };
 
 const EXPERIENCE_NAMES: Record<string, string> = {
@@ -29,7 +31,7 @@ const EXPERIENCE_NAMES: Record<string, string> = {
 };
 
 export async function fetchPlayerProfile(userId: string): Promise<PlayerProfile> {
-  const [profile, reliabilityMap, systemsRes, characters, groups, xpMap, cosmetics] =
+  const [profile, reliabilityMap, systemsRes, characters, groups, xpMap, cosmetics, serviceMap] =
     await Promise.all([
       fetchProfileData(userId),
       fetchReliability([userId]),
@@ -41,6 +43,7 @@ export async function fetchPlayerProfile(userId: string): Promise<PlayerProfile>
       fetchUserCosmetics(userId).catch(
         (): MyCosmetics => ({ cardFrame: null, avatarFlair: null })
       ),
+      fetchServiceStats([userId]),
     ]);
   if (systemsRes.error) throw systemsRes.error;
 
@@ -60,5 +63,6 @@ export async function fetchPlayerProfile(userId: string): Promise<PlayerProfile>
     groups: groups.filter((g) => g.is_active),
     xpTotal: xpMap.get(userId) ?? 0,
     cosmetics,
+    service: serviceMap.get(userId) ?? null,
   };
 }

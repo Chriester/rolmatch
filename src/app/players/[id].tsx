@@ -27,6 +27,7 @@ import { blockUser } from '@/lib/moderation';
 import { fetchPlayerProfile, type PlayerProfile } from '@/lib/players';
 import { GENDER_LABELS, SAFETY_TOOL_LABELS, ageFromBirthYear } from '@/lib/profile';
 import { cacheGet, cacheSet } from '@/lib/screen-cache';
+import { ServiceStatsRow } from '@/components/service-stats';
 import { flairFor } from '@/lib/cosmetics';
 import { levelInfoFromXp } from '@/lib/xp';
 
@@ -131,6 +132,8 @@ export default function PlayerProfileScreen() {
               )}
             </CardChipRow>
           </View>
+
+          {profile.service && <ServiceStatsRow stats={profile.service} />}
 
           {session && !isMe && (
             <OutlineButton
