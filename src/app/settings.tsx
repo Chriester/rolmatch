@@ -5,6 +5,7 @@
 import Constants from 'expo-constants';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
+import { Dices, Shield } from 'lucide-react-native';
 import { Linking, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -24,27 +25,23 @@ import { fetchSearching, setSearching } from '@/lib/profile';
 import { shareLink } from '@/lib/share';
 import { enableWebPush, webPushState, type WebPushState } from '@/lib/web-push';
 
-const OPTIONS: { icon: string; label: string; detail: string; route: string }[] = [
+const OPTIONS: { label: string; detail: string; route: string }[] = [
   {
-    icon: '🎓',
     label: 'Ver el tutorial',
     detail: 'El paseo de bienvenida por la app, las veces que quieras',
     route: '/tutorial',
   },
   {
-    icon: '✨',
     label: 'Canjear código promocional',
     detail: 'Códigos de premium y regalos de la beta',
     route: '/promo',
   },
   {
-    icon: '💬',
     label: 'Enviar sugerencia',
     detail: 'Ideas y cosas que fallan, directas al equipo',
     route: '/feedback',
   },
   {
-    icon: '🚫',
     label: 'Bloqueados',
     detail: 'Quién no te ve ni te escribe, y cómo deshacerlo',
     route: '/blocked',
@@ -82,7 +79,7 @@ function SearchingSection() {
     <View style={styles.pushBox}>
       <View style={styles.searchingRow}>
         <View style={styles.searchingText}>
-          <Text style={styles.pushTitle}>🔍 En búsqueda de mesa</Text>
+          <Text style={styles.pushTitle}>En búsqueda de mesa</Text>
           <Text style={styles.pushDetail}>
             {searching
               ? 'Los GMs te ven entre los candidatos. Apágalo si ya tienes mesa: dejarás de salir en su feed (tus mesas y chats siguen igual).'
@@ -102,11 +99,11 @@ function SearchingSection() {
 
 // Qué incluye premium y en qué estado está el tuyo. En la alpha nadie paga:
 // el premium llega por código promocional (los testers lo tienen incluido).
-const PREMIUM_PERKS: { icon: string; label: string }[] = [
-  { icon: '↩️', label: 'Rewind: deshaz el último swipe si te arrepientes' },
-  { icon: '🔭', label: 'Encuentros al descubierto: ve quién te ha dado like antes de swipear' },
-  { icon: '🚀', label: 'Boost: destaca tu mesa 7 días, la primera de los feeds' },
-  { icon: '🎨', label: 'Temas premium para las hojas de personaje' },
+const PREMIUM_PERKS: { label: string }[] = [
+  { label: 'Rewind: deshaz el último swipe si te arrepientes' },
+  { label: 'Encuentros al descubierto: ve quién te ha dado like antes de swipear' },
+  { label: 'Boost: destaca tu mesa 7 días, la primera de los feeds' },
+  { label: 'Temas premium para las hojas de personaje' },
 ];
 
 function PremiumSection() {
@@ -132,23 +129,22 @@ function PremiumSection() {
 
   return (
     <View style={styles.pushBox}>
-      <Text style={styles.pushTitle}>✨ Premium</Text>
+      <Text style={styles.pushTitle}>Premium</Text>
       <Text style={styles.pushDetail}>
         {status?.active
-          ? `✅ Activo ${untilLabel}. Tienes desbloqueado:`
+          ? `Activo ${untilLabel}. Tienes desbloqueado:`
           : 'Qué desbloquea el premium de rolder:'}
       </Text>
       <View style={styles.perksList}>
         {PREMIUM_PERKS.map((perk) => (
           <View key={perk.label} style={styles.perkRow}>
-            <Text style={styles.perkIcon}>{perk.icon}</Text>
             <Text style={[styles.pushDetail, styles.perkLabel]}>{perk.label}</Text>
           </View>
         ))}
       </View>
       {status !== undefined && !status.active && (
         <OutlineButton
-          label="✨ Canjear mi código de tester"
+          label="Canjear mi código de tester"
           onPress={() => router.push('/promo')}
         />
       )}
@@ -159,7 +155,7 @@ function PremiumSection() {
             un café:
           </Text>
           <OutlineButton
-            label="☕ Apóyanos"
+            label="Apóyanos"
             onPress={() => SUPPORT_URL && Linking.openURL(SUPPORT_URL)}
           />
         </>
@@ -179,7 +175,7 @@ function WebPushSection() {
 
   return (
     <View style={styles.pushBox}>
-      <Text style={styles.pushTitle}>🔔 Notificaciones</Text>
+      <Text style={styles.pushTitle}>Notificaciones</Text>
       {state === 'ios-install' ? (
         <Text style={styles.pushDetail}>
           Para recibir avisos de matches, mensajes y sesiones en iPhone/iPad: abre rolder en
@@ -192,14 +188,14 @@ function WebPushSection() {
           navegador para este sitio y recarga.
         </Text>
       ) : state === 'granted' ? (
-        <Text style={styles.pushDetail}>✅ Activadas en este dispositivo.</Text>
+        <Text style={styles.pushDetail}>Activadas en este dispositivo.</Text>
       ) : (
         <>
           <Text style={styles.pushDetail}>
             Avisos de matches, mensajes y sesiones aunque no tengas la app abierta.
           </Text>
           <OutlineButton
-            label={busy ? 'Activando…' : '🔔 Activar notificaciones'}
+            label={busy ? 'Activando…' : 'Activar notificaciones'}
             disabled={busy || !session}
             onPress={async () => {
               if (!session) return;
@@ -235,10 +231,10 @@ function ShareAppRow() {
         });
         if (!via) return;
         if (via === 'clipboard')
-          showAlert('🔗 Enlace copiado', 'Pégalo donde quieras para invitar a alguien a rolder.');
+          showAlert('Enlace copiado', 'Pégalo donde quieras para invitar a alguien a rolder.');
         track(session?.user.id, 'share_app', { via });
       }}>
-      <Text style={styles.icon}>🎲</Text>
+      <Dices color={Rolder.violetSoft} size={20} strokeWidth={2} />
       <View style={styles.body}>
         <Text style={styles.label}>Invitar a rolder</Text>
         <Text style={styles.detail}>Comparte la app con quien le falte mesa (o jugadores)</Text>
@@ -261,7 +257,7 @@ function ModerationRow() {
   if (!isModerator) return null;
   return (
     <ListRow onPress={() => router.push('/moderation')}>
-      <Text style={styles.icon}>🛡️</Text>
+      <Shield color={Rolder.violetSoft} size={20} strokeWidth={2} />
       <View style={styles.body}>
         <Text style={styles.label}>Moderación</Text>
         <Text style={styles.detail}>La cola de reportes de la comunidad</Text>
@@ -278,7 +274,7 @@ export default function SettingsScreen() {
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.content}>
           <AppHeader onBack={() => (router.canGoBack() ? router.back() : router.replace('/'))} />
-          <ScreenTitle>⚙️ Opciones</ScreenTitle>
+          <ScreenTitle>Opciones</ScreenTitle>
           <ScreenBlurb>Ajustes y utilidades de tu cuenta.</ScreenBlurb>
 
           <SearchingSection />
@@ -287,7 +283,6 @@ export default function SettingsScreen() {
 
           {OPTIONS.map((option) => (
             <ListRow key={option.label} onPress={() => router.push(option.route as never)}>
-              <Text style={styles.icon}>{option.icon}</Text>
               <View style={styles.body}>
                 <Text style={styles.label}>{option.label}</Text>
                 <Text style={styles.detail}>{option.detail}</Text>
@@ -312,8 +307,8 @@ export default function SettingsScreen() {
                   .map((g) => `«${g.name}» (${g.members === 1 ? '1 persona' : `${g.members} personas`})`)
                   .join(', ');
                 const proceed = await confirmAction(
-                  '⚠️ Tus mesas se disuelven',
-                  `Eres GM de ${names}. Al borrar tu cuenta, esas mesas desaparecen para todos sus miembros: chat, diario y calendario. Puedes traspasarlas antes desde la ficha de cada mesa («👑 Traspasar mesa»).`,
+                  'Tus mesas se disuelven',
+                  `Eres GM de ${names}. Al borrar tu cuenta, esas mesas desaparecen para todos sus miembros: chat, diario y calendario. Puedes traspasarlas antes desde la ficha de cada mesa («Traspasar mesa»).`,
                   'Continuar igualmente'
                 );
                 if (!proceed) return;
@@ -368,9 +363,6 @@ const styles = StyleSheet.create({
     padding: 20,
     gap: Spacing.three,
   },
-  icon: {
-    fontSize: 24,
-  },
   body: {
     flex: 1,
     gap: 2,
@@ -422,10 +414,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 8,
-  },
-  perkIcon: {
-    fontSize: 14,
-    marginTop: 1,
   },
   // el cuerpo del texto lo pone pushDetail (composición en el JSX)
   perkLabel: {

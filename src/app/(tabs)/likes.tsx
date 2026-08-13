@@ -4,6 +4,7 @@
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useFocusEffect } from 'expo-router';
+import { Telescope } from 'lucide-react-native';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -93,7 +94,7 @@ export default function LikesScreen() {
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
         <AppHeader />
-        <ScreenTitle>🔭 Tus encuentros</ScreenTitle>
+        <ScreenTitle>Tus encuentros</ScreenTitle>
 
         {loadError ? (
           <View style={styles.centerBox}>
@@ -106,7 +107,7 @@ export default function LikesScreen() {
           </View>
         ) : likes.length === 0 ? (
           <View style={styles.centerBox}>
-            <Text style={styles.centerEmoji}>🔭</Text>
+            <Telescope size={44} color={Rolder.textTertiary} />
             <Text style={styles.centerText}>
               El catalejo aún no avista a nadie: aquí aparecerá quien te dé like. Completa tu
               perfil y tu vitrina — todo llega.
@@ -126,7 +127,7 @@ export default function LikesScreen() {
                 end={{ x: 1, y: 1 }}
                 style={styles.upsell}>
                 <Text style={styles.upsellText}>
-                  ✨ Hazte premium para ver quiénes son antes de swipear. Los testers de la alpha
+                  Hazte premium para ver quiénes son antes de swipear. Los testers de la alpha
                   lo tienen incluido — canjea tu código.
                 </Text>
               </LinearGradient>
@@ -164,9 +165,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: Spacing.three,
-  },
-  centerEmoji: {
-    fontSize: 56,
   },
   centerText: {
     color: Rolder.textSecondary,

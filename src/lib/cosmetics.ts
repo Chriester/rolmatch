@@ -50,7 +50,7 @@ export function isCosmeticUnlocked(unlock: CosmeticUnlock, level: number): boole
 }
 
 export function cosmeticUnlockLabel(unlock: CosmeticUnlock): string | null {
-  return unlock === 'free' ? null : `⚔️ Nv. ${unlock.level}`;
+  return unlock === 'free' ? null : `Nv. ${unlock.level}`;
 }
 
 /** Marco a pintar para un dueño con ese nivel, o null (sin marco / sin nivel). */

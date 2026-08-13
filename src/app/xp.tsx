@@ -36,13 +36,12 @@ import {
   type WeeklyChain,
 } from '@/lib/xp';
 
-const CHAIN_STEPS: { key: keyof Omit<WeeklyChain, 'bonusEarned'>; icon: string; label: string }[] =
-  [
-    { key: 'rsvp', icon: '✋', label: 'Responde «¿vienes?» a una sesión' },
-    { key: 'played', icon: '🕯️', label: 'Confirma una sesión jugada' },
-    { key: 'journal', icon: '📖', label: 'Escribe una crónica en el histórico' },
-    { key: 'rated', icon: '🎲', label: 'Valora a un compañero de mesa' },
-  ];
+const CHAIN_STEPS: { key: keyof Omit<WeeklyChain, 'bonusEarned'>; label: string }[] = [
+  { key: 'rsvp', label: 'Responde «¿vienes?» a una sesión' },
+  { key: 'played', label: 'Confirma una sesión jugada' },
+  { key: 'journal', label: 'Escribe una crónica en el histórico' },
+  { key: 'rated', label: 'Valora a un compañero de mesa' },
+];
 
 export default function XpScreen() {
   const session = useSession();
@@ -99,7 +98,7 @@ export default function XpScreen() {
           <AppHeader
             onBack={() => (router.canGoBack() ? router.back() : router.replace('/profile'))}
           />
-          <ScreenTitle>⚔️ Mi nivel</ScreenTitle>
+          <ScreenTitle>Mi nivel</ScreenTitle>
           <ScreenBlurb>
             La experiencia se gana jugando de verdad: nada de farmeo, la otorga la propia
             actividad de tus mesas.
@@ -118,8 +117,8 @@ export default function XpScreen() {
           {chain && (
             <View style={styles.chainBlock}>
               <Text style={styles.chainTitle}>
-                🔗 Cadena semanal{' '}
-                {chain.bonusEarned ? '· ✅ completada' : `· +${WEEKLY_CHAIN_XP} XP al cerrarla`}
+                Cadena semanal{' '}
+                {chain.bonusEarned ? '· completada' : `· +${WEEKLY_CHAIN_XP} XP al cerrarla`}
               </Text>
               <Text style={styles.chainHelp}>
                 El ciclo de jugar, de lunes a domingo: cada paso da su XP y cerrar los cuatro paga
@@ -127,13 +126,12 @@ export default function XpScreen() {
               </Text>
               {CHAIN_STEPS.map((step) => (
                 <View key={step.key} style={styles.chainStep}>
-                  <Text style={styles.chainStepIcon}>{step.icon}</Text>
                   <Text
                     style={[styles.chainStepLabel, chain[step.key] && styles.chainStepDone]}
                     numberOfLines={1}>
                     {step.label}
                   </Text>
-                  <Text style={styles.chainStepCheck}>{chain[step.key] ? '✅' : '⬜'}</Text>
+                  <Text style={styles.chainStepCheck}>{chain[step.key] ? '✓' : '□'}</Text>
                 </View>
               ))}
             </View>
@@ -171,7 +169,7 @@ export default function XpScreen() {
                   <View key={mission.kind} style={[styles.mission, styles.missionDone]}>
                     <Text style={styles.missionIcon}>{mission.icon}</Text>
                     <View style={styles.missionBody}>
-                      <Text style={styles.missionTitle}>✅ {mission.title}</Text>
+                      <Text style={styles.missionTitle}>✓ {mission.title}</Text>
                       <Text style={styles.missionDesc}>{mission.description}</Text>
                     </View>
                     <Text style={styles.rewardDone}>+{progress?.earned ?? 0} XP</Text>
@@ -190,7 +188,7 @@ export default function XpScreen() {
                   Nv. {milestone.level}
                 </Text>
                 <Text style={[styles.rewardTitle, !unlocked && styles.rewardLocked]}>
-                  {unlocked ? '✅' : '🔒'} Título «{milestone.title}»
+                  Título «{milestone.title}»
                 </Text>
               </View>
             );
@@ -203,10 +201,10 @@ export default function XpScreen() {
             return (
               <View key={theme.id} style={styles.rewardRow}>
                 <Text style={[styles.rewardLevel, unlocked && styles.rewardLevelDone]}>
-                  {theme.unlock === 'premium' ? '✨' : unlockLabel(theme)?.replace('⚔️ ', '')}
+                  {theme.unlock === 'premium' ? 'Premium' : unlockLabel(theme)}
                 </Text>
                 <Text style={[styles.rewardTitle, !unlocked && styles.rewardLocked]}>
-                  {unlocked ? '✅' : '🔒'} Diseño de hoja «{theme.name}» {theme.emblem}
+                  Diseño de hoja «{theme.name}» {theme.emblem}
                 </Text>
               </View>
             );
@@ -227,7 +225,7 @@ export default function XpScreen() {
                 style={[styles.equipRow, equipped && styles.equipRowActive]}>
                 <View style={[styles.frameSwatch, { borderColor: frame.color }]} />
                 <Text style={[styles.rewardTitle, !unlocked && styles.rewardLocked]}>
-                  {unlocked ? (equipped ? `✅ ${frame.name}` : frame.name) : `🔒 ${frame.name}`}
+                  {equipped ? `✓ ${frame.name}` : frame.name}
                 </Text>
                 <Text style={styles.equipMeta}>
                   {equipped ? 'En uso' : (cosmeticUnlockLabel(frame.unlock) ?? '')}
@@ -251,7 +249,7 @@ export default function XpScreen() {
                 style={[styles.equipRow, equipped && styles.equipRowActive]}>
                 <Text style={styles.flairEmoji}>{flair.emoji}</Text>
                 <Text style={[styles.rewardTitle, !unlocked && styles.rewardLocked]}>
-                  {unlocked ? (equipped ? `✅ ${flair.name}` : flair.name) : `🔒 ${flair.name}`}
+                  {equipped ? `✓ ${flair.name}` : flair.name}
                 </Text>
                 <Text style={styles.equipMeta}>
                   {equipped ? 'En uso' : (cosmeticUnlockLabel(flair.unlock) ?? '')}
@@ -419,11 +417,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-  },
-  chainStepIcon: {
-    fontSize: 16,
-    width: 22,
-    textAlign: 'center',
   },
   chainStepLabel: {
     color: 'rgba(255,255,255,0.9)',

@@ -151,7 +151,7 @@ export default function EditGroupScreen() {
                 : router.replace({ pathname: '/groups/[id]', params: { id: id! } })
             }
           />
-          <ScreenTitle>✏️ Editar mesa</ScreenTitle>
+          <ScreenTitle>Editar mesa</ScreenTitle>
 
           {session && (
             <PhotoPicker
@@ -254,10 +254,10 @@ export default function EditGroupScreen() {
 
           <View style={styles.nav}>
             <OutlineButton label="Cancelar" tone="white" onPress={() => router.back()} disabled={busy} style={styles.cancelButton} />
-            <PrimaryButton label={busy ? 'Guardando…' : '💾 Guardar cambios'} onPress={handleSave} disabled={!valid || busy} style={styles.saveButton} />
+            <PrimaryButton label={busy ? 'Guardando…' : 'Guardar cambios'} onPress={handleSave} disabled={!valid || busy} style={styles.saveButton} />
 
             <OutlineButton
-              label="💥 Disolver la mesa"
+              label="Disolver la mesa"
               tone="red"
               disabled={busy}
               onPress={async () => {
@@ -276,7 +276,7 @@ export default function EditGroupScreen() {
                 if (!sure) return;
                 try {
                   await deleteGroup(id);
-                  showAlert('💥 Mesa disuelta', 'Gracias por las partidas.');
+                  showAlert('Mesa disuelta', 'Gracias por las partidas.');
                   router.replace('/groups');
                 } catch (error) {
                   showAlert(

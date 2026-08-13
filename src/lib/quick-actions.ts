@@ -6,9 +6,9 @@ import { useEffect } from 'react';
 import { Platform } from 'react-native';
 
 const SHORTCUTS = [
-  { id: 'feed', title: '🎲 Feed', params: { href: '/' } },
-  { id: 'chats', title: '💬 Mis chats', params: { href: '/chats' } },
-  { id: 'groups', title: '🛡️ Mis mesas', params: { href: '/groups' } },
+  { id: 'feed', title: 'Feed', params: { href: '/' } },
+  { id: 'chats', title: 'Mis chats', params: { href: '/chats' } },
+  { id: 'groups', title: 'Mis mesas', params: { href: '/groups' } },
 ];
 
 function routeTo(action?: { params?: Record<string, unknown> | null } | null) {

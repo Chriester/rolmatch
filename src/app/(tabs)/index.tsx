@@ -3,6 +3,7 @@
 
 import { Image } from 'expo-image';
 import { Redirect, router, useFocusEffect } from 'expo-router';
+import { Radar, WalletCards } from 'lucide-react-native';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Platform,
@@ -219,7 +220,7 @@ export default function HomeScreen() {
       return {
         headline: 'No hay mesas ni jugadores nuevos por ahora.',
         hint: 'Con la comunidad aún pequeña esto pasa: vuelve a barajar lo que descartaste, o monta tú la mesa y que te encuentren.',
-        action: '⚙️ Ajustar mi perfil',
+        action: 'Ajustar mi perfil',
       };
     }
     const mesas = total === 1 ? '1 mesa se ha quedado' : `${total} mesas se han quedado`;
@@ -227,20 +228,20 @@ export default function HomeScreen() {
       return {
         headline: `${mesas} fuera por horario.`,
         hint: 'Marca más franjas en tu disponibilidad y vuelven a aparecer.',
-        action: '🕒 Ampliar mi disponibilidad',
+        action: 'Ampliar mi disponibilidad',
       };
     }
     if (system >= language) {
       return {
         headline: `${mesas} fuera por sistema de juego.`,
         hint: 'Añade sistemas, o marca «abierto a cualquiera» y las verás todas.',
-        action: '🎲 Añadir sistemas',
+        action: 'Añadir sistemas',
       };
     }
     return {
       headline: `${mesas} fuera por idioma.`,
       hint: 'Añade los idiomas en los que te apañas para verlas.',
-      action: '🗣️ Ajustar mi perfil',
+      action: 'Ajustar mi perfil',
     };
   })();
 
@@ -322,7 +323,7 @@ export default function HomeScreen() {
     if (!session) return;
     if (!premium) {
       showAlert(
-        '↩ Rewind es premium',
+        'Rewind es premium',
         'Deshacer el último swipe es una función premium. Los testers de la alpha la tienen incluida — pídesela a Chris.'
       );
       return;
@@ -394,13 +395,13 @@ export default function HomeScreen() {
             isBoostActive(g.boosted_until) ? (
               <View style={[styles.cornerChip, styles.cornerChipGold]}>
                 <Text style={styles.cornerChipTextGold} numberOfLines={1}>
-                  🚀 Destacada
+                  Destacada
                 </Text>
               </View>
             ) : g.format === 'oneshot' ? (
               <View style={[styles.cornerChip, styles.cornerChipGreen]}>
                 <Text style={styles.cornerChipTextGreen} numberOfLines={1}>
-                  🎬 One-shot · primera cita
+                  One-shot · primera cita
                 </Text>
               </View>
             ) : undefined
@@ -412,7 +413,7 @@ export default function HomeScreen() {
             <CardChip label={g.systems?.name ?? 'Sistema sin definir'} />
             <CardChip label={FORMAT_LABELS[g.format]} />
             {g.frequency && <CardChip label={g.frequency} />}
-            {g.full && <CardChip label="🈵 Completa · pide sitio" />}
+            {g.full && <CardChip label="Completa · pide sitio" />}
           </CardChipRow>
           <CardHint />
           <CardBlurb>
@@ -423,18 +424,18 @@ export default function HomeScreen() {
             )}
             <Text style={cardText.compat}>
               {g.session_weekday !== null && g.session_slot !== null
-                ? `📅 ${WEEKDAY_LABELS[g.session_weekday]} ${SLOT_LABELS[
+                ? `${WEEKDAY_LABELS[g.session_weekday]} ${SLOT_LABELS[
                     g.session_slot
                   ].toLowerCase()} · coincidís ${item.result.overlapHours} h`
-                : `📅 Horario por definir · coincidís ${item.result.overlapHours} h`}
+                : `Horario por definir · coincidís ${item.result.overlapHours} h`}
             </Text>
             {/* lo que decide un swipe: con quién y cuántos sitios (2c) */}
             <Text style={cardText.soft}>
-              🧙 Dirige {g.owner.alias}
+              Dirige {g.owner.alias}
               {ownerFlair ? ` ${ownerFlair.emoji}` : ''}
               {g.full
-                ? ' · 🈵 completa'
-                : ` · 🪑 ${g.seatsFree} ${g.seatsFree === 1 ? 'plaza libre' : 'plazas libres'}`}
+                ? ' · completa'
+                : ` · ${g.seatsFree} ${g.seatsFree === 1 ? 'plaza libre' : 'plazas libres'}`}
             </Text>
           </CardBlurb>
         </CardShell>
@@ -469,7 +470,7 @@ export default function HomeScreen() {
           c.likedGroup ? (
             <View style={styles.likedBanner}>
               <Text style={styles.likedText} numberOfLines={1}>
-                💘 Le gustáis{c.proposal ? ` — propone a ${c.proposal.name}` : ''}
+                Le gustáis{c.proposal ? ` — propone a ${c.proposal.name}` : ''}
               </Text>
             </View>
           ) : undefined
@@ -481,10 +482,10 @@ export default function HomeScreen() {
         </Text>
         <CardChipRow>
           {/* a qué mesa iría: es LO primero que hay que saber antes del like */}
-          <CardChip variant="green" label={`🎲 Para «${item.forGroup.name}»`} />
+          <CardChip variant="green" label={`Para «${item.forGroup.name}»`} />
           <CardChip label={ROLE_LABELS[c.player.role] ?? c.player.role} />
           {playerGender && <CardChip label={playerGender} />}
-          <CardChip label={`⚔️ Nv. ${playerLevel} · ${titleForLevel(playerLevel)}`} />
+          <CardChip label={`Nv. ${playerLevel} · ${titleForLevel(playerLevel)}`} />
         </CardChipRow>
         <CardHint />
         <CardBlurb>
@@ -497,10 +498,10 @@ export default function HomeScreen() {
             <Text style={cardText.soft}>{serviceCardLine(c.player.service)}</Text>
           )}
           <Text style={cardText.compat}>
-            ⏱ Coincide {c.result.overlapHours} h con vuestra sesión
+            Coincide {c.result.overlapHours} h con vuestra sesión
           </Text>
           <Text style={cardText.soft}>
-            🛡️ Candidato para «{item.forGroup.name}»
+            Candidato para «{item.forGroup.name}»
             {publicLooking.length > 0 ? ' · toca para ver sus personajes' : ''}
           </Text>
         </CardBlurb>
@@ -584,9 +585,9 @@ export default function HomeScreen() {
               router.push({ pathname: '/players/[id]', params: { id: g.owner_id } })
             }>
             <Text style={sheetText.body}>
-              🧙 {g.owner.alias} · Nv. {g.owner.level}
+              {g.owner.alias} · Nv. {g.owner.level}
               {g.owner.reliability && g.owner.reliability.count > 0
-                ? ` · 🎲 ${g.owner.reliability.average.toFixed(1)}/5 (${g.owner.reliability.count})`
+                ? ` · ${g.owner.reliability.average.toFixed(1)}/5 (${g.owner.reliability.count})`
                 : ''}
               {'  '}
               <Text style={styles.profileLink}>ver perfil ›</Text>
@@ -640,7 +641,7 @@ export default function HomeScreen() {
         </Text>
         {c.player.reliability && c.player.reliability.count > 0 && (
           <Text style={sheetText.body}>
-            Fiabilidad: 🎲 {c.player.reliability.average.toFixed(1)}/5 (
+            Fiabilidad: {c.player.reliability.average.toFixed(1)}/5 (
             {c.player.reliability.count}{' '}
             {c.player.reliability.count === 1 ? 'valoración' : 'valoraciones'})
           </Text>
@@ -686,7 +687,7 @@ export default function HomeScreen() {
 
         {loadError ? (
           <View style={styles.centerBox}>
-            <Text style={styles.centerEmoji}>📡</Text>
+            <Radar size={44} color={Rolder.textTertiary} />
             <ThemedText style={styles.centerText}>No se pudo cargar el feed.</ThemedText>
             <Pressable style={styles.retryButton} onPress={reload}>
               <ThemedText>Reintentar</ThemedText>
@@ -704,7 +705,7 @@ export default function HomeScreen() {
           </View>
         ) : !current ? (
           <View style={styles.centerBox}>
-            <Text style={styles.centerEmoji}>🃏</Text>
+            <WalletCards size={44} color={Rolder.textTertiary} />
             <ThemedText style={styles.centerText}>
               {emptyReason.headline}
             </ThemedText>
@@ -720,7 +721,7 @@ export default function HomeScreen() {
                 // borra solo los «pass»: lo descartado vuelve a la baraja
                 resetPasses(session.user.id).then(reload).catch(reload);
               }}>
-              <Text style={styles.retryLabel}>🔄 Volver a barajar los pases</Text>
+              <Text style={styles.retryLabel}>Volver a barajar los pases</Text>
             </Pressable>
             <Pressable onPress={() => router.push('/onboarding')}>
               <ThemedText type="small" style={styles.emptyAction}>
@@ -729,7 +730,7 @@ export default function HomeScreen() {
             </Pressable>
             <Pressable onPress={() => router.push('/groups/new')}>
               <ThemedText type="small" style={styles.emptyAction}>
-                🛡️ Crear mi propia mesa
+                Crear mi propia mesa
               </ThemedText>
             </Pressable>
           </View>
@@ -804,8 +805,8 @@ export default function HomeScreen() {
                 <View style={styles.kindBadge}>
                   <Text style={styles.kindBadgeText} numberOfLines={1}>
                     {current.kind === 'group'
-                      ? '🎲 Mesa buscando jugadores'
-                      : `🧙 Jugador — candidato para «${current.forGroup.name}»`}
+                      ? 'Mesa buscando jugadores'
+                      : `Jugador — candidato para «${current.forGroup.name}»`}
                   </Text>
                 </View>
               )}
@@ -873,9 +874,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: Spacing.three,
     paddingHorizontal: Spacing.four,
-  },
-  centerEmoji: {
-    fontSize: 56,
   },
   centerText: {
     textAlign: 'center',

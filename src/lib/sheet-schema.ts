@@ -68,7 +68,7 @@ export const SHEET_SECTIONS: Record<string, SheetSection[]> = {
     { kind: 'table', title: 'Ataques', key: 'ataques', headers: ['Arma', 'Bono', 'Daño'], hint: 'Espada larga · +7 · 1d8+4 cort.' },
     { kind: 'cards', title: 'Rasgos y aptitudes', key: 'rasgos', hint: 'Segundo aliento :: Recupera 1d10+7 PV…' },
     { kind: 'chips', title: 'Equipo', key: 'equipo', hint: 'Cota de malla, Escudo, Cuerda 15 m' },
-    { kind: 'text', title: 'Notas', key: 'notas', placeholder: '💰 34 po · idiomas, contactos…' },
+    { kind: 'text', title: 'Notas', key: 'notas', placeholder: '34 po · idiomas, contactos…' },
   ],
   pathfinder2e: [
     { kind: 'fields', fields: [
@@ -277,8 +277,8 @@ export function canUseTheme(
 
 export function unlockLabel(theme: SheetTheme): string | null {
   if (theme.unlock === 'free') return null;
-  if (theme.unlock === 'premium') return '✨ Premium';
-  return `⚔️ Nv. ${theme.unlock.level}`;
+  if (theme.unlock === 'premium') return 'Premium';
+  return `Nv. ${theme.unlock.level}`;
 }
 
 /** ¿Es un valor homebrew? (campo con opciones cuyo valor no está en la lista) */

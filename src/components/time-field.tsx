@@ -35,7 +35,7 @@ export function TimeField({
         onPress={() => setOpen(true)}
         accessibilityLabel={`Hora: ${formatTime(value)}`}>
         <Text style={[styles.pillLabel, compact && styles.pillLabelCompact]}>
-          🕐 {formatTime(value)}
+          {formatTime(value)}
         </Text>
       </Pressable>
 

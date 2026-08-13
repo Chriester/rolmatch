@@ -13,6 +13,7 @@
 // está apagada (tabBarStyle: display none) para no duplicar esta.
 
 import { router, usePathname } from 'expo-router';
+import { MessagesSquare, Shield, Telescope, UserRound, type LucideIcon } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -57,17 +58,21 @@ function resolveActiveTab(pathname: string): TabKey | null {
 }
 
 function TabIcon({
-  emoji,
+  Icon,
   active,
   badge = 0,
 }: {
-  emoji: string;
+  Icon: LucideIcon;
   active: boolean;
   badge?: number;
 }) {
   return (
     <View style={styles.button}>
-      <Text style={[styles.buttonEmoji, !active && styles.buttonEmojiInactive]}>{emoji}</Text>
+      <Icon
+        color={active ? Rolder.violetSoft : Rolder.textTertiary}
+        size={24}
+        strokeWidth={active ? 2.4 : 2}
+      />
       {active && <View style={styles.activeDot} />}
       {badge > 0 && (
         <View style={styles.badge}>
@@ -162,7 +167,7 @@ export function BottomNavBar() {
         onPress={() => go('likes')}
         accessibilityRole="button"
         accessibilityLabel={newLikes > 0 ? `Encuentros, ${newLikes} nuevos` : 'Encuentros'}>
-        <TabIcon emoji="🔭" active={active === 'likes'} badge={newLikes} />
+        <TabIcon Icon={Telescope} active={active === 'likes'} badge={newLikes} />
       </Pressable>
       <Pressable
         style={({ pressed }) => [styles.item, pressed && styles.itemPressed]}
@@ -170,7 +175,7 @@ export function BottomNavBar() {
         onPress={() => go('groups')}
         accessibilityRole="button"
         accessibilityLabel="Mis mesas">
-        <TabIcon emoji="🛡️" active={active === 'groups'} />
+        <TabIcon Icon={Shield} active={active === 'groups'} />
       </Pressable>
       <Pressable
         style={({ pressed }) => [styles.item, pressed && styles.itemPressed]}
@@ -186,7 +191,7 @@ export function BottomNavBar() {
         onPress={() => go('chats')}
         accessibilityRole="button"
         accessibilityLabel={unread > 0 ? `Chats, ${unread} sin leer` : 'Chats'}>
-        <TabIcon emoji="💬" active={active === 'chats'} badge={unread} />
+        <TabIcon Icon={MessagesSquare} active={active === 'chats'} badge={unread} />
       </Pressable>
       <Pressable
         style={({ pressed }) => [styles.item, pressed && styles.itemPressed]}
@@ -194,7 +199,7 @@ export function BottomNavBar() {
         onPress={() => go('profile')}
         accessibilityRole="button"
         accessibilityLabel="Mi perfil">
-        <TabIcon emoji="👤" active={active === 'profile'} />
+        <TabIcon Icon={UserRound} active={active === 'profile'} />
       </Pressable>
     </View>
   );
@@ -223,12 +228,6 @@ const styles = StyleSheet.create({
     borderRadius: 23,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  buttonEmoji: {
-    fontSize: 22,
-  },
-  buttonEmojiInactive: {
-    opacity: 0.4,
   },
   activeDot: {
     position: 'absolute',

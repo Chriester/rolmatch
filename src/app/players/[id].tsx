@@ -123,12 +123,12 @@ export default function PlayerProfileScreen() {
             <CardChipRow>
               <CardChip label={ROLE_LABELS[profile.role] ?? profile.role} />
               {profile.gender && <CardChip label={GENDER_LABELS[profile.gender]} />}
-              <CardChip label={`🌍 ${profile.timezone}`} />
-              <CardChip label={`⚔️ Nv. ${levelInfo.level} · ${levelInfo.title}`} />
+              <CardChip label={profile.timezone} />
+              <CardChip label={`Nv. ${levelInfo.level} · ${levelInfo.title}`} />
               {profile.reliability && profile.reliability.count > 0 && (
                 <CardChip
                   variant="green"
-                  label={`🎲 ${profile.reliability.average.toFixed(1)}/5 (${profile.reliability.count})`}
+                  label={`${profile.reliability.average.toFixed(1)}/5 (${profile.reliability.count})`}
                 />
               )}
             </CardChipRow>
@@ -138,7 +138,7 @@ export default function PlayerProfileScreen() {
 
           {session && !isMe && (
             <OutlineButton
-              label={dmBusy ? 'Abriendo…' : '💬 Enviar mensaje'}
+              label={dmBusy ? 'Abriendo…' : 'Enviar mensaje'}
               onPress={handleOpenDm}
               disabled={dmBusy}
             />
@@ -182,8 +182,8 @@ export default function PlayerProfileScreen() {
             />
             <Text style={styles.bodySoft}>
               {[
-                profile.voice_chat ? '🎙 con voz' : 'sin voz',
-                profile.camera_ok ? '🎥 cámara ok' : null,
+                profile.voice_chat ? 'con voz' : 'sin voz',
+                profile.camera_ok ? 'cámara ok' : null,
                 VTT_LABELS[profile.preferred_vtt],
               ]
                 .filter(Boolean)
@@ -193,7 +193,7 @@ export default function PlayerProfileScreen() {
 
           {profile.safety_tools.length > 0 && (
             <View style={styles.block}>
-              <SectionLabel>🛡 Seguridad en mesa</SectionLabel>
+              <SectionLabel>Seguridad en mesa</SectionLabel>
               <CardChipRow>
                 {profile.safety_tools
                   .filter((tool) => SAFETY_TOOL_LABELS[tool])

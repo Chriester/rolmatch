@@ -55,7 +55,7 @@ export default function MyCharactersScreen() {
     const pill = STATUS_PILL[item.status];
     const life =
       item.sessions_lived > 0
-        ? `🕯️ ${item.sessions_lived} ${item.sessions_lived === 1 ? 'sesión vivida' : 'sesiones vividas'}`
+        ? `${item.sessions_lived} ${item.sessions_lived === 1 ? 'sesión vivida' : 'sesiones vividas'}`
         : null;
     const milestone = characterMilestone(item.sessions_lived);
     return (
@@ -96,7 +96,7 @@ export default function MyCharactersScreen() {
             }
             hitSlop={8}
             accessibilityLabel={`Editar ${item.name}`}>
-            <Text style={styles.editLink}>✏️ Editar</Text>
+            <Text style={styles.editLink}>Editar</Text>
           </Pressable>
         </View>
       </ListRow>
@@ -107,7 +107,7 @@ export default function MyCharactersScreen() {
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
         <AppHeader onBack={router.canGoBack() ? () => router.back() : undefined} />
-        <ScreenTitle>🧙 Mis personajes</ScreenTitle>
+        <ScreenTitle>Mis personajes</ScreenTitle>
         <ScreenBlurb>Tu vitrina pública. Los GMs la ven al girar tu tarjeta.</ScreenBlurb>
 
         {loadError ? (
@@ -126,7 +126,7 @@ export default function MyCharactersScreen() {
               <View style={styles.list}>
                 {characters.some((c) => c.status === 'fallen') && (
                   <>
-                    <Text style={styles.cemeteryTitle}>🪦 Cementerio</Text>
+                    <Text style={styles.cemeteryTitle}>Cementerio</Text>
                     <Text style={styles.cemeteryBlurb}>
                       Los que cayeron con las botas puestas. Descansen en paz.
                     </Text>

@@ -69,7 +69,7 @@ export default function LoginScreen() {
           {busy ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={styles.discordLabel}>🎮 Continuar con Discord</Text>
+            <Text style={styles.discordLabel}>Continuar con Discord</Text>
           )}
         </Pressable>
 

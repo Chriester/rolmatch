@@ -9,13 +9,13 @@ import { formatMemberSince, type ServiceStats } from '@/lib/service';
 
 export function ServiceStatsRow({ stats }: { stats: ServiceStats }) {
   const tiles: { value: string; label: string }[] = [
-    { value: `🎲 ${stats.sessionsPlayed}`, label: stats.sessionsPlayed === 1 ? 'sesión' : 'sesiones' },
-    { value: `🛡 ${stats.groupsCount}`, label: stats.groupsCount === 1 ? 'mesa' : 'mesas' },
+    { value: `${stats.sessionsPlayed}`, label: stats.sessionsPlayed === 1 ? 'sesión' : 'sesiones' },
+    { value: `${stats.groupsCount}`, label: stats.groupsCount === 1 ? 'mesa' : 'mesas' },
   ];
   if (stats.attendancePct !== null) {
-    tiles.push({ value: `✋ ${stats.attendancePct}%`, label: 'asistencia' });
+    tiles.push({ value: `${stats.attendancePct}%`, label: 'asistencia' });
   }
-  tiles.push({ value: `📅 ${formatMemberSince(stats.memberSince)}`, label: 'en la posada' });
+  tiles.push({ value: formatMemberSince(stats.memberSince), label: 'en la posada' });
 
   return (
     <View style={styles.row}>
@@ -36,11 +36,11 @@ export function ServiceStatsRow({ stats }: { stats: ServiceStats }) {
 /** Línea compacta para la tarjeta del feed, o null sin sesiones que presumir. */
 export function serviceCardLine(stats: ServiceStats | null): string | null {
   if (!stats || stats.sessionsPlayed === 0) return null;
-  const sessions = `🎖 ${stats.sessionsPlayed} ${
+  const sessions = `${stats.sessionsPlayed} ${
     stats.sessionsPlayed === 1 ? 'sesión jugada' : 'sesiones jugadas'
   }`;
   return stats.attendancePct !== null
-    ? `${sessions} · ✋ ${stats.attendancePct}% asistencia`
+    ? `${sessions} · ${stats.attendancePct}% asistencia`
     : sessions;
 }
 

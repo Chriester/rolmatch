@@ -119,10 +119,10 @@ export async function updateCharacter(id: string, input: CharacterInput) {
 
 /** Hito de veteranía del personaje, o null antes de la primera meta. */
 export function characterMilestone(sessionsLived: number): string | null {
-  if (sessionsLived >= 50) return '🏆 Leyenda: 50 sesiones';
-  if (sessionsLived >= 25) return '🎖 Veteranía: 25 sesiones';
-  if (sessionsLived >= 10) return '⚔️ Curtido: 10 sesiones';
-  if (sessionsLived >= 5) return '🛡 Rodado: 5 sesiones';
+  if (sessionsLived >= 50) return 'Leyenda: 50 sesiones';
+  if (sessionsLived >= 25) return 'Veteranía: 25 sesiones';
+  if (sessionsLived >= 10) return 'Curtido: 10 sesiones';
+  if (sessionsLived >= 5) return 'Rodado: 5 sesiones';
   return null;
 }
 

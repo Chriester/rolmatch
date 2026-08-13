@@ -13,7 +13,7 @@ export function UpdateBanner() {
       onPress={() => {
         if (typeof window !== 'undefined') window.location.reload();
       }}>
-      <Text style={styles.label}>🎲 Hay una versión nueva — toca para actualizar</Text>
+      <Text style={styles.label}>Hay una versión nueva — toca para actualizar</Text>
     </Pressable>
   );
 }

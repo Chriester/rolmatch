@@ -4,8 +4,9 @@
 
 import { Image } from 'expo-image';
 import { router, useFocusEffect } from 'expo-router';
+import { ArrowLeft, Bell, UserRound } from 'lucide-react-native';
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { RolderBrand } from '@/components/brand';
 import { Rolder, Spacing } from '@/constants/theme';
@@ -71,7 +72,7 @@ export function AppHeader({ onBack, right, extra }: AppHeaderProps) {
       <View style={styles.left}>
         {onBack && (
           <Pressable onPress={onBack} style={styles.back} accessibilityLabel="Volver">
-            <Text style={styles.backGlyph}>←</Text>
+            <ArrowLeft color={Rolder.violetSoft} size={22} />
           </Pressable>
         )}
         <Pressable onPress={() => router.navigate('/')} accessibilityLabel="Ir al feed">
@@ -89,7 +90,7 @@ export function AppHeader({ onBack, right, extra }: AppHeaderProps) {
             // no debe apilarse otra copia de la pantalla
             onPress={() => router.navigate('/novedades')}
             style={({ pressed }) => pressed && styles.bellPressed}>
-            <Text style={styles.bell}>🔔</Text>
+            <Bell color={Rolder.violetSoft} size={21} />
             {hasNews && <View style={styles.bellDot} />}
           </Pressable>
         )}
@@ -105,7 +106,7 @@ export function AppHeader({ onBack, right, extra }: AppHeaderProps) {
                 <Image source={{ uri: avatarUrl }} style={styles.avatar} />
               ) : (
                 <View style={[styles.avatar, styles.avatarFallback]}>
-                  <Text style={styles.avatarGlyph}>👤</Text>
+                  <UserRound color="#fff" size={18} />
                 </View>
               )}
               {unread > 0 && <View style={styles.unreadDot} />}
@@ -138,10 +139,6 @@ const styles = StyleSheet.create({
   back: {
     width: 28,
   },
-  backGlyph: {
-    color: Rolder.violetSoft,
-    fontSize: 20,
-  },
   menuButton: {
     width: 44,
     alignItems: 'flex-end',
@@ -158,10 +155,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarGlyph: {
-    color: '#fff',
-    fontSize: 17,
-  },
   spacer: {
     width: 44,
   },
@@ -175,9 +168,6 @@ const styles = StyleSheet.create({
     backgroundColor: Rolder.coral,
     borderWidth: 2,
     borderColor: Rolder.page,
-  },
-  bell: {
-    fontSize: 20,
   },
   bellPressed: {
     opacity: 0.6,

@@ -70,7 +70,7 @@ export function MatchOverlay({ visible, left, right, subtitle, onClose }: MatchO
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.primaryButton}>
-            <Text style={styles.primaryLabel}>💬 Ver mis matches</Text>
+            <Text style={styles.primaryLabel}>Ver mis matches</Text>
           </LinearGradient>
         </Pressable>
         <Pressable
