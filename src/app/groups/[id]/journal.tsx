@@ -15,6 +15,7 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   View,
@@ -29,14 +30,18 @@ import { MaxContentWidth, Rolder, RolderFonts, Spacing } from '@/constants/theme
 import { useSession } from '@/hooks/use-session';
 import { fetchGroup, type GroupDetail } from '@/lib/groups';
 import { pickAndUploadImage } from '@/lib/images';
+import { APP_URL } from '@/lib/config';
 import {
   addJournalEntry,
   deleteJournalEntry,
   ensureTodayHeader,
   fetchJournalEntries,
+  fetchJournalPublic,
   groupJournalEntries,
+  setJournalPublic,
   type JournalEntry,
 } from '@/lib/journal';
+import { shareLink } from '@/lib/share';
 import { cacheGet, cacheSet } from '@/lib/screen-cache';
 import { fetchTodaySession, formatSessionDay, type GameSession } from '@/lib/sessions';
 
@@ -70,6 +75,8 @@ export function GroupJournalPanel({
   );
   const [todaySession, setTodaySession] = useState<GameSession | null | undefined>(undefined);
   const [draft, setDraft] = useState('');
+  // null = migración 00060 sin aplicar (el toggle no se enseña)
+  const [journalPublic, setJournalPublicState] = useState<boolean | null>(null);
   const [pendingImage, setPendingImage] = useState<string | null>(null);
   const [pickingImage, setPickingImage] = useState(false);
   const [posting, setPosting] = useState(false);
@@ -105,7 +112,35 @@ export function GroupJournalPanel({
     fetchTodaySession(id)
       .then(setTodaySession)
       .catch(() => setTodaySession(null));
+    fetchJournalPublic(id)
+      .then(setJournalPublicState)
+      .catch(() => {});
   }, [id]);
+
+  const handleTogglePublic = async (next: boolean) => {
+    if (!id) return;
+    const previous = journalPublic;
+    setJournalPublicState(next);
+    try {
+      await setJournalPublic(id, next);
+    } catch (error) {
+      setJournalPublicState(previous);
+      showAlert('No se pudo cambiar', error instanceof Error ? error.message : String(error));
+    }
+  };
+
+  const handleShareCampaign = () => {
+    if (!id || !group) return;
+    shareLink({
+      title: `Crónica de «${group.name}»`,
+      text: `📖 La crónica de nuestra campaña «${group.name}»`,
+      url: `${APP_URL}/campana/${id}`,
+    }).then((channel) => {
+      if (channel === 'clipboard') {
+        showAlert('Enlace copiado', 'Pégalo donde quieras presumir de campaña.');
+      }
+    });
+  };
 
   // Crea el capitulo del dia la primera vez que alguien entra hoy.
   useEffect(() => {
@@ -221,9 +256,29 @@ export function GroupJournalPanel({
     );
   };
 
+  const isOwner = group.owner_id === session?.user.id;
+
   // Panel embebido: la identidad de la mesa la pone el hero del hub.
   return (
     <View style={styles.panel}>
+        {/* Crónica pública (migr. 00060): decisión del GM, con enlace al lado */}
+        {isOwner && journalPublic !== null && (
+          <View style={styles.publicRow}>
+            <View style={styles.publicText}>
+              <Text style={styles.publicTitle}>🌍 Crónica pública</Text>
+              <Text style={styles.publicHelp}>
+                Cualquiera con el enlace puede leer el histórico. Sin chat, agenda ni miembros.
+              </Text>
+            </View>
+            {journalPublic && (
+              <Pressable onPress={handleShareCampaign} hitSlop={8} accessibilityLabel="Compartir crónica">
+                <Text style={styles.publicShare}>🔗</Text>
+              </Pressable>
+            )}
+            <Switch value={journalPublic} onValueChange={handleTogglePublic} />
+          </View>
+        )}
+
         {/* Día de partida con la crónica en blanco: el empujón (3c) */}
         {iAmMember &&
           todaySession != null &&
@@ -377,6 +432,37 @@ const styles = StyleSheet.create({
   panel: {
     flex: 1,
     width: '100%',
+  },
+  publicRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: Rolder.surface,
+    borderWidth: 1,
+    borderColor: Rolder.surfaceBorder,
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: Spacing.two,
+  },
+  publicText: {
+    flex: 1,
+    gap: 2,
+  },
+  publicTitle: {
+    color: '#fff',
+    fontSize: 13.5,
+    fontFamily: RolderFonts.bold,
+    fontWeight: '700',
+  },
+  publicHelp: {
+    color: Rolder.textTertiary,
+    fontSize: 11.5,
+    fontFamily: RolderFonts.regular,
+    lineHeight: 15,
+  },
+  publicShare: {
+    fontSize: 20,
   },
   loading: {
     alignItems: 'center',
