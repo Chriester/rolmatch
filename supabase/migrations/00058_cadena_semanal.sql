@@ -7,9 +7,14 @@
 --
 -- Pasa por grant_xp: respeta el techo semanal global de 1000 XP (00017), y
 -- el índice único de abajo hace el resto (una cadena por semana como mucho).
+--
+-- La semana se fija en UTC: date_trunc sobre timestamptz no es IMMUTABLE
+-- (depende del timezone de sesión) y Postgres lo rechaza en índices; sobre
+-- timestamp sin zona sí lo es, de ahí el «at time zone 'utc'». El cliente
+-- calcula igual (weekStartUtc en lib/xp.ts).
 
 create unique index xp_events_weekly_chain_idx
-  on xp_events (user_id, (date_trunc('week', created_at)))
+  on xp_events (user_id, (date_trunc('week', created_at at time zone 'utc')))
   where kind = 'weekly_chain';
 
 create or replace function maybe_grant_weekly_chain(p_user uuid)
@@ -18,7 +23,8 @@ language plpgsql
 security definer set search_path = public
 as $$
 declare
-  v_week timestamptz := date_trunc('week', now());
+  -- lunes 00:00 UTC, explícito para casar con el índice y con el cliente
+  v_week timestamptz := date_trunc('week', now() at time zone 'utc') at time zone 'utc';
 begin
   if exists (
        select 1 from session_rsvps
