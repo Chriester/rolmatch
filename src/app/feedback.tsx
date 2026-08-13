@@ -3,6 +3,7 @@
 // que un tester no cuenta es un usuario que se pierde en silencio.
 
 import { router } from 'expo-router';
+import { PartyPopper } from 'lucide-react-native';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -40,7 +41,7 @@ export default function FeedbackScreen() {
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.content}>
           <AppHeader onBack={() => (router.canGoBack() ? router.back() : router.replace('/settings'))} />
-          <ScreenTitle>💬 Cuéntanos</ScreenTitle>
+          <ScreenTitle>Cuéntanos</ScreenTitle>
           <ScreenBlurb>
             Ideas, cosas que fallan, cosas que sobran. Lo leemos todo — así se decide qué toca
             arreglar antes.
@@ -48,7 +49,7 @@ export default function FeedbackScreen() {
 
           {sent ? (
             <View style={styles.thanksBox}>
-              <Text style={styles.thanksEmoji}>🙌</Text>
+              <PartyPopper color={Rolder.textTertiary} size={44} strokeWidth={2} />
               <Text style={styles.thanksTitle}>Recibido, ¡gracias!</Text>
               <Text style={styles.thanksBody}>
                 Tu mensaje ya está en la bandeja del equipo. Si quieres contar otra cosa, aquí
@@ -67,7 +68,6 @@ export default function FeedbackScreen() {
                     aria-selected={kind === option.key}
                     style={[styles.kind, kind === option.key && styles.kindActive]}
                     onPress={() => setKind(option.key)}>
-                    <Text style={styles.kindEmoji}>{option.emoji}</Text>
                     <Text style={[styles.kindLabel, kind === option.key && styles.kindLabelActive]}>
                       {option.label}
                     </Text>
@@ -119,7 +119,6 @@ const styles = StyleSheet.create({
     backgroundColor: Rolder.surface,
   },
   kindActive: { borderColor: Rolder.violetSoft, backgroundColor: 'rgba(199,125,255,0.18)' },
-  kindEmoji: { fontSize: 22 },
   kindLabel: { color: Rolder.textSecondary, fontSize: 12.5, fontFamily: RolderFonts.semibold },
   kindLabelActive: { color: '#fff' },
   input: {
@@ -136,7 +135,6 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   thanksBox: { alignItems: 'center', gap: Spacing.three, marginTop: Spacing.four },
-  thanksEmoji: { fontSize: 42 },
   thanksTitle: { color: '#fff', fontSize: 19, fontFamily: RolderFonts.semibold, fontWeight: '700' },
   thanksBody: {
     color: Rolder.textSecondary,

@@ -4,6 +4,7 @@
 
 import { Image } from 'expo-image';
 import { router, useFocusEffect } from 'expo-router';
+import { LogOut } from 'lucide-react-native';
 import { useCallback, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -20,11 +21,11 @@ import { ServiceStatsRow } from '@/components/service-stats';
 import { fetchServiceStats, type ServiceStats } from '@/lib/service';
 import { fetchXpTotals, levelInfoFromXp } from '@/lib/xp';
 
-const LINKS: { icon: string; label: string; route: string }[] = [
-  { icon: '👤', label: 'Editar perfil', route: '/onboarding' },
-  { icon: '🧙', label: 'Mis personajes', route: '/characters' },
-  { icon: '🤝', label: 'Mis matches', route: '/matches' },
-  { icon: '⚙️', label: 'Opciones', route: '/settings' },
+const LINKS: { label: string; route: string }[] = [
+  { label: 'Editar perfil', route: '/onboarding' },
+  { label: 'Mis personajes', route: '/characters' },
+  { label: 'Mis matches', route: '/matches' },
+  { label: 'Opciones', route: '/settings' },
 ];
 
 export default function ProfileTabScreen() {
@@ -84,7 +85,6 @@ export default function ProfileTabScreen() {
 
           {LINKS.map((link) => (
             <ListRow key={link.label} onPress={() => router.push(link.route as never)}>
-              <Text style={styles.linkIcon}>{link.icon}</Text>
               <Text style={styles.linkLabel}>{link.label}</Text>
               <Text style={styles.chevron}>›</Text>
             </ListRow>
@@ -99,7 +99,7 @@ export default function ProfileTabScreen() {
               );
               if (ok) signOut();
             }}>
-            <Text style={styles.linkIcon}>🚪</Text>
+            <LogOut size={18} color={Rolder.coral} />
             <Text style={[styles.linkLabel, styles.signOut]}>Cerrar sesión</Text>
           </ListRow>
         </ScrollView>
@@ -169,11 +169,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: RolderFonts.semibold,
     textAlign: 'right',
-  },
-  linkIcon: {
-    fontSize: 20,
-    width: 26,
-    textAlign: 'center',
   },
   linkLabel: {
     color: 'rgba(255,255,255,0.92)',

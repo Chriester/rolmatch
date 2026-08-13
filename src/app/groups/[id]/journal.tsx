@@ -20,6 +20,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { Camera, Link2, SendHorizontal, Trash2 } from 'lucide-react-native';
 
 import { showAlert } from '@/lib/alert';
 import { InlineBanner } from '@/components/inline-banner';
@@ -133,7 +134,7 @@ export function GroupJournalPanel({
     if (!id || !group) return;
     shareLink({
       title: `Crónica de «${group.name}»`,
-      text: `📖 La crónica de nuestra campaña «${group.name}»`,
+      text: `La crónica de nuestra campaña «${group.name}»`,
       url: `${APP_URL}/campana/${id}`,
     }).then((channel) => {
       if (channel === 'clipboard') {
@@ -244,7 +245,7 @@ export function GroupJournalPanel({
               accessibilityLabel="Borrar recuerdo"
               onPress={() => handleDelete(item.id)}
               hitSlop={8}>
-              <Text style={styles.deleteIcon}>🗑</Text>
+              <Trash2 color={Rolder.coral} size={16} strokeWidth={2} />
             </Pressable>
           )}
         </View>
@@ -265,14 +266,14 @@ export function GroupJournalPanel({
         {isOwner && journalPublic !== null && (
           <View style={styles.publicRow}>
             <View style={styles.publicText}>
-              <Text style={styles.publicTitle}>🌍 Crónica pública</Text>
+              <Text style={styles.publicTitle}>Crónica pública</Text>
               <Text style={styles.publicHelp}>
                 Cualquiera con el enlace puede leer el histórico. Sin chat, agenda ni miembros.
               </Text>
             </View>
             {journalPublic && (
               <Pressable onPress={handleShareCampaign} hitSlop={8} accessibilityLabel="Compartir crónica">
-                <Text style={styles.publicShare}>🔗</Text>
+                <Link2 color={Rolder.violetSoft} size={16} strokeWidth={2} />
               </Pressable>
             )}
             <Switch value={journalPublic} onValueChange={handleTogglePublic} />
@@ -285,7 +286,7 @@ export function GroupJournalPanel({
           !entries.some((e) => e.session_id === todaySession.id && !e.is_system) && (
             <InlineBanner
               tone="green"
-              title="✍️ Crónica de hoy"
+              title="Crónica de hoy"
               body="La página de esta partida está en blanco. Lo que no se escribe hoy, mañana se ha olvidado — una frase basta."
             />
           )}
@@ -363,7 +364,7 @@ export function GroupJournalPanel({
                     {pickingImage ? (
                       <ActivityIndicator size="small" />
                     ) : (
-                      <Text style={styles.attachLabel}>📷</Text>
+                      <Camera color={Rolder.textSecondary} size={18} strokeWidth={2} />
                     )}
                   </Pressable>
                   <TextInput
@@ -398,7 +399,7 @@ export function GroupJournalPanel({
                       start={{ x: 0, y: 0 }}
                       end={{ x: 1, y: 1 }}
                       style={styles.sendButton}>
-                      <Text style={styles.sendLabel}>➤</Text>
+                      <SendHorizontal color="#fff" size={20} strokeWidth={2} />
                     </LinearGradient>
                   </Pressable>
                 </View>
@@ -410,7 +411,7 @@ export function GroupJournalPanel({
                   la sesión.
                 </ThemedText>
                 <OutlineButton
-                  label="📅 Ver calendario"
+                  label="Ver calendario"
                   onPress={() =>
                     onGoAgenda
                       ? onGoAgenda()
@@ -460,9 +461,6 @@ const styles = StyleSheet.create({
     fontSize: 11.5,
     fontFamily: RolderFonts.regular,
     lineHeight: 15,
-  },
-  publicShare: {
-    fontSize: 20,
   },
   loading: {
     alignItems: 'center',
@@ -581,10 +579,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontFamily: RolderFonts.regular,
   },
-  deleteIcon: {
-    fontSize: 15,
-    opacity: 0.6,
-  },
   entryImage: {
     width: '100%',
     aspectRatio: 4 / 3,
@@ -641,9 +635,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  attachLabel: {
-    fontSize: 18,
-  },
   input: {
     backgroundColor: Rolder.input,
     borderWidth: 1,
@@ -665,11 +656,6 @@ const styles = StyleSheet.create({
     borderRadius: 21,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  sendLabel: {
-    color: '#fff',
-    fontSize: 17,
-    lineHeight: 20,
   },
   pressed: {
     opacity: 0.85,

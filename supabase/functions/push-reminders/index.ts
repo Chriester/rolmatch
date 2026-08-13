@@ -169,7 +169,7 @@ Deno.serve(async (request) => {
     let update: Partial<SessionRow> | null = null;
     if (hoursLeft <= 1 && !row.push_reminded_1h) {
       content = {
-        title: `⏰ ¡«${groupName}» empieza en menos de una hora!`,
+        title: `¡«${groupName}» empieza en menos de una hora!`,
         body: `Preparad los dados 🎲${sessionTitle}`,
       };
       update = { push_reminded_1h: true, push_reminded_24h: true };
@@ -185,7 +185,7 @@ Deno.serve(async (request) => {
         timeZone: tz,
       });
       content = {
-        title: `📅 Sesión de «${groupName}»`,
+        title: `Sesión de «${groupName}»`,
         body: `${when} (hora de ${tzLabel(tz)})${sessionTitle}. ¡Confirma tu asistencia!`,
       };
       update = { push_reminded_24h: true };
@@ -319,7 +319,7 @@ Deno.serve(async (request) => {
     }[]) {
       if (!poll.groups) continue;
       const content = {
-        title: '🗳️ Votación lista para cerrar',
+        title: 'Votación lista para cerrar',
         body: `«${poll.title ?? '¿Cuándo jugamos?'}» de ${poll.groups.name} llegó a su plazo. Entra y fija la fecha.`,
       };
       try {

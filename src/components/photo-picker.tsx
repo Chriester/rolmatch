@@ -58,7 +58,7 @@ export function PhotoPicker({
         <Image source={{ uri: url }} style={[styles.image, shapeStyle]} />
       ) : (
         <ThemedText type="small" style={styles.placeholderLabel}>
-          📷 {label}
+          {label}
         </ThemedText>
       )}
     </Pressable>

@@ -1,8 +1,10 @@
 // Botones circulares de acción — disparan la misma animación que el gesto
 // vía la ref del deck. Orden y estilos del handoff rolder §1:
-// ↩ rewind 46 · ✕ pass 64 · ⚔ like 64 (gradiente verde) · ⓘ info 46.
+// rewind 46 · pass 64 · like 64 (gradiente verde) · info 46. Iconos Lucide
+// desde la F3 (plan-adopcion-roldr).
 
 import { LinearGradient } from 'expo-linear-gradient';
+import { Swords, Undo2, X } from 'lucide-react-native';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Rolder } from '@/constants/theme';
@@ -11,7 +13,7 @@ type ActionBarProps = {
   onPass: () => void;
   onLike: () => void;
   onInfo?: () => void;
-  /** rewind premium (↩); se muestra siempre y la pantalla decide el gate */
+  /** rewind premium; se muestra siempre y la pantalla decide el gate */
   onRewind?: () => void;
   disabled?: boolean;
 };
@@ -24,7 +26,7 @@ export function ActionBar({ onPass, onLike, onInfo, onRewind, disabled }: Action
           style={({ pressed }) => [styles.button, styles.small, pressed && styles.pressed]}
           onPress={onRewind}
           accessibilityLabel="Deshacer último swipe">
-          <Text style={styles.rewindGlyph}>↩</Text>
+          <Undo2 color={Rolder.gold} size={24} strokeWidth={2.4} />
         </Pressable>
       )}
 
@@ -38,7 +40,7 @@ export function ActionBar({ onPass, onLike, onInfo, onRewind, disabled }: Action
         onPress={onPass}
         disabled={disabled}
         accessibilityLabel="Pasar">
-        <Text style={styles.passGlyph}>✕</Text>
+        <X color={Rolder.pass} size={30} strokeWidth={3} />
       </Pressable>
 
       <Pressable
@@ -51,7 +53,7 @@ export function ActionBar({ onPass, onLike, onInfo, onRewind, disabled }: Action
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={[styles.button, styles.like]}>
-          <Text style={styles.likeGlyph}>⚔</Text>
+          <Swords color="#fff" size={30} strokeWidth={2.2} />
         </LinearGradient>
       </Pressable>
 
@@ -95,21 +97,6 @@ const styles = StyleSheet.create({
   },
   like: {
     boxShadow: '0 6px 18px rgba(63,191,143,0.35)',
-  },
-  rewindGlyph: {
-    color: Rolder.gold,
-    fontSize: 22,
-  },
-  passGlyph: {
-    color: Rolder.pass,
-    fontSize: 28,
-    fontWeight: '700',
-    lineHeight: 32,
-  },
-  likeGlyph: {
-    color: '#fff',
-    fontSize: 28,
-    lineHeight: 34,
   },
   infoGlyph: {
     color: Rolder.violet,

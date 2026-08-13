@@ -6,10 +6,10 @@ import type { ReportStatus } from '@/lib/moderation';
 
 export type FeedbackKind = 'idea' | 'problema' | 'otro';
 
-export const FEEDBACK_KINDS: { key: FeedbackKind; emoji: string; label: string }[] = [
-  { key: 'idea', emoji: '💡', label: 'Una idea' },
-  { key: 'problema', emoji: '🐛', label: 'Algo falla' },
-  { key: 'otro', emoji: '💬', label: 'Otra cosa' },
+export const FEEDBACK_KINDS: { key: FeedbackKind; label: string }[] = [
+  { key: 'idea', label: 'Una idea' },
+  { key: 'problema', label: 'Algo falla' },
+  { key: 'otro', label: 'Otra cosa' },
 ];
 
 export async function sendFeedback(userId: string, kind: FeedbackKind, body: string) {

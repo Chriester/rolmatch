@@ -5,6 +5,7 @@
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
+import { Flame } from 'lucide-react-native';
 import { ActivityIndicator, Platform, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -50,7 +51,7 @@ export function PublicGroupInvite({ groupId }: { groupId: string }) {
   if (card === null) {
     return (
       <ThemedView style={[styles.container, styles.center]}>
-        <Text style={styles.emoji}>🕯️</Text>
+        <Flame color={Rolder.textTertiary} size={44} />
         <ThemedText style={styles.centerText}>
           Esta mesa ya no existe o se ha disuelto.
         </ThemedText>
@@ -74,7 +75,7 @@ export function PublicGroupInvite({ groupId }: { groupId: string }) {
         <View style={styles.content}>
           <AppHeader right={<View />} />
 
-          <Text style={styles.invite}>🎲 Te han invitado a una mesa</Text>
+          <Text style={styles.invite}>Te han invitado a una mesa</Text>
 
           <View style={styles.card}>
             <View style={styles.hero}>
@@ -111,14 +112,12 @@ export function PublicGroupInvite({ groupId }: { groupId: string }) {
 
               <View style={styles.miniRow}>
                 <View style={styles.miniCard}>
-                  <Text style={styles.miniEmoji}>🧙</Text>
                   <Text style={styles.miniLabel}>Dirige</Text>
                   <Text style={styles.miniValue} numberOfLines={1}>
                     {card.owner_alias ?? 'un GM'}
                   </Text>
                 </View>
                 <View style={styles.miniCard}>
-                  <Text style={styles.miniEmoji}>🪑</Text>
                   <Text style={styles.miniLabel}>Plazas</Text>
                   <Text style={styles.miniValue} numberOfLines={1}>
                     {free > 0 ? `${free} de ${card.max_players} libres` : 'Completa · pide sitio'}
@@ -126,7 +125,7 @@ export function PublicGroupInvite({ groupId }: { groupId: string }) {
                 </View>
               </View>
 
-              <PrimaryButton label="Entrar y pedir sitio 🎲" onPress={goToLogin} />
+              <PrimaryButton label="Entrar y pedir sitio" onPress={goToLogin} />
               <ThemedText type="small" style={styles.footnote}>
                 Se tarda un minuto y la cuenta te sirve para todas las mesas.
               </ThemedText>
@@ -144,7 +143,6 @@ const styles = StyleSheet.create({
   centerText: { textAlign: 'center' },
   safeArea: { flex: 1, maxWidth: MaxContentWidth, width: '100%' },
   content: { flex: 1, padding: 20, gap: Spacing.three },
-  emoji: { fontSize: 40 },
   invite: {
     color: Rolder.violetSoft,
     fontSize: 13,
@@ -205,7 +203,6 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 10,
   },
-  miniEmoji: { fontSize: 20 },
   miniLabel: {
     color: Rolder.textTertiary,
     fontSize: 10.5,

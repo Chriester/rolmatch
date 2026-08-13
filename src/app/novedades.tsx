@@ -3,6 +3,7 @@
 // lo veías, no había forma de enterarte sin recorrer mesa por mesa.
 
 import { router } from 'expo-router';
+import { Moon } from 'lucide-react-native';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -43,14 +44,14 @@ export default function NovedadesScreen() {
       <SafeAreaView style={styles.safeArea}>
         <ScrollView contentContainerStyle={styles.scroll}>
           <AppHeader onBack={() => (router.canGoBack() ? router.back() : router.replace('/'))} />
-          <ScreenTitle>🔔 Novedades</ScreenTitle>
+          <ScreenTitle>Novedades</ScreenTitle>
           <ScreenBlurb>Lo que ha pasado en tus mesas mientras no mirabas.</ScreenBlurb>
 
           {items === undefined ? (
             <ActivityIndicator style={styles.loading} />
           ) : items.length === 0 ? (
             <View style={styles.emptyBox}>
-              <Text style={styles.emptyEmoji}>🌙</Text>
+              <Moon color={Rolder.textTertiary} size={44} strokeWidth={2} />
               <ThemedText type="small" style={styles.empty}>
                 Nada nuevo. Cuando alguien pida sitio, se abra una votación o hagas match, te lo
                 contamos aquí.
@@ -100,6 +101,5 @@ const styles = StyleSheet.create({
   detail: { color: Rolder.textSecondary, fontSize: 12.5 },
   chevron: { color: 'rgba(255,255,255,0.4)', fontSize: 22 },
   emptyBox: { alignItems: 'center', gap: Spacing.two, marginTop: Spacing.four },
-  emptyEmoji: { fontSize: 34 },
   empty: { textAlign: 'center' },
 });

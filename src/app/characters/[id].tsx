@@ -208,7 +208,7 @@ export default function EditCharacterScreen() {
                 <ThemedText type="small" style={styles.lifeLine}>
                   {[
                     character.sessions_lived > 0
-                      ? `🕯️ ${character.sessions_lived} ${
+                      ? `${character.sessions_lived} ${
                           character.sessions_lived === 1 ? 'sesión vivida' : 'sesiones vividas'
                         }`
                       : null,
@@ -223,7 +223,7 @@ export default function EditCharacterScreen() {
             <CharacterSheetView character={character} />
 
             {isOwner && (
-              <PrimaryButton label="✏️ Editar personaje" onPress={() => setEditing(true)} />
+              <PrimaryButton label="Editar personaje" onPress={() => setEditing(true)} />
             )}
 
             {isOwner ? (
@@ -234,7 +234,7 @@ export default function EditCharacterScreen() {
                 ) : sheet ? (
                   <View style={styles.sheetActions}>
                     <Pressable style={styles.sheetButton} onPress={handleViewSheet}>
-                      <ThemedText type="small">📄 Ver hoja</ThemedText>
+                      <ThemedText type="small">Ver hoja</ThemedText>
                     </Pressable>
                     <Pressable style={styles.sheetButton} onPress={handleUploadSheet}>
                       <ThemedText type="small">Reemplazar</ThemedText>
@@ -247,7 +247,7 @@ export default function EditCharacterScreen() {
                   </View>
                 ) : (
                   <Pressable style={styles.sheetButton} onPress={handleUploadSheet}>
-                    <ThemedText type="small">⬆️ Subir hoja (PDF o imagen, máx. 5 MB)</ThemedText>
+                    <ThemedText type="small">Subir hoja (PDF o imagen, máx. 5 MB)</ThemedText>
                   </Pressable>
                 )}
                 {sheet && (
@@ -277,7 +277,7 @@ export default function EditCharacterScreen() {
                 <View style={styles.sheetBox}>
                   <ThemedText type="subtitle">Hoja en PDF / imagen</ThemedText>
                   <Pressable style={styles.sheetButton} onPress={handleViewSheet}>
-                    <ThemedText type="small">📄 Ver hoja</ThemedText>
+                    <ThemedText type="small">Ver hoja</ThemedText>
                   </Pressable>
                 </View>
               )

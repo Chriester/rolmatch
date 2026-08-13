@@ -229,7 +229,7 @@ export function GroupSchedulePanel({ id }: { id: string }) {
       }
       resetComposer();
       load();
-      showAlert('📅 Fechas fijadas', 'Ya están en el calendario de la mesa.');
+      showAlert('Fechas fijadas', 'Ya están en el calendario de la mesa.');
     } catch (error) {
       showAlert('No se pudo fijar', error instanceof Error ? error.message : String(error));
     } finally {
@@ -268,7 +268,7 @@ export function GroupSchedulePanel({ id }: { id: string }) {
       await createSession(id, session.user.id, new Date(option.starts_at), poll.title);
       await closePoll(poll.id);
       load();
-      showAlert('📅 Partida fijada', 'La votación queda cerrada y la fecha, en el calendario.');
+      showAlert('Partida fijada', 'La votación queda cerrada y la fecha, en el calendario.');
     } catch (error) {
       showAlert('No se pudo fijar', error instanceof Error ? error.message : String(error));
     } finally {
@@ -292,7 +292,7 @@ export function GroupSchedulePanel({ id }: { id: string }) {
       await updateSession(editingSession.id, dateAt(editDay, editTime), editTitle.trim() || null);
       setEditingSession(null);
       load();
-      showAlert('📅 Sesión actualizada', 'Los recordatorios se reprograman con la hora nueva.');
+      showAlert('Sesión actualizada', 'Los recordatorios se reprograman con la hora nueva.');
     } catch (error) {
       showAlert('No se pudo actualizar', error instanceof Error ? error.message : String(error));
     } finally {
@@ -321,7 +321,7 @@ export function GroupSchedulePanel({ id }: { id: string }) {
       setProposingFor(null);
       setProposalDay(null);
       load();
-      showAlert('🙋 Propuesta enviada', 'El GM decidirá si la añade a la votación.');
+      showAlert('Propuesta enviada', 'El GM decidirá si la añade a la votación.');
     } catch (error) {
       showAlert('No se pudo proponer', error instanceof Error ? error.message : String(error));
     } finally {
@@ -379,7 +379,7 @@ export function GroupSchedulePanel({ id }: { id: string }) {
                     {isOwner && (
                       <View style={styles.sessionActions}>
                         <Pressable onPress={() => openSessionEditor(s)}>
-                          <Text style={styles.editLink}>✏️ Editar</Text>
+                          <Text style={styles.editLink}>Editar</Text>
                         </Pressable>
                         <Pressable
                           onPress={async () => {
@@ -428,7 +428,7 @@ export function GroupSchedulePanel({ id }: { id: string }) {
                           style={styles.navSmall}
                         />
                         <PrimaryButton
-                          label={busy ? 'Guardando…' : '💾 Guardar'}
+                          label={busy ? 'Guardando…' : 'Guardar'}
                           onPress={handleSaveSessionEdit}
                           disabled={busy || !editDay}
                           style={styles.navBig}
@@ -441,12 +441,12 @@ export function GroupSchedulePanel({ id }: { id: string }) {
                     <Pressable
                       style={[styles.rsvpButton, rsvp.mine === 'yes' && styles.rsvpYesActive]}
                       onPress={() => handleRsvp(s, 'yes')}>
-                      <Text style={styles.rsvpLabel}>✋ Voy{rsvp.yes.length > 0 ? ` · ${rsvp.yes.length}` : ''}</Text>
+                      <Text style={styles.rsvpLabel}>Voy{rsvp.yes.length > 0 ? ` · ${rsvp.yes.length}` : ''}</Text>
                     </Pressable>
                     <Pressable
                       style={[styles.rsvpButton, rsvp.mine === 'no' && styles.rsvpNoActive]}
                       onPress={() => handleRsvp(s, 'no')}>
-                      <Text style={styles.rsvpLabel}>🙅 No voy{rsvp.no.length > 0 ? ` · ${rsvp.no.length}` : ''}</Text>
+                      <Text style={styles.rsvpLabel}>No voy{rsvp.no.length > 0 ? ` · ${rsvp.no.length}` : ''}</Text>
                     </Pressable>
                   </View>
                   {(rsvp.yes.length > 0 || rsvp.no.length > 0) && (
@@ -501,7 +501,7 @@ export function GroupSchedulePanel({ id }: { id: string }) {
                                 }
                               }}>
                               <Text style={[styles.nudgeChipText, done && styles.nudgeChipTextDone]}>
-                                {done ? `✅ ${alias}` : `🫵 ${alias}`}
+                                {done ? `✓ ${alias}` : alias}
                               </Text>
                             </Pressable>
                           );
@@ -524,11 +524,11 @@ export function GroupSchedulePanel({ id }: { id: string }) {
             return (
               <View key={poll.id} style={styles.pollBox}>
                 <Text style={styles.pollTitle}>
-                  🗳️ {poll.title ?? '¿Cuándo jugamos?'} · {poll.options.length} opciones
+                  {poll.title ?? '¿Cuándo jugamos?'} · {poll.options.length} opciones
                 </Text>
                 {poll.closes_at && (
                   <Text style={styles.pollDeadline}>
-                    ⏳ Cierra el {formatSessionDate(poll.closes_at)}
+                    Cierra el {formatSessionDate(poll.closes_at)}
                   </Text>
                 )}
 
@@ -539,10 +539,10 @@ export function GroupSchedulePanel({ id }: { id: string }) {
                     onPress={() => handleVote(poll, option.id, !option.mine)}>
                     <View style={styles.optionHeader}>
                       <Text style={styles.optionLabel}>
-                        {option.mine ? '✅ ' : ''}
+                        {option.mine ? '✓ ' : ''}
                         {formatSessionDate(option.starts_at)}
                       </Text>
-                      <Text style={styles.optionVotes}>{option.votes} 🎲</Text>
+                      <Text style={styles.optionVotes}>{option.votes}</Text>
                     </View>
                     <View style={styles.voteTrack}>
                       <View
@@ -551,7 +551,7 @@ export function GroupSchedulePanel({ id }: { id: string }) {
                     </View>
                     {isOwner && (
                       <Pressable onPress={() => handlePickWinner(option, poll)} disabled={busy}>
-                        <Text style={styles.scheduleLink}>📌 Elegir esta y cerrar</Text>
+                        <Text style={styles.scheduleLink}>Elegir esta y cerrar</Text>
                       </Pressable>
                     )}
                   </Pressable>
@@ -560,7 +560,7 @@ export function GroupSchedulePanel({ id }: { id: string }) {
                 {/* bandeja del GM: fechas extra propuestas por jugadores */}
                 {isOwner && pending.length > 0 && (
                   <View style={styles.proposalBox}>
-                    <Text style={styles.proposalTitle}>🙋 Fechas propuestas por la mesa</Text>
+                    <Text style={styles.proposalTitle}>Fechas propuestas por la mesa</Text>
                     {pending.map((proposal) => (
                       <View key={proposal.id} style={styles.proposalRow}>
                         <Text style={styles.proposalLabel} numberOfLines={2}>
@@ -569,7 +569,7 @@ export function GroupSchedulePanel({ id }: { id: string }) {
                         <Pressable
                           onPress={() => handleResolveProposal(proposal, true)}
                           disabled={busy}>
-                          <Text style={styles.acceptLink}>➕ Añadir</Text>
+                          <Text style={styles.acceptLink}>Añadir</Text>
                         </Pressable>
                         <Pressable
                           onPress={() => handleResolveProposal(proposal, false)}
@@ -587,9 +587,9 @@ export function GroupSchedulePanel({ id }: { id: string }) {
                     {mineProposals.map((proposal) => (
                       <Text key={proposal.id} style={styles.soft}>
                         {proposal.status === 'pending'
-                          ? `🙋 Tu propuesta (${formatSessionDate(proposal.starts_at)}) espera al GM.`
+                          ? `Tu propuesta (${formatSessionDate(proposal.starts_at)}) espera al GM.`
                           : proposal.status === 'accepted'
-                            ? `✅ Tu propuesta (${formatSessionDate(proposal.starts_at)}) está en la votación.`
+                            ? `✓ Tu propuesta (${formatSessionDate(proposal.starts_at)}) está en la votación.`
                             : `Tu propuesta (${formatSessionDate(proposal.starts_at)}) no entró esta vez.`}
                       </Text>
                     ))}
@@ -625,7 +625,7 @@ export function GroupSchedulePanel({ id }: { id: string }) {
                       </Reveal>
                     ) : (
                       <OutlineButton
-                        label="➕ Proponer otra fecha"
+                        label="Proponer otra fecha"
                         onPress={() => {
                           setProposingFor(poll.id);
                           setProposalDay(null);
@@ -648,7 +648,7 @@ export function GroupSchedulePanel({ id }: { id: string }) {
           {isOwner &&
             (!composing ? (
               <PrimaryButton
-                label="📅 Proponer fechas de partida"
+                label="Proponer fechas de partida"
                 onPress={() => setComposing(true)}
               />
             ) : (
@@ -769,7 +769,7 @@ export function GroupSchedulePanel({ id }: { id: string }) {
                     style={styles.navSmall}
                   />
                   <PrimaryButton
-                    label={busy ? 'Creando…' : '🗳️ Empezar votación'}
+                    label={busy ? 'Creando…' : 'Empezar votación'}
                     onPress={handleStartPoll}
                     disabled={busy || days.size === 0}
                     style={styles.navBig}
@@ -778,8 +778,8 @@ export function GroupSchedulePanel({ id }: { id: string }) {
                 <OutlineButton
                   label={
                     optionCount > 1
-                      ? `📌 Fijar las ${optionCount} sin votación`
-                      : '📌 Fijar sin votación'
+                      ? `Fijar las ${optionCount} sin votación`
+                      : 'Fijar sin votación'
                   }
                   onPress={handleFixDirect}
                   disabled={busy || days.size === 0}

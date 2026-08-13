@@ -2,6 +2,7 @@ import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Compass, Radar } from 'lucide-react-native';
 
 import { confirmAction, humanizeError, showAlert } from '@/lib/alert';
 import { ActionBar } from '@/components/swipe/action-bar';
@@ -18,7 +19,7 @@ import { MatchOverlay } from '@/components/swipe/match-overlay';
 import { AppHeader } from '@/components/app-header';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Spacing } from '@/constants/theme';
+import { Rolder, Spacing } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
 import { getOrCreateDmThread } from '@/lib/dm';
 import { fetchGroupCandidates, type PlayerCandidate } from '@/lib/feed';
@@ -117,7 +118,7 @@ export default function GroupCandidatesScreen() {
     if (!id || !session) return;
     if (!premium) {
       showAlert(
-        '↩ Rewind es premium',
+        'Rewind es premium',
         'Deshacer el último swipe es una función premium. Los testers de la alpha la tienen incluida — pídesela a Chris.'
       );
       return;
@@ -180,7 +181,7 @@ export default function GroupCandidatesScreen() {
           c.likedGroup ? (
             <View style={styles.likedBanner}>
               <Text style={styles.likedText} numberOfLines={1}>
-                💘 Le gustáis{c.proposal ? ` — propone a ${c.proposal.name}` : ''}
+                Le gustáis{c.proposal ? ` — propone a ${c.proposal.name}` : ''}
               </Text>
             </View>
           ) : undefined
@@ -192,7 +193,7 @@ export default function GroupCandidatesScreen() {
           {ROLE_LABELS[c.player.role] ?? c.player.role} · {c.player.timezone}
         </Text>
         <Text style={cardText.soft}>
-          ⏱ Coincide {c.result.overlapHours} h con vuestra sesión
+          Coincide {c.result.overlapHours} h con vuestra sesión
           {publicLooking.length > 0 ? ' · toca para ver sus personajes' : ''}
         </Text>
       </CardShell>
@@ -249,14 +250,14 @@ export default function GroupCandidatesScreen() {
       </Text>
       {c.player.reliability && c.player.reliability.count > 0 && (
         <Text style={sheetText.body}>
-          Fiabilidad: 🎲 {c.player.reliability.average.toFixed(1)}/5 (
+          Fiabilidad: {c.player.reliability.average.toFixed(1)}/5 (
           {c.player.reliability.count}{' '}
           {c.player.reliability.count === 1 ? 'valoración' : 'valoraciones'})
         </Text>
       )}
       <View style={styles.moderationRow}>
         <Pressable onPress={() => handleTalk(c)}>
-          <Text style={sheetText.link}>💬 Hablar antes</Text>
+          <Text style={sheetText.link}>Hablar antes</Text>
         </Pressable>
         <Pressable
           onPress={() =>
@@ -290,7 +291,7 @@ export default function GroupCandidatesScreen() {
 
         {loadError ? (
           <View style={styles.centerBox}>
-            <Text style={styles.centerEmoji}>📡</Text>
+            <Radar color={Rolder.textTertiary} size={44} strokeWidth={2} />
             <ThemedText style={styles.centerText}>No se pudieron cargar los candidatos.</ThemedText>
             <Pressable style={styles.retryButton} onPress={load}>
               <ThemedText>Reintentar</ThemedText>
@@ -302,7 +303,7 @@ export default function GroupCandidatesScreen() {
           </View>
         ) : !current ? (
           <View style={styles.centerBox}>
-            <Text style={styles.centerEmoji}>🧭</Text>
+            <Compass color={Rolder.textTertiary} size={44} strokeWidth={2} />
             <ThemedText style={styles.centerText}>
               Nadie pide sitio ahora mismo. Cuando un jugador dé like a vuestra mesa
               aparecerá aquí para que decidas: aceptar, hablar antes o pasar. Para
@@ -375,9 +376,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: Spacing.three,
     paddingHorizontal: Spacing.four,
-  },
-  centerEmoji: {
-    fontSize: 56,
   },
   centerText: {
     textAlign: 'center',

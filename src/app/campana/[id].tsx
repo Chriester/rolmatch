@@ -57,7 +57,7 @@ export default function PublicCampaignScreen() {
   if (pageData === null) {
     return (
       <ThemedView style={[styles.container, styles.loading]}>
-        <Text style={styles.emptyTitle}>🕯️ Esta crónica no está disponible</Text>
+        <Text style={styles.emptyTitle}>Esta crónica no está disponible</Text>
         <Text style={styles.emptyBody}>
           O el enlace no existe, o la mesa ha preferido mantener su historia en privado.
         </Text>
@@ -127,7 +127,7 @@ export default function PublicCampaignScreen() {
             <Text style={styles.ctaText}>
               ¿Quieres vivir una historia como esta? En rolder hay mesas buscando gente como tú.
             </Text>
-            <PrimaryButton label="🎲 Encontrar mi mesa" onPress={() => router.replace('/')} />
+            <PrimaryButton label="Encontrar mi mesa" onPress={() => router.replace('/')} />
           </View>
         </ScrollView>
       </SafeAreaView>

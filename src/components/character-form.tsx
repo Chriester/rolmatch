@@ -5,6 +5,7 @@
 // Editar personaje. El selector de diseño cosmético va al final.
 
 import { LinearGradient } from 'expo-linear-gradient';
+import { Scroll, Zap } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 
@@ -125,14 +126,14 @@ export function CharacterForm({
           <Pressable
             style={[styles.modeCard, mode === 'quick' && styles.modeCardActive]}
             onPress={() => setMode('quick')}>
-            <Text style={styles.modeEmoji}>⚡</Text>
+            <Zap color={Rolder.violetSoft} size={20} />
             <Text style={styles.modeTitle}>Ficha rápida</Text>
             <Text style={styles.modeDetail}>Nombre, clase y concepto. Listo en un minuto.</Text>
           </Pressable>
           <Pressable
             style={[styles.modeCard, mode === 'full' && styles.modeCardActive]}
             onPress={() => setMode('full')}>
-            <Text style={styles.modeEmoji}>📜</Text>
+            <Scroll color={Rolder.violetSoft} size={20} />
             <Text style={styles.modeTitle}>Hoja completa</Text>
             <Text style={styles.modeDetail}>La hoja del sistema entera, campo a campo.</Text>
           </Pressable>
@@ -196,12 +197,12 @@ export function CharacterForm({
             multiline
           />
           <Text style={styles.hint}>
-            📜 Su hoja completa podrás rellenarla cuando quieras desde «Editar personaje».
+            Su hoja completa podrás rellenarla cuando quieras desde «Editar personaje».
           </Text>
         </>
       ) : systemId === null ? (
         <Text style={styles.hint}>
-          🎲 Elige un sistema y su hoja aparecerá aquí, vacía y lista para tocar y rellenar.
+          Elige un sistema y su hoja aparecerá aquí, vacía y lista para tocar y rellenar.
         </Text>
       ) : (
         <>
@@ -415,9 +416,6 @@ const styles = StyleSheet.create({
   modeCardActive: {
     backgroundColor: 'rgba(199,125,255,0.14)',
     borderColor: 'rgba(199,125,255,0.8)',
-  },
-  modeEmoji: {
-    fontSize: 20,
   },
   modeTitle: {
     color: '#fff',

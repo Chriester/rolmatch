@@ -83,7 +83,7 @@ export function DiceRoller({ onRoll, busy }: { onRoll: (roll: DiceRoll) => void;
         onPress={() => onRoll(rollDice(count, sides, modifier))}
         disabled={busy}>
         <Text style={styles.rollLabel}>
-          🎲 Tirar {rollFormula({ sides, count, modifier })}
+          Tirar {rollFormula({ sides, count, modifier })}
         </Text>
       </Pressable>
     </View>

@@ -8,26 +8,22 @@ import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { OutlineButton, PrimaryButton } from '@/components/ui';
 import { Rolder, RolderFonts } from '@/constants/theme';
 
-type CoachStep = { emoji: string; title: string; body: string };
+type CoachStep = { title: string; body: string };
 
 const GM_STEPS: CoachStep[] = [
   {
-    emoji: '📅',
     title: 'Propón fechas',
     body: 'Toca «Proponer fechas de partida», marca en el calendario los días que te encajen y ponles hora. Con el botón ＋ puedes añadir varias horas a un mismo día.',
   },
   {
-    emoji: '🗳️',
     title: 'Que vote la mesa',
     body: '«Empezar votación» publica las fechas: tus jugadores votan desde aquí o desde el banner del chat. ¿Lo tenéis ya claro? «Fijar sin votación» y listo.',
   },
   {
-    emoji: '💡',
     title: 'Escucha propuestas',
     body: 'Tus jugadores pueden proponerte una fecha extra. Te aparecerá en esta pantalla para añadirla a la votación o descartarla.',
   },
   {
-    emoji: '✅',
     title: 'Cierra y a jugar',
     body: 'Con «Elegir esta y cerrar» la fecha ganadora queda fijada como partida. La mesa recibe el aviso y recordatorios automáticos antes de la sesión.',
   },
@@ -35,19 +31,16 @@ const GM_STEPS: CoachStep[] = [
 
 const PLAYER_STEPS: CoachStep[] = [
   {
-    emoji: '🗳️',
     title: 'Vota tus fechas',
     body: 'El GM propone fechas y tú marcas TODAS las que te vengan bien (puedes votar varias), desde aquí o desde el banner del chat de la mesa.',
   },
   {
-    emoji: '💡',
     title: '¿Ninguna te cuadra?',
     body: 'Propón una fecha extra al GM desde la votación. Verás si la añade o no, y si la añade podrá votarla toda la mesa.',
   },
   {
-    emoji: '✋',
     title: 'Confirma tu asistencia',
-    body: 'Cuando el GM fije la partida, marca «✋ Voy» o «🙅 No voy». Recibirás recordatorios automáticos antes de empezar.',
+    body: 'Cuando el GM fije la partida, marca «Voy» o «No voy». Recibirás recordatorios automáticos antes de empezar.',
   },
 ];
 
@@ -75,7 +68,6 @@ export function OrganizarCoach({ visible, isOwner, onClose }: OrganizarCoachProp
           <Text style={styles.kicker}>
             {isOwner ? 'Cómo organizar una partida' : 'Cómo se decide la fecha'}
           </Text>
-          <Text style={styles.emoji}>{current.emoji}</Text>
           <Text style={styles.title}>{current.title}</Text>
           <Text style={styles.body}>{current.body}</Text>
 
@@ -139,9 +131,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 1.2,
-  },
-  emoji: {
-    fontSize: 46,
   },
   title: {
     color: '#fff',
