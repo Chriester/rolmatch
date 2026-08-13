@@ -75,18 +75,22 @@ export async function deleteSession(id: string) {
  * los flags de recordatorio para que vuelvan a dispararse con la hora nueva.
  */
 export async function updateSession(sessionId: string, startsAt: Date, title: string | null) {
-  const { error } = await supabase
-    .from('sessions')
-    .update({
-      starts_at: startsAt.toISOString(),
-      title,
-      reminded_24h: false,
-      reminded_1h: false,
-      push_reminded_24h: false,
-      push_reminded_1h: false,
-      push_reminded_day_start: false,
-    })
-    .eq('id', sessionId);
+  const reset = {
+    starts_at: startsAt.toISOString(),
+    title,
+    reminded_24h: false,
+    reminded_1h: false,
+    push_reminded_24h: false,
+    push_reminded_1h: false,
+    push_reminded_day_start: false,
+    push_reminded_post: false,
+  };
+  let { error } = await supabase.from('sessions').update(reset).eq('id', sessionId);
+  if (error?.code === 'PGRST204') {
+    // migración 00055 sin aplicar: reintentar sin el flag post-sesión
+    const { push_reminded_post: _omitted, ...withoutPost } = reset;
+    ({ error } = await supabase.from('sessions').update(withoutPost).eq('id', sessionId));
+  }
   if (error) throw error;
 }
 
