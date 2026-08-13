@@ -1,0 +1,10 @@
+:root{
+--gradient-brand:linear-gradient(100deg,#B01B5E 0%,#8A2B76 50%,#5D4A93 100%); /* @kind color */
+--gradient-brand-soft:linear-gradient(100deg,rgba(176,27,94,.18) 0%,rgba(93,74,147,.18) 100%); /* @kind color */
+/* ambient radial light behind content — 12–20% opacity only */
+--ambient-carmine:radial-gradient(120% 70% at 50% 115%,rgba(176,27,94,.20),transparent 70%); /* @kind color */
+--ambient-violet:radial-gradient(100% 60% at 50% -10%,rgba(93,74,147,.18),transparent 70%); /* @kind color */
+/* protection gradient for text over imagery */
+--scrim-bottom:linear-gradient(to top,rgba(10,9,12,.92) 0%,rgba(10,9,12,.55) 45%,transparent 100%); /* @kind color */
+--gradient-angle:100deg; /* @kind other */
+}
