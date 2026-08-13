@@ -142,10 +142,11 @@ export default function RootLayout() {
               <Stack.Protected guard={!session}>
                 <Stack.Screen name="login" />
               </Stack.Protected>
-              {/* Fuera de los dos guardas: es el destino de los enlaces
-                  compartidos y la propia pantalla decide qué enseñar según haya
-                  sesión o no. Es la única ruta con parte pública. */}
+              {/* Fuera de los dos guardas: destinos de enlaces compartidos —
+                  la propia pantalla decide qué enseñar según haya sesión o no. */}
               <Stack.Screen name="groups/[id]/index" />
+              {/* Crónica pública de campaña (migr. 00060): 100% sin sesión */}
+              <Stack.Screen name="campana/[id]" />
             </Stack>
           </RouteFade>
           {/* Espacio real (no flotante) reservado para el escudo/dado/chat:

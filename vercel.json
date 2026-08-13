@@ -13,6 +13,17 @@
       ],
       "destination": "/api/og?id=:id"
     },
+    {
+      "source": "/campana/:id",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*([bB]ot|facebookexternalhit|WhatsApp|Slack|Twitterbot|Discordbot|TelegramBot|LinkedIn|Pinterest|Embedly|SkypeUriPreview|iframely|vkShare).*"
+        }
+      ],
+      "destination": "/api/og?id=:id&kind=campana"
+    },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
