@@ -203,6 +203,73 @@ export const TITLE_MILESTONES: { level: number; title: string }[] = [...TITLES]
   .map(([level, title]) => ({ level, title }))
   .sort((a, b) => a.level - b.level);
 
+// ============================================================
+// Cadena semanal (migr. 00058): las 4 piezas del ciclo de jugar en una
+// misma semana natural → bonus. El bonus lo otorga la DB; aquí solo se
+// pinta el progreso.
+// ============================================================
+
+export const WEEKLY_CHAIN_XP = 100;
+
+export type WeeklyChain = {
+  rsvp: boolean;
+  played: boolean;
+  journal: boolean;
+  rated: boolean;
+  bonusEarned: boolean;
+};
+
+/** Lunes 00:00 UTC de la semana en curso — espejo de date_trunc('week') en la DB. */
+export function weekStartUtc(now = new Date()): Date {
+  const daysSinceMonday = (now.getUTCDay() + 6) % 7;
+  return new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - daysSinceMonday)
+  );
+}
+
+/** Progreso propio de la cadena esta semana. Cualquier fallo degrada a paso sin hacer. */
+export async function fetchWeeklyChain(userId: string): Promise<WeeklyChain> {
+  const { supabase } = await import('@/lib/supabase');
+  const since = weekStartUtc().toISOString();
+  const head = { count: 'exact' as const, head: true };
+  const has = async (query: PromiseLike<{ count: number | null; error: unknown }>) => {
+    try {
+      const { count, error } = await query;
+      if (error) throw error;
+      return (count ?? 0) > 0;
+    } catch {
+      return false;
+    }
+  };
+  const [rsvp, played, journal, rated, bonusEarned] = await Promise.all([
+    has(supabase.from('session_rsvps').select('*', head).eq('user_id', userId).gte('created_at', since)),
+    has(
+      supabase
+        .from('session_confirmations')
+        .select('*', head)
+        .eq('user_id', userId)
+        .gte('created_at', since)
+    ),
+    has(
+      supabase
+        .from('group_journal_entries')
+        .select('*', head)
+        .eq('author_id', userId)
+        .gte('created_at', since)
+    ),
+    has(supabase.from('ratings').select('*', head).eq('rater_id', userId).gte('created_at', since)),
+    has(
+      supabase
+        .from('xp_events')
+        .select('*', head)
+        .eq('user_id', userId)
+        .eq('kind', 'weekly_chain')
+        .gte('created_at', since)
+    ),
+  ]);
+  return { rsvp, played, journal, rated, bonusEarned };
+}
+
 /** Totales de XP para un conjunto de perfiles (vista agregada pública). */
 export async function fetchXpTotals(userIds: string[]): Promise<Map<string, number>> {
   if (userIds.length === 0) return new Map();
