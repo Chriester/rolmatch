@@ -47,7 +47,7 @@ type CardShellProps = {
 export function CardShell({
   imageUrl,
   fallbackEmoji,
-  fallbackColors = ['#4A55E2', '#8B6CFF'],
+  fallbackColors = ['#8A2B76', '#5D4A93'],
   topRight,
   topLeft,
   banner,

@@ -118,7 +118,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     backgroundColor: Rolder.surface,
   },
-  kindActive: { borderColor: Rolder.violetSoft, backgroundColor: 'rgba(139,108,255,0.18)' },
+  kindActive: { borderColor: Rolder.violetSoft, backgroundColor: 'rgba(199,125,255,0.18)' },
   kindEmoji: { fontSize: 22 },
   kindLabel: { color: Rolder.textSecondary, fontSize: 12.5, fontFamily: RolderFonts.semibold },
   kindLabelActive: { color: '#fff' },

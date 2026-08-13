@@ -12,14 +12,14 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { RolderFonts } from '@/constants/theme';
 
-// Parejas dentro de la banda de marca (índigo→violeta→coral): estables y
-// distinguibles entre sí sin salirse del sistema.
+// Parejas dentro de la banda de marca Roldr (carmesí→ciruela→violeta→lila):
+// estables y distinguibles entre sí sin salirse del sistema.
 const GRADIENTS: readonly (readonly [string, string])[] = [
-  ['#4A55E2', '#8B6CFF'],
-  ['#5865F2', '#B9A6FF'],
-  ['#6C3AA8', '#FF5A5F'],
-  ['#2A2D6E', '#8B6CFF'],
-  ['#8B6CFF', '#FF5A5F'],
+  ['#5D4A93', '#C77DFF'],
+  ['#8A2B76', '#5D4A93'],
+  ['#B01B5E', '#8A2B76'],
+  ['#3A2360', '#8A2B76'],
+  ['#8A2B76', '#C77DFF'],
 ];
 
 /** Gradiente determinista por nombre: la misma mesa siempre luce igual. */

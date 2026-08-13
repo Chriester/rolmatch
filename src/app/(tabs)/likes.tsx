@@ -205,7 +205,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   thumbFallback: {
-    backgroundColor: 'rgba(139,108,255,0.2)',
+    backgroundColor: 'rgba(199,125,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
   },

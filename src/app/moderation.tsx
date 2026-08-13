@@ -285,7 +285,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     backgroundColor: Rolder.surface,
   },
-  tabActive: { borderColor: Rolder.violetSoft, backgroundColor: 'rgba(139,108,255,0.18)' },
+  tabActive: { borderColor: Rolder.violetSoft, backgroundColor: 'rgba(199,125,255,0.18)' },
   tabLabel: { color: Rolder.textSecondary, fontSize: 13.5, fontFamily: RolderFonts.semibold },
   tabLabelActive: { color: '#fff' },
   filterRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
@@ -296,7 +296,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 12,
   },
-  filterActive: { borderColor: Rolder.violetSoft, backgroundColor: 'rgba(139,108,255,0.18)' },
+  filterActive: { borderColor: Rolder.violetSoft, backgroundColor: 'rgba(199,125,255,0.18)' },
   filterLabel: { color: Rolder.textSecondary, fontSize: 12.5, fontFamily: RolderFonts.semibold },
   filterLabelActive: { color: '#fff' },
   card: {

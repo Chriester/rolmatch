@@ -77,14 +77,14 @@ const styles = StyleSheet.create({
     borderColor: Rolder.gold,
   },
   fallback: {
-    backgroundColor: 'rgba(139,108,255,0.3)',
+    backgroundColor: 'rgba(199,125,255,0.3)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   free: {
     borderWidth: 2,
     borderStyle: 'dashed',
-    borderColor: 'rgba(139,108,255,0.6)',
+    borderColor: 'rgba(199,125,255,0.6)',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'transparent',

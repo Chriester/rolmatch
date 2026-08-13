@@ -36,8 +36,8 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
   },
   chipSelected: {
-    backgroundColor: 'rgba(139,108,255,0.3)',
-    borderColor: 'rgba(139,108,255,0.8)',
+    backgroundColor: 'rgba(199,125,255,0.3)',
+    borderColor: 'rgba(199,125,255,0.8)',
   },
   chipDisabled: {
     opacity: 0.45,
@@ -50,6 +50,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   labelSelected: {
-    color: '#CBBAFF',
+    color: '#E3C4FF',
   },
 });

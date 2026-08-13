@@ -127,7 +127,7 @@ const styles = StyleSheet.create({
     top: ROW_PADDING,
     bottom: ROW_PADDING,
     borderRadius: 10,
-    backgroundColor: 'rgba(139,108,255,0.22)',
+    backgroundColor: 'rgba(199,125,255,0.22)',
   },
   tab: {
     flex: 1,

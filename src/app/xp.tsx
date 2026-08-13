@@ -309,7 +309,7 @@ const styles = StyleSheet.create({
   },
   missionDone: {
     opacity: 0.75,
-    borderColor: 'rgba(59,209,111,0.35)',
+    borderColor: 'rgba(63,191,143,0.35)',
   },
   missionIcon: {
     fontSize: 24,

@@ -86,7 +86,7 @@ const styles = StyleSheet.create({
   pill: {
     backgroundColor: Rolder.input,
     borderWidth: 1,
-    borderColor: 'rgba(139,108,255,0.5)',
+    borderColor: 'rgba(199,125,255,0.5)',
     borderRadius: 999,
     paddingHorizontal: 14,
     paddingVertical: 8,
@@ -156,8 +156,8 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.12)',
   },
   cellSelected: {
-    backgroundColor: 'rgba(139,108,255,0.3)',
-    borderColor: 'rgba(139,108,255,0.9)',
+    backgroundColor: 'rgba(199,125,255,0.3)',
+    borderColor: 'rgba(199,125,255,0.9)',
   },
   cellLabel: {
     color: 'rgba(255,255,255,0.8)',
@@ -165,7 +165,7 @@ const styles = StyleSheet.create({
     fontFamily: RolderFonts.semibold,
   },
   cellLabelSelected: {
-    color: '#CBBAFF',
+    color: '#E3C4FF',
   },
   doneButton: {
     backgroundColor: Rolder.violet,

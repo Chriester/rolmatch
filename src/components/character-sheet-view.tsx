@@ -33,7 +33,7 @@ type SheetCharacter = {
 
 const STATUS_BADGE: Record<string, { label: string; color: string; bg: string }> = {
   playing: { label: 'EN JUEGO', color: '#AAB4FF', bg: 'rgba(88,101,242,0.22)' },
-  looking: { label: 'BUSCANDO MESA', color: '#7FF2AC', bg: 'rgba(59,209,111,0.2)' },
+  looking: { label: 'BUSCANDO MESA', color: '#8FE9CB', bg: 'rgba(63,191,143,0.2)' },
   retired: { label: 'RETIRADA', color: 'rgba(255,255,255,0.55)', bg: 'rgba(255,255,255,0.1)' },
 };
 

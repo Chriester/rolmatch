@@ -655,7 +655,7 @@ const styles = StyleSheet.create({
     borderRadius: 17,
   },
   headerAvatarFallback: {
-    backgroundColor: 'rgba(139,108,255,0.2)',
+    backgroundColor: 'rgba(199,125,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -723,8 +723,8 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   reactionChipMine: {
-    backgroundColor: 'rgba(139,108,255,0.2)',
-    borderColor: 'rgba(139,108,255,0.7)',
+    backgroundColor: 'rgba(199,125,255,0.2)',
+    borderColor: 'rgba(199,125,255,0.7)',
   },
   reactionChipLabel: {
     color: 'rgba(255,255,255,0.9)',
@@ -779,7 +779,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: 'rgba(139,108,255,0.15)',
+    backgroundColor: 'rgba(199,125,255,0.15)',
     borderRadius: 10,
     paddingVertical: 6,
     paddingHorizontal: 12,
@@ -803,7 +803,7 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: 'rgba(139,108,255,0.9)',
+    backgroundColor: 'rgba(199,125,255,0.9)',
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 5,
@@ -821,7 +821,7 @@ const styles = StyleSheet.create({
   newLine: {
     flex: 1,
     height: 1,
-    backgroundColor: 'rgba(139,108,255,0.4)',
+    backgroundColor: 'rgba(199,125,255,0.4)',
   },
   newLabel: {
     color: Rolder.violetSoft,
@@ -873,7 +873,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.05)',
   },
   tabActive: {
-    backgroundColor: 'rgba(139,108,255,0.3)',
+    backgroundColor: 'rgba(199,125,255,0.3)',
   },
   tabGlyph: {
     fontSize: 16,

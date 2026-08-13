@@ -53,7 +53,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.12)',
   },
   segmentDone: {
-    backgroundColor: 'rgba(139,108,255,0.55)',
+    backgroundColor: 'rgba(199,125,255,0.55)',
   },
   segmentActive: {
     backgroundColor: Rolder.violet,

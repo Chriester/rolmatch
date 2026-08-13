@@ -30,10 +30,10 @@ export type AvatarFlair = {
 export const CARD_FRAMES: CardFrame[] = [
   { id: 'bronce', name: 'Bronce', color: '#C08B5C', unlock: { level: 4 } },
   { id: 'plata', name: 'Plata', color: '#C7CCD8', unlock: { level: 7 } },
-  { id: 'arcano', name: 'Arcano', color: '#8B6CFF', unlock: { level: 10 } },
-  { id: 'oro', name: 'Oro', color: '#F5C34D', unlock: { level: 14 } },
-  { id: 'dragon', name: 'Fuego de dragón', color: '#FF5A5F', unlock: { level: 18 } },
-  { id: 'esmeralda', name: 'Esmeralda', color: '#3BD16F', unlock: { level: 22 } },
+  { id: 'arcano', name: 'Arcano', color: '#C77DFF', unlock: { level: 10 } },
+  { id: 'oro', name: 'Oro', color: '#F0BE7A', unlock: { level: 14 } },
+  { id: 'dragon', name: 'Fuego de dragón', color: '#B01B5E', unlock: { level: 18 } },
+  { id: 'esmeralda', name: 'Esmeralda', color: '#3FBF8F', unlock: { level: 22 } },
 ];
 
 export const AVATAR_FLAIRS: AvatarFlair[] = [

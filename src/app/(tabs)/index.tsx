@@ -455,7 +455,7 @@ export default function HomeScreen() {
       <CardShell
         imageUrl={c.player.avatar_url}
         fallbackEmoji="🧙"
-        fallbackColors={['#5865F2', '#8B6CFF']}
+        fallbackColors={['#B01B5E', '#8A2B76']}
         frameColor={playerFrame?.color}
         accessibilityLabel={`Jugador ${c.player.alias}${playerAge !== null ? `, ${playerAge} años` : ''}. Candidato para tu mesa ${item.forGroup.name}. Nivel ${playerLevel}. Coincide ${c.result.overlapHours} horas con vuestra sesión.${c.likedGroup ? ' Le gusta vuestra mesa.' : ''}`}
         topRight={
@@ -511,7 +511,7 @@ export default function HomeScreen() {
         key={ch.id}
         imageUrl={ch.portrait_url}
         fallbackEmoji="🧝"
-        fallbackColors={['#FF5A5F', '#8B6CFF']}
+        fallbackColors={['#B01B5E', '#5D4A93']}
         topRight={
           session ? <CharacterLikeButton characterId={ch.id} viewerId={session.user.id} /> : undefined
         }>
@@ -889,7 +889,7 @@ const styles = StyleSheet.create({
   },
   retryButton: {
     borderWidth: 1,
-    borderColor: 'rgba(139,108,255,0.8)',
+    borderColor: 'rgba(199,125,255,0.8)',
     borderRadius: 14,
     paddingVertical: 12,
     paddingHorizontal: Spacing.four,
@@ -930,10 +930,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   cornerChipGreen: {
-    backgroundColor: 'rgba(59,209,111,0.92)',
+    backgroundColor: 'rgba(63,191,143,0.92)',
   },
   cornerChipGold: {
-    backgroundColor: 'rgba(245,166,35,0.94)',
+    backgroundColor: 'rgba(232,164,76,0.94)',
   },
   cornerChipTextGreen: {
     color: Rolder.onLike,

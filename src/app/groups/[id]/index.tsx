@@ -447,7 +447,7 @@ function GroupDetailScreen() {
               />
             ) : (
               <LinearGradient
-                colors={['#4A55E2', '#8B6CFF']}
+                colors={['#8A2B76', '#5D4A93']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={[StyleSheet.absoluteFill, styles.heroFallback]}>
@@ -1264,7 +1264,7 @@ const styles = StyleSheet.create({
     borderColor: Rolder.gold,
   },
   seatAvatarFallback: {
-    backgroundColor: 'rgba(139,108,255,0.2)',
+    backgroundColor: 'rgba(199,125,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1308,7 +1308,7 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   rateChip: {
-    backgroundColor: 'rgba(139,108,255,0.18)',
+    backgroundColor: 'rgba(199,125,255,0.18)',
     borderWidth: 1,
     borderColor: Rolder.violetSoft,
     borderRadius: 999,
@@ -1329,7 +1329,7 @@ const styles = StyleSheet.create({
   seatHole: {
     borderWidth: 2,
     borderStyle: 'dashed',
-    borderColor: 'rgba(139,108,255,0.6)',
+    borderColor: 'rgba(199,125,255,0.6)',
     backgroundColor: 'transparent',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1348,7 +1348,7 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
   rateLink: {
-    color: '#5865F2',
+    color: '#C77DFF',
   },
   confirmBlock: {
     gap: Spacing.one,
@@ -1379,9 +1379,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   actionOutline: {
-    backgroundColor: 'rgba(139,108,255,0.14)',
+    backgroundColor: 'rgba(199,125,255,0.14)',
     borderWidth: 1,
-    borderColor: 'rgba(139,108,255,0.45)',
+    borderColor: 'rgba(199,125,255,0.45)',
   },
   actionIcon: {
     fontSize: 20,
@@ -1426,23 +1426,23 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   matchLink: {
-    color: '#5865F2',
+    color: '#C77DFF',
     fontWeight: '600',
   },
   boostButton: {
     borderWidth: 1,
-    borderColor: '#F5A623',
+    borderColor: '#E8A44C',
     borderRadius: Spacing.two,
     paddingVertical: Spacing.two,
     paddingHorizontal: Spacing.four,
     alignSelf: 'flex-start',
   },
   boostLabel: {
-    color: '#F5A623',
+    color: '#E8A44C',
     fontWeight: '600',
   },
   boostActive: {
-    color: '#F5A623',
+    color: '#E8A44C',
   },
   stackRow: {
     flexDirection: 'row',
@@ -1479,9 +1479,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.two,
-    backgroundColor: 'rgba(139,108,255,0.14)',
+    backgroundColor: 'rgba(199,125,255,0.14)',
     borderWidth: 1,
-    borderColor: 'rgba(139,108,255,0.5)',
+    borderColor: 'rgba(199,125,255,0.5)',
     borderRadius: 14,
     paddingVertical: 13,
     paddingHorizontal: 14,
@@ -1546,7 +1546,7 @@ const styles = StyleSheet.create({
     borderColor: Rolder.gold,
   },
   gmAvatarFallback: {
-    backgroundColor: 'rgba(245,166,35,0.2)',
+    backgroundColor: 'rgba(232,164,76,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1575,16 +1575,16 @@ const styles = StyleSheet.create({
     flexBasis: '47%',
   },
   vitalityBanner: {
-    backgroundColor: 'rgba(245,166,35,0.08)',
+    backgroundColor: 'rgba(232,164,76,0.08)',
     borderWidth: 1,
-    borderColor: 'rgba(245,166,35,0.4)',
+    borderColor: 'rgba(232,164,76,0.4)',
     borderRadius: 16,
     padding: 14,
     gap: Spacing.two,
     marginBottom: Spacing.three,
   },
   vitalityTitle: {
-    color: '#F5A623',
+    color: '#E8A44C',
     fontSize: 15,
     fontFamily: RolderFonts.semibold,
     fontWeight: '700',

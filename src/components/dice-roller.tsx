@@ -108,8 +108,8 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
   },
   dieSelected: {
-    backgroundColor: 'rgba(139,108,255,0.25)',
-    borderColor: 'rgba(139,108,255,0.9)',
+    backgroundColor: 'rgba(199,125,255,0.25)',
+    borderColor: 'rgba(199,125,255,0.9)',
   },
   dieLabel: {
     color: 'rgba(255,255,255,0.8)',
@@ -118,7 +118,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   dieLabelSelected: {
-    color: '#CBBAFF',
+    color: '#E3C4FF',
   },
   stepperRow: {
     flexDirection: 'row',
@@ -140,9 +140,9 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: 'rgba(139,108,255,0.15)',
+    backgroundColor: 'rgba(199,125,255,0.15)',
     borderWidth: 1,
-    borderColor: 'rgba(139,108,255,0.4)',
+    borderColor: 'rgba(199,125,255,0.4)',
     alignItems: 'center',
     justifyContent: 'center',
   },

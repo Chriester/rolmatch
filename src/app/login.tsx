@@ -202,7 +202,7 @@ const styles = StyleSheet.create({
   },
   emailButton: {
     borderWidth: 1,
-    borderColor: 'rgba(139,108,255,0.8)',
+    borderColor: 'rgba(199,125,255,0.8)',
     borderRadius: 14,
     paddingVertical: 14,
     alignItems: 'center',

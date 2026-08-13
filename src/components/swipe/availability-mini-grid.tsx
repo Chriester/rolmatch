@@ -92,15 +92,15 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.07)',
   },
   cellActive: {
-    backgroundColor: 'rgba(139,108,255,0.5)',
+    backgroundColor: 'rgba(199,125,255,0.5)',
   },
   cellSession: {
-    backgroundColor: 'rgba(59,209,111,0.25)',
+    backgroundColor: 'rgba(63,191,143,0.25)',
     borderWidth: 2,
     borderColor: 'rgba(255,255,255,0.85)',
   },
   cellOverlap: {
-    backgroundColor: '#3BD16F',
+    backgroundColor: '#3FBF8F',
     borderWidth: 0,
   },
   legend: {

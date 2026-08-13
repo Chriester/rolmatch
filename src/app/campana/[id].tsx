@@ -79,7 +79,7 @@ export default function PublicCampaignScreen() {
             <Image source={{ uri: pageData.image_url }} style={styles.hero} contentFit="cover" />
           ) : (
             <LinearGradient
-              colors={['#4A55E2', '#8B6CFF']}
+              colors={['#8A2B76', '#5D4A93']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={[styles.hero, styles.heroFallback]}>

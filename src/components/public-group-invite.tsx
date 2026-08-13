@@ -165,7 +165,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   heroFallback: {
-    backgroundColor: 'rgba(139,108,255,0.25)',
+    backgroundColor: 'rgba(199,125,255,0.25)',
     alignItems: 'center',
     justifyContent: 'center',
   },
