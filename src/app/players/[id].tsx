@@ -27,6 +27,7 @@ import { blockUser } from '@/lib/moderation';
 import { fetchPlayerProfile, type PlayerProfile } from '@/lib/players';
 import { GENDER_LABELS, SAFETY_TOOL_LABELS, ageFromBirthYear } from '@/lib/profile';
 import { cacheGet, cacheSet } from '@/lib/screen-cache';
+import { flairFor } from '@/lib/cosmetics';
 import { levelInfoFromXp } from '@/lib/xp';
 
 const ROLE_LABELS: Record<string, string> = {
@@ -95,6 +96,7 @@ export default function PlayerProfileScreen() {
   const isMe = session?.user.id === id;
   const publicCharacters = profile.characters.filter((c) => c.is_public || isMe);
   const levelInfo = levelInfoFromXp(profile.xpTotal);
+  const flair = flairFor(profile.cosmetics.avatarFlair, levelInfo.level);
   const age = ageFromBirthYear(profile.birth_year);
 
   return (
@@ -113,6 +115,7 @@ export default function PlayerProfileScreen() {
             )}
             <Text style={styles.alias}>
               {profile.alias}
+              {flair ? ` ${flair.emoji}` : ''}
               {age !== null ? `, ${age}` : ''}
             </Text>
             <CardChipRow>

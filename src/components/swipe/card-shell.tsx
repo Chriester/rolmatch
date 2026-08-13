@@ -39,6 +39,8 @@ type CardShellProps = {
    * así que no ponerlo en caras con controles dentro (like de personaje).
    */
   accessibilityLabel?: string;
+  /** marco cosmético del dueño (lib/cosmetics.frameFor ya validó el nivel) */
+  frameColor?: string | null;
   children: ReactNode;
 };
 
@@ -50,6 +52,7 @@ export function CardShell({
   topLeft,
   banner,
   accessibilityLabel,
+  frameColor,
   children,
 }: CardShellProps) {
   return (
@@ -79,6 +82,13 @@ export function CardShell({
       {topRight && <View style={styles.topRight}>{topRight}</View>}
 
       <View style={styles.info}>{children}</View>
+
+      {frameColor && (
+        <View
+          pointerEvents="none"
+          style={[StyleSheet.absoluteFill, styles.frame, { borderColor: frameColor }]}
+        />
+      )}
     </View>
   );
 }
@@ -223,6 +233,11 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     overflow: 'hidden',
     backgroundColor: Rolder.surface,
+  },
+  // marco cosmético: borde por encima de todo, mismo radio que la tarjeta
+  frame: {
+    borderWidth: 3,
+    borderRadius: 20,
   },
   fallback: {
     alignItems: 'center',

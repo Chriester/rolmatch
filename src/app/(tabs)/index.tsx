@@ -57,6 +57,7 @@ import { blockUser } from '@/lib/moderation';
 import { registerPushToken } from '@/lib/notifications';
 import { DISCORD_ENABLED } from '@/lib/config';
 import { shouldShowTutorial } from '@/lib/tutorial';
+import { flairFor, frameFor } from '@/lib/cosmetics';
 import { levelFromXp, titleForLevel } from '@/lib/xp';
 import { fetchPremiumStatus, isBoostActive } from '@/lib/premium';
 import {
@@ -370,10 +371,14 @@ export default function HomeScreen() {
         g.session_weekday !== null && g.session_slot !== null
           ? `${WEEKDAY_LABELS[g.session_weekday]} ${SLOT_LABELS[g.session_slot].toLowerCase()}`
           : 'horario por definir';
+      // marco y flair del GM: su nivel ya viene calculado en el feed
+      const ownerFrame = frameFor(g.owner.cardFrame, g.owner.level);
+      const ownerFlair = flairFor(g.owner.avatarFlair, g.owner.level);
       return (
         <CardShell
           imageUrl={g.image_url}
           fallbackEmoji="🎲"
+          frameColor={ownerFrame?.color}
           accessibilityLabel={`Mesa ${g.name}. ${g.systems?.name ?? 'Sistema sin definir'}, ${FORMAT_LABELS[g.format]}, ${when}. Coincidís ${item.result.overlapHours} horas.${g.full ? ' Mesa completa, puedes pedir sitio.' : ''}`}
           topRight={
             SHOW_SCORE ? (
@@ -425,6 +430,7 @@ export default function HomeScreen() {
             {/* lo que decide un swipe: con quién y cuántos sitios (2c) */}
             <Text style={cardText.soft}>
               🧙 Dirige {g.owner.alias}
+              {ownerFlair ? ` ${ownerFlair.emoji}` : ''}
               {g.full
                 ? ' · 🈵 completa'
                 : ` · 🪑 ${g.seatsFree} ${g.seatsFree === 1 ? 'plaza libre' : 'plazas libres'}`}
@@ -441,11 +447,15 @@ export default function HomeScreen() {
     const playerLevel = levelFromXp(c.player.xpTotal);
     const playerAge = ageFromBirthYear(c.player.birth_year);
     const playerGender = c.player.gender ? GENDER_LABELS[c.player.gender as Gender] : null;
+    // cosméticos del candidato, validados contra su nivel (anti-trampas)
+    const playerFrame = frameFor(c.player.cardFrame, playerLevel);
+    const playerFlair = flairFor(c.player.avatarFlair, playerLevel);
     const playerFace = (
       <CardShell
         imageUrl={c.player.avatar_url}
         fallbackEmoji="🧙"
         fallbackColors={['#5865F2', '#8B6CFF']}
+        frameColor={playerFrame?.color}
         accessibilityLabel={`Jugador ${c.player.alias}${playerAge !== null ? `, ${playerAge} años` : ''}. Candidato para tu mesa ${item.forGroup.name}. Nivel ${playerLevel}. Coincide ${c.result.overlapHours} horas con vuestra sesión.${c.likedGroup ? ' Le gusta vuestra mesa.' : ''}`}
         topRight={
           SHOW_SCORE ? (
@@ -465,6 +475,7 @@ export default function HomeScreen() {
         }>
         <Text style={cardText.title} numberOfLines={1}>
           {c.player.alias}
+          {playerFlair ? ` ${playerFlair.emoji}` : ''}
           {playerAge !== null ? `, ${playerAge}` : ''}
         </Text>
         <CardChipRow>
