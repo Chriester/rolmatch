@@ -1,7 +1,9 @@
 // Sistema de niveles v1 (solo cosmético): el XP lo otorga la base de datos
 // con triggers (migración 00016); aquí solo se lee el total y se traduce a
-// nivel + título rolero. Curva: subir al nivel L cuesta 50·L·(L−1) XP en
-// total (100 para el 2, 300 para el 3, 600 para el 4…).
+// nivel + título rolero. Curva: cuadrática hasta el nivel 8 (subir al nivel
+// L cuesta 50·L·(L−1) XP en total: 100 para el 2, 300 para el 3…) y lineal
+// después (800 XP por nivel), para que jugar cada semana siga moviendo la
+// barra también en niveles altos.
 
 export type LevelInfo = {
   level: number;
@@ -15,21 +17,38 @@ export type LevelInfo = {
   progress: number;
 };
 
+// A partir de aquí la curva deja de ser cuadrática: cada nivel cuesta lo
+// mismo que costó el 8 (100·8 = 800 XP), en vez de seguir encareciéndose.
+const SOFT_CAP_LEVEL = 8;
+const LEVEL_COST_CAP = 100 * SOFT_CAP_LEVEL;
+
 /** XP total acumulado necesario para alcanzar el nivel dado. */
 export function xpForLevel(level: number): number {
-  return 50 * level * (level - 1);
+  if (level <= SOFT_CAP_LEVEL) return 50 * level * (level - 1);
+  return 50 * SOFT_CAP_LEVEL * (SOFT_CAP_LEVEL - 1) + LEVEL_COST_CAP * (level - SOFT_CAP_LEVEL);
 }
 
 export function levelFromXp(totalXp: number): number {
   if (totalXp <= 0) return 1;
-  return Math.floor((1 + Math.sqrt(1 + (2 * totalXp) / 25)) / 2);
+  const softCapFloor = xpForLevel(SOFT_CAP_LEVEL);
+  if (totalXp < softCapFloor) {
+    return Math.floor((1 + Math.sqrt(1 + (2 * totalXp) / 25)) / 2);
+  }
+  return SOFT_CAP_LEVEL + Math.floor((totalXp - softCapFloor) / LEVEL_COST_CAP);
 }
 
-// Títulos roleros por tramo de nivel (neutros en género a propósito)
+// Títulos roleros por tramo de nivel (neutros en género a propósito):
+// hito cada 2-3 niveles para que siempre haya uno a la vista.
 const TITLES: [number, string][] = [
+  [30, 'Dado de oro'],
+  [26, 'Forja de mundos'],
+  [23, 'Susurro de los dioses'],
   [20, 'Mito viviente'],
+  [18, 'Eco de leyenda'],
   [16, 'Leyenda local'],
+  [14, 'Estandarte de la mesa'],
   [12, 'Azote de mazmorras'],
+  [10, 'Rompehechizos'],
   [8, 'Acero templado'],
   [5, 'Voz de la posada'],
   [3, 'Alma de taberna'],
