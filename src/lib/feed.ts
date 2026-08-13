@@ -1,6 +1,7 @@
 import { matchPlayerToGroup, type MatchGroup, type MatchPlayer, type MatchResult } from '@/lib/matching';
 import { fetchBlockRelations } from '@/lib/moderation';
 import { fetchReliability } from '@/lib/ratings';
+import { fetchServiceStats, type ServiceStats } from '@/lib/service';
 import { hasColumn, supabase } from '@/lib/supabase';
 import { fetchXpTotals, levelFromXp } from '@/lib/xp';
 import type { GroupFormat } from '@/lib/groups';
@@ -64,6 +65,8 @@ export type PlayerCandidate = {
     /** cosméticos equipados (migr. 00056); null sin migración o sin elegir */
     cardFrame: string | null;
     avatarFlair: string | null;
+    /** ficha de servicio (migr. 00057); null sin migración */
+    service: ServiceStats | null;
   };
   /** true si este jugador ya dio like a la mesa */
   likedGroup: boolean;
@@ -323,11 +326,12 @@ async function fetchCandidatePool(applicantIds?: string[]): Promise<CandidateRow
   return (data ?? []) as unknown as CandidateRow[];
 }
 
-/** Fiabilidad (10 % del score) y XP (solo para pintar el nivel en la tarjeta). */
+/** Fiabilidad (10 % del score), XP (nivel en la tarjeta) y ficha de servicio. */
 async function fetchCandidateScores(ids: string[]) {
   return Promise.all([
     fetchReliability(ids).catch(() => new Map<string, { average: number; count: number }>()),
     fetchXpTotals(ids).catch(() => new Map<string, number>()),
+    fetchServiceStats(ids),
   ]);
 }
 
@@ -341,7 +345,8 @@ export function buildCandidates(
   { excluded, likesByUser }: GroupExclusions,
   reliability: Map<string, { average: number; count: number }>,
   xpTotals: Map<string, number>,
-  onlyApplicants: boolean
+  onlyApplicants: boolean,
+  serviceStats: Map<string, ServiceStats> = new Map()
 ): PlayerCandidate[] {
   return pool
     .filter((p) =>
@@ -366,6 +371,7 @@ export function buildCandidates(
           xpTotal: xpTotals.get(p.id) ?? 0,
           cardFrame: p.card_frame ?? null,
           avatarFlair: p.avatar_flair ?? null,
+          service: serviceStats.get(p.id) ?? null,
         },
         likedGroup,
         proposal: characters.find((c) => c.id === proposedId) ?? null,
@@ -408,14 +414,15 @@ export async function fetchGroupCandidates(
   const pool = await fetchCandidatePool(
     onlyApplicants ? [...exclusions.likesByUser.keys()] : undefined
   );
-  const [reliability, xpTotals] = await fetchCandidateScores(pool.map((p) => p.id));
+  const [reliability, xpTotals, serviceStats] = await fetchCandidateScores(pool.map((p) => p.id));
   return buildCandidates(
     pool,
     group as unknown as MatchGroup,
     exclusions,
     reliability,
     xpTotals,
-    onlyApplicants
+    onlyApplicants,
+    serviceStats
   );
 }
 
@@ -484,7 +491,7 @@ export async function fetchUnifiedFeed(userId: string): Promise<UnifiedFeed> {
       fetchGroupExclusions(groupIds, userId, false),
       groupIds.length > 0 ? fetchCandidatePool() : Promise.resolve([]),
     ]);
-    const [reliability, xpTotals] = await fetchCandidateScores(pool.map((p) => p.id));
+    const [reliability, xpTotals, serviceStats] = await fetchCandidateScores(pool.map((p) => p.id));
 
     // Un candidato puede encajar en varias de mis mesas: nos quedamos con la
     // mejor combinación (like previo gana; si no, mayor score)
@@ -498,7 +505,8 @@ export async function fetchUnifiedFeed(userId: string): Promise<UnifiedFeed> {
         exclusions,
         reliability,
         xpTotals,
-        false
+        false,
+        serviceStats
       );
       for (const c of candidates) {
         const previous = bestByUser.get(c.player.id);

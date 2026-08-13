@@ -16,6 +16,8 @@ import { MaxContentWidth, Rolder, RolderFonts, Spacing } from '@/constants/theme
 import { useSession } from '@/hooks/use-session';
 import { signOut } from '@/lib/auth';
 import { fetchProfileData, type ProfileData } from '@/lib/profile';
+import { ServiceStatsRow } from '@/components/service-stats';
+import { fetchServiceStats, type ServiceStats } from '@/lib/service';
 import { fetchXpTotals, levelInfoFromXp } from '@/lib/xp';
 
 const LINKS: { icon: string; label: string; route: string }[] = [
@@ -29,6 +31,7 @@ export default function ProfileTabScreen() {
   const session = useSession();
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [xp, setXp] = useState(0);
+  const [service, setService] = useState<ServiceStats | null>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -36,6 +39,9 @@ export default function ProfileTabScreen() {
       fetchProfileData(session.user.id).then(setProfile).catch(() => {});
       fetchXpTotals([session.user.id])
         .then((totals) => setXp(totals.get(session.user.id) ?? 0))
+        .catch(() => {});
+      fetchServiceStats([session.user.id])
+        .then((map) => setService(map.get(session.user.id) ?? null))
         .catch(() => {});
     }, [session])
   );
@@ -65,6 +71,8 @@ export default function ProfileTabScreen() {
             <Text style={styles.alias}>{profile?.alias ?? '…'}</Text>
             <Text style={styles.publicLink}>Ver mi perfil público ›</Text>
           </Pressable>
+
+          {service && <ServiceStatsRow stats={service} />}
 
           <Pressable
             style={({ pressed }) => [styles.xpBlock, pressed && styles.xpPressed]}
