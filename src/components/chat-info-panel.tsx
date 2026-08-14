@@ -10,23 +10,13 @@ import Animated, { FadeIn, ReduceMotion, SlideInRight } from 'react-native-reani
 import { OutlineButton, SectionLabel } from '@/components/ui';
 import { Rolder, RolderFonts } from '@/constants/theme';
 import { SLOT_HOURS, SLOT_LABELS, WEEKDAY_LABELS, type GroupDetail } from '@/lib/groups';
-import { fetchUpcomingSessions, type GameSession } from '@/lib/sessions';
+import { fetchUpcomingSessions, formatSessionDate, type GameSession } from '@/lib/sessions';
 
 type ChatInfoPanelProps = {
   visible: boolean;
   group: GroupDetail;
   onClose: () => void;
 };
-
-function formatSessionDate(iso: string) {
-  return new Date(iso).toLocaleString('es-ES', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
 
 export function ChatInfoPanel({ visible, group, onClose }: ChatInfoPanelProps) {
   const [sessions, setSessions] = useState<GameSession[]>([]);

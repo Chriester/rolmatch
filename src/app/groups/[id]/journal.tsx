@@ -10,7 +10,7 @@ import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -20,21 +20,25 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { Camera, Link2, SendHorizontal, Trash2 } from 'lucide-react-native';
+import { Camera, Link2, SendHorizontal } from 'lucide-react-native';
 
-import { showAlert } from '@/lib/alert';
+import { confirmAction, showAlert } from '@/lib/alert';
 import { InlineBanner } from '@/components/inline-banner';
+import { KeyboardAvoidingPanel } from '@/components/keyboard-avoiding-panel';
+import { MessageActions } from '@/components/message-actions';
 import { Reveal } from '@/components/reveal';
 import { ThemedText } from '@/components/themed-text';
 import { OutlineButton } from '@/components/ui';
 import { MaxContentWidth, Rolder, RolderFonts, Spacing } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
 import { fetchGroup, type GroupDetail } from '@/lib/groups';
+import { hapticArm } from '@/lib/haptics';
 import { pickAndUploadImage } from '@/lib/images';
 import { APP_URL } from '@/lib/config';
 import {
   addJournalEntry,
   deleteJournalEntry,
+  editJournalEntry,
   ensureTodayHeader,
   fetchJournalEntries,
   fetchJournalPublic,
@@ -82,6 +86,11 @@ export function GroupJournalPanel({
   const [pickingImage, setPickingImage] = useState(false);
   const [posting, setPosting] = useState(false);
   const [expandedChapters, setExpandedChapters] = useState<Set<string | null>>(new Set());
+  /** pulsación larga sobre un recuerdo propio: abre el menú editar/borrar */
+  const [actionsFor, setActionsFor] = useState<JournalEntry | null>(null);
+  const [editingEntry, setEditingEntry] = useState<JournalEntry | null>(null);
+  const [editText, setEditText] = useState('');
+  const [savingEdit, setSavingEdit] = useState(false);
 
   const toggleChapter = (key: string | null) => {
     setExpandedChapters((prev) => {
@@ -193,6 +202,13 @@ export function GroupJournalPanel({
   };
 
   const handleDelete = async (entryId: string) => {
+    setActionsFor(null);
+    const ok = await confirmAction(
+      '¿Borrar este recuerdo?',
+      'No se puede deshacer.',
+      'Sí, borrar'
+    );
+    if (!ok) return;
     try {
       await deleteJournalEntry(entryId);
       setEntries((list) => {
@@ -202,6 +218,32 @@ export function GroupJournalPanel({
       });
     } catch (error) {
       showAlert('No se pudo borrar', error instanceof Error ? error.message : String(error));
+    }
+  };
+
+  const openEdit = (entry: JournalEntry) => {
+    setActionsFor(null);
+    setEditingEntry(entry);
+    setEditText(entry.body ?? '');
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingEntry || !editText.trim() || savingEdit) return;
+    setSavingEdit(true);
+    try {
+      await editJournalEntry(editingEntry.id, editText);
+      setEntries((list) => {
+        const next = list?.map((e) =>
+          e.id === editingEntry.id ? { ...e, body: editText.trim() } : e
+        );
+        if (next) cacheSet(`group-journal:${id}`, next);
+        return next;
+      });
+      setEditingEntry(null);
+    } catch (error) {
+      showAlert('No se pudo editar', error instanceof Error ? error.message : String(error));
+    } finally {
+      setSavingEdit(false);
     }
   };
 
@@ -225,9 +267,20 @@ export function GroupJournalPanel({
   const chapters = groupJournalEntries(entries);
 
   const renderEntry = (item: JournalEntry) => {
-    const isMine = item.author_id === session?.user.id;
+    // la cabecera de sistema ("🎲 Partida del <dia>") no se toca desde aquí
+    const isMine = item.author_id === session?.user.id && !item.is_system;
     return (
-      <View key={item.id} style={styles.card}>
+      <Pressable
+        key={item.id}
+        style={({ pressed }) => [styles.card, isMine && pressed && styles.cardPressed]}
+        disabled={!isMine}
+        onLongPress={() => {
+          if (!isMine) return;
+          hapticArm();
+          setActionsFor(item);
+        }}
+        delayLongPress={350}
+        accessibilityLabel={isMine ? 'Mantén pulsado para editar o borrar' : undefined}>
         <View style={styles.cardHeader}>
           {item.profiles?.avatar_url ? (
             <Image source={{ uri: item.profiles.avatar_url }} style={styles.authorAvatar} />
@@ -240,20 +293,12 @@ export function GroupJournalPanel({
             <Text style={styles.authorName}>{item.profiles?.alias ?? 'Jugador/a'}</Text>
             <Text style={styles.entryDate}>{formatEntryTime(item.created_at)}</Text>
           </View>
-          {isMine && (
-            <Pressable
-              accessibilityLabel="Borrar recuerdo"
-              onPress={() => handleDelete(item.id)}
-              hitSlop={8}>
-              <Trash2 color={Rolder.coral} size={16} strokeWidth={2} />
-            </Pressable>
-          )}
         </View>
         {item.image_url && (
           <Image source={{ uri: item.image_url }} style={styles.entryImage} contentFit="cover" />
         )}
         {item.body && <Text style={styles.entryBody}>{item.body}</Text>}
-      </View>
+      </Pressable>
     );
   };
 
@@ -296,9 +341,7 @@ export function GroupJournalPanel({
             <ThemedText style={styles.centerText}>No eres miembro de esta mesa.</ThemedText>
           </View>
         ) : (
-          <KeyboardAvoidingView
-            style={styles.listArea}
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+          <KeyboardAvoidingPanel style={styles.listArea}>
             <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
               {chapters.length === 0 ? (
                 <View style={styles.centerBox}>
@@ -423,8 +466,60 @@ export function GroupJournalPanel({
                 />
               </View>
             ) : null}
-          </KeyboardAvoidingView>
+          </KeyboardAvoidingPanel>
         )}
+
+        <MessageActions
+          visible={actionsFor !== null}
+          canCopy={false}
+          canEdit={!!actionsFor?.body}
+          canDelete
+          onCopy={() => {}}
+          onEdit={() => actionsFor && openEdit(actionsFor)}
+          onDelete={() => actionsFor && handleDelete(actionsFor.id)}
+          onClose={() => setActionsFor(null)}
+        />
+
+        <Modal
+          transparent
+          visible={editingEntry !== null}
+          animationType="fade"
+          onRequestClose={() => setEditingEntry(null)}>
+          <View style={styles.editBackdrop}>
+            <View style={styles.editSheet}>
+              <ThemedText type="small" style={styles.editTitle}>
+                Editar recuerdo
+              </ThemedText>
+              <TextInput
+                style={styles.editInput}
+                value={editText}
+                onChangeText={setEditText}
+                placeholder="Escribe un recuerdo…"
+                placeholderTextColor="rgba(255,255,255,0.35)"
+                multiline
+                maxLength={500}
+                autoFocus
+              />
+              <View style={styles.editActions}>
+                <Pressable
+                  style={({ pressed }) => [styles.editButton, pressed && styles.pressed]}
+                  onPress={() => setEditingEntry(null)}>
+                  <Text style={styles.editCancelLabel}>Cancelar</Text>
+                </Pressable>
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.editButton,
+                    (!editText.trim() || savingEdit) && styles.disabled,
+                    pressed && styles.pressed,
+                  ]}
+                  disabled={!editText.trim() || savingEdit}
+                  onPress={handleSaveEdit}>
+                  <Text style={styles.editSaveLabel}>{savingEdit ? 'Guardando…' : 'Guardar'}</Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        </Modal>
     </View>
   );
 }
@@ -546,6 +641,11 @@ const styles = StyleSheet.create({
     padding: 12,
     gap: 10,
   },
+  // feedback visual mientras se mantiene pulsado, antes de que se abra el
+  // menú de editar/borrar (ver nota en chat.tsx)
+  cardPressed: {
+    opacity: 0.6,
+  },
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -662,5 +762,61 @@ const styles = StyleSheet.create({
   },
   disabled: {
     opacity: 0.5,
+  },
+  editBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  editSheet: {
+    width: '100%',
+    maxWidth: 340,
+    backgroundColor: Rolder.surface,
+    borderWidth: 1,
+    borderColor: Rolder.surfaceBorder,
+    borderRadius: 18,
+    padding: Spacing.three,
+    gap: Spacing.two,
+  },
+  editTitle: {
+    color: 'rgba(255,255,255,0.9)',
+    fontFamily: RolderFonts.semibold,
+    fontWeight: '600',
+  },
+  editInput: {
+    backgroundColor: Rolder.input,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    color: '#fff',
+    fontSize: 14,
+    fontFamily: RolderFonts.regular,
+    minHeight: 80,
+    textAlignVertical: 'top',
+  },
+  editActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: Spacing.two,
+  },
+  editButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+  },
+  editCancelLabel: {
+    color: Rolder.textSecondary,
+    fontSize: 14,
+    fontFamily: RolderFonts.regular,
+  },
+  editSaveLabel: {
+    color: Rolder.violetSoft,
+    fontSize: 14,
+    fontFamily: RolderFonts.semibold,
+    fontWeight: '600',
   },
 });

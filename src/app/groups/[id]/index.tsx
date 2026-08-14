@@ -77,6 +77,7 @@ import {
   fetchRecentSessions,
   fetchSessionConfirmations,
   fetchUpcomingSessions,
+  formatSessionDate,
   type GameSession,
   type SessionConfirmState,
 } from '@/lib/sessions';
@@ -85,16 +86,6 @@ import {
 // las demás — la cabecera nunca se va, solo cede sitio.
 const HERO_FULL = 210;
 const HERO_MINI = 64;
-
-function formatSessionDate(iso: string) {
-  return new Date(iso).toLocaleString('es-ES', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
 
 
 /**
@@ -741,7 +732,11 @@ function GroupDetailScreen() {
                 valorar, invitar hueco a hueco — #134) vive en «ver detalle». */}
             {!seatsDetail && (
               <>
-                <View style={styles.stackRow}>
+                <Pressable
+                  style={styles.stackRow}
+                  disabled={!isMemberOrOwner}
+                  onPress={() => setSeatsDetail(true)}
+                  accessibilityLabel="Ver detalle de plazas">
                   <AvatarStack
                     people={group.group_members.map((m) => ({
                       id: m.user_id,
@@ -758,8 +753,9 @@ function GroupDetailScreen() {
                     {openSeats > 0
                       ? `quedan ${openSeats} de ${group.max_players}`
                       : 'mesa completa'}
+                    {isMemberOrOwner ? ' ▾' : ''}
                   </Text>
-                </View>
+                </Pressable>
                 <View style={styles.stackActions}>
                   <OutlineButton
                     label="Invitar"

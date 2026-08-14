@@ -101,6 +101,15 @@ export async function deleteJournalEntry(entryId: string): Promise<void> {
   if (error) throw error;
 }
 
+/** Edita el texto propio de un recuerdo (la RLS rechaza los ajenos y la cabecera de sistema, migr. 00061). */
+export async function editJournalEntry(entryId: string, body: string): Promise<void> {
+  const { error } = await supabase
+    .from('group_journal_entries')
+    .update({ body: body.trim() })
+    .eq('id', entryId);
+  if (error) throw error;
+}
+
 // ============================================================
 // Página pública de campaña (migr. 00060): el histórico como crónica
 // legible sin cuenta, opt-in del GM.

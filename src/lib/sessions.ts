@@ -228,24 +228,35 @@ export function parseSessionDateTime(dateText: string, timeText: string): Date |
 // Hora local de inicio de cada franja (alineado con el matching)
 export const SLOT_START_HOUR: Record<number, number> = { 0: 8, 1: 14, 2: 20, 3: 2 };
 
+// Nombres a mano en vez de toLocaleDateString('es-ES', ...): en Android
+// hemos visto el motor ignorar la locale pedida y devolver los nombres en
+// inglés — y aquí el texto se GUARDA literal (cabecera del histórico), así
+// que un fallo puntual de Intl queda escrito para siempre. Sin esa
+// dependencia, siempre sale en español.
+const WEEKDAYS_ES = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+const MONTHS_ES = [
+  'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
+];
+const MONTHS_ES_SHORT = [
+  'ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic',
+];
+
+function pad2(n: number): string {
+  return String(n).padStart(2, '0');
+}
+
 /** «viernes, 1 ago, 20:00» — para listas de sesiones y votaciones */
 export function formatSessionDate(iso: string): string {
-  return new Date(iso).toLocaleString('es-ES', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+  const d = new Date(iso);
+  const hora = `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+  return `${WEEKDAYS_ES[d.getDay()]}, ${d.getDate()} ${MONTHS_ES_SHORT[d.getMonth()]}, ${hora}`;
 }
 
 /** «viernes, 1 de agosto» — sin hora, para el capitulo del historico */
 export function formatSessionDay(iso: string): string {
-  return new Date(iso).toLocaleDateString('es-ES', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-  });
+  const d = new Date(iso);
+  return `${WEEKDAYS_ES[d.getDay()]}, ${d.getDate()} de ${MONTHS_ES[d.getMonth()]}`;
 }
 
 /**
