@@ -100,3 +100,12 @@ export async function deleteJournalEntry(entryId: string): Promise<void> {
   const { error } = await supabase.from('group_journal_entries').delete().eq('id', entryId);
   if (error) throw error;
 }
+
+/** Edita el texto propio de un recuerdo (la RLS rechaza los ajenos y la cabecera de sistema, migr. 00055). */
+export async function editJournalEntry(entryId: string, body: string): Promise<void> {
+  const { error } = await supabase
+    .from('group_journal_entries')
+    .update({ body: body.trim() })
+    .eq('id', entryId);
+  if (error) throw error;
+}

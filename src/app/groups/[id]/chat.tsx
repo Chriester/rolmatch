@@ -8,7 +8,6 @@ import {
   ActivityIndicator,
   AppState,
   FlatList,
-  KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
@@ -28,6 +27,7 @@ import { ChatImage } from '@/components/chat-image';
 import { ChatInfoPanel } from '@/components/chat-info-panel';
 import { ChatPollBanner } from '@/components/chat-poll-banner';
 import { DiceRoller } from '@/components/dice-roller';
+import { KeyboardAvoidingPanel } from '@/components/keyboard-avoiding-panel';
 import { MessageActions } from '@/components/message-actions';
 import { Reveal } from '@/components/reveal';
 import { RollBubble } from '@/components/roll-bubble';
@@ -42,6 +42,7 @@ import { ThemedText } from '@/components/themed-text';
 import { MaxContentWidth, Rolder, RolderFonts, Spacing } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
 import { fetchGroup, type GroupDetail } from '@/lib/groups';
+import { hapticArm } from '@/lib/haptics';
 import {
   deleteMessage,
   editMessage,
@@ -429,8 +430,15 @@ export function GroupChatPanel({ id }: { id: string }) {
         </View>
       )}
       <Pressable
-        style={[styles.messageRow, isMine && styles.messageRowMine]}
-        onLongPress={() => setActionsFor(item)}
+        style={({ pressed }) => [
+          styles.messageRow,
+          isMine && styles.messageRowMine,
+          pressed && styles.messageRowPressed,
+        ]}
+        onLongPress={() => {
+          hapticArm();
+          setActionsFor(item);
+        }}
         delayLongPress={350}>
         <View style={[styles.messageCol, isMine && styles.messageColMine]}>
         {(() => {
@@ -537,9 +545,7 @@ export function GroupChatPanel({ id }: { id: string }) {
             <ThemedText style={styles.centerText}>No eres miembro de esta mesa.</ThemedText>
           </View>
         ) : (
-          <KeyboardAvoidingView
-            style={styles.chatArea}
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+          <KeyboardAvoidingPanel style={styles.chatArea}>
             <FlatList
               ref={listRef}
               style={styles.list}
@@ -688,7 +694,7 @@ export function GroupChatPanel({ id }: { id: string }) {
                 </LinearGradient>
               </Pressable>
             </View>
-          </KeyboardAvoidingView>
+          </KeyboardAvoidingPanel>
         )}
 
       <MessageActions
@@ -817,6 +823,12 @@ const styles = StyleSheet.create({
   },
   messageRowMine: {
     justifyContent: 'flex-end',
+  },
+  // feedback visual mientras se mantiene pulsado, antes de que se abra el
+  // menú de editar/borrar — sin esto no había ninguna señal de "va a pasar
+  // algo" durante la espera del long-press
+  messageRowPressed: {
+    opacity: 0.6,
   },
   messageCol: {
     maxWidth: '85%',

@@ -7,7 +7,6 @@ import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
-  KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
@@ -27,6 +26,7 @@ import { confirmAction, humanizeError, showAlert } from '@/lib/alert';
 import { AppHeader } from '@/components/app-header';
 import { ChatImage } from '@/components/chat-image';
 import { DiceRoller } from '@/components/dice-roller';
+import { KeyboardAvoidingPanel } from '@/components/keyboard-avoiding-panel';
 import { Reveal } from '@/components/reveal';
 import { MessageActions } from '@/components/message-actions';
 import { RollBubble } from '@/components/roll-bubble';
@@ -40,6 +40,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Rolder, RolderFonts, Spacing } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
+import { hapticArm } from '@/lib/haptics';
 import {
   deleteDmMessage,
   editDmMessage,
@@ -394,8 +395,15 @@ export default function DmChatScreen() {
         </View>
       )}
       <Pressable
-        style={[styles.messageRow, isMine && styles.messageRowMine]}
-        onLongPress={() => setActionsFor(item)}
+        style={({ pressed }) => [
+          styles.messageRow,
+          isMine && styles.messageRowMine,
+          pressed && styles.messageRowPressed,
+        ]}
+        onLongPress={() => {
+          hapticArm();
+          setActionsFor(item);
+        }}
         delayLongPress={350}>
         <View style={[styles.messageCol, isMine && styles.messageColMine]}>
           {roll ? (
@@ -454,9 +462,7 @@ export default function DmChatScreen() {
           <Text style={styles.profileHint}>ver perfil ›</Text>
         </Pressable>
 
-        <KeyboardAvoidingView
-          style={styles.chatArea}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+        <KeyboardAvoidingPanel style={styles.chatArea}>
           <FlatList
             ref={listRef}
             style={styles.list}
@@ -588,7 +594,7 @@ export default function DmChatScreen() {
               </LinearGradient>
             </Pressable>
           </View>
-        </KeyboardAvoidingView>
+        </KeyboardAvoidingPanel>
       </SafeAreaView>
 
       <MessageActions
@@ -700,6 +706,9 @@ const styles = StyleSheet.create({
   },
   messageRowMine: {
     justifyContent: 'flex-end',
+  },
+  messageRowPressed: {
+    opacity: 0.6,
   },
   messageCol: {
     maxWidth: '85%',
