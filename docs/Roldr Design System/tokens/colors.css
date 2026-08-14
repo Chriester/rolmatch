@@ -1,0 +1,57 @@
+:root{
+/* --- brand (derived from the logo gradient, 100deg carmine -> violet) --- */
+--brand-carmine:#B01B5E;
+--brand-plum:#8A2B76;
+--brand-violet:#5D4A93;
+--brand-lilac:#C77DFF;
+
+/* --- tinted neutrals: never pure grey, always a desaturated violet base --- */
+--neutral-900:#0A090C;
+--neutral-800:#131119;
+--neutral-700:#1D1926;
+--neutral-600:#2E2839;
+--neutral-400:#544D63;
+--neutral-200:#A39BB4;
+--neutral-50:#F5F2F8;
+--pure-white:#FFFFFF;
+
+/* --- functional --- */
+--success:#3FBF8F;
+--warning:#E8A44C;
+--danger:#E5484D;
+
+/* --- alpha surfaces (chips, glass, overlays) --- */
+--alpha-lilac-12:rgba(199,125,255,.12);
+--alpha-lilac-28:rgba(199,125,255,.28);
+--alpha-lilac-40:rgba(199,125,255,.40);
+--alpha-lilac-60:rgba(199,125,255,.60);
+--alpha-carmine-12:rgba(176,27,94,.12);
+--alpha-carmine-20:rgba(176,27,94,.20);
+--alpha-carmine-40:rgba(176,27,94,.40);
+--alpha-white-08:rgba(255,255,255,.08);
+--alpha-white-16:rgba(255,255,255,.16);
+--scrim:rgba(10,9,12,.72);
+
+/* --- semantic roles: CONSUME THESE IN PRODUCT, not the scales above --- */
+--bg:var(--neutral-900);
+--surface:var(--neutral-800);
+--surface-raised:var(--neutral-700);
+--surface-overlay:var(--neutral-700);
+--border:var(--neutral-600);
+--border-strong:var(--neutral-400);
+--text:var(--neutral-50);
+--text-muted:var(--neutral-200);
+--text-disabled:var(--neutral-400);
+--text-on-brand:var(--pure-white);
+--link:var(--brand-lilac);
+--accent:var(--brand-lilac);
+--focus-ring:rgba(199,125,255,.55);
+--live:var(--brand-carmine);
+--selected:var(--brand-violet);
+--chip-bg:var(--alpha-lilac-12);
+--chip-bg-active:var(--alpha-lilac-28);
+--chip-border:var(--alpha-lilac-40);
+--chip-border-active:var(--alpha-lilac-60);
+--swipe-yes:var(--success);
+--swipe-no:var(--danger);
+}

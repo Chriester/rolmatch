@@ -21,9 +21,10 @@ import { CharacterSheetView } from '@/components/character-sheet-view';
 import { PrimaryButton } from '@/components/ui';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { MaxContentWidth, Rolder, Spacing } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
 import {
+  characterMilestone,
   deleteCharacter,
   fetchCharacter,
   updateCharacter,
@@ -203,12 +204,26 @@ export default function EditCharacterScreen() {
                 </View>
               )}
               <ThemedText type="title">{character.name}</ThemedText>
+              {(character.sessions_lived > 0 || characterMilestone(character.sessions_lived)) && (
+                <ThemedText type="small" style={styles.lifeLine}>
+                  {[
+                    character.sessions_lived > 0
+                      ? `${character.sessions_lived} ${
+                          character.sessions_lived === 1 ? 'sesión vivida' : 'sesiones vividas'
+                        }`
+                      : null,
+                    characterMilestone(character.sessions_lived),
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')}
+                </ThemedText>
+              )}
             </View>
 
             <CharacterSheetView character={character} />
 
             {isOwner && (
-              <PrimaryButton label="✏️ Editar personaje" onPress={() => setEditing(true)} />
+              <PrimaryButton label="Editar personaje" onPress={() => setEditing(true)} />
             )}
 
             {isOwner ? (
@@ -219,7 +234,7 @@ export default function EditCharacterScreen() {
                 ) : sheet ? (
                   <View style={styles.sheetActions}>
                     <Pressable style={styles.sheetButton} onPress={handleViewSheet}>
-                      <ThemedText type="small">📄 Ver hoja</ThemedText>
+                      <ThemedText type="small">Ver hoja</ThemedText>
                     </Pressable>
                     <Pressable style={styles.sheetButton} onPress={handleUploadSheet}>
                       <ThemedText type="small">Reemplazar</ThemedText>
@@ -232,7 +247,7 @@ export default function EditCharacterScreen() {
                   </View>
                 ) : (
                   <Pressable style={styles.sheetButton} onPress={handleUploadSheet}>
-                    <ThemedText type="small">⬆️ Subir hoja (PDF o imagen, máx. 5 MB)</ThemedText>
+                    <ThemedText type="small">Subir hoja (PDF o imagen, máx. 5 MB)</ThemedText>
                   </Pressable>
                 )}
                 {sheet && (
@@ -262,7 +277,7 @@ export default function EditCharacterScreen() {
                 <View style={styles.sheetBox}>
                   <ThemedText type="subtitle">Hoja en PDF / imagen</ThemedText>
                   <Pressable style={styles.sheetButton} onPress={handleViewSheet}>
-                    <ThemedText type="small">📄 Ver hoja</ThemedText>
+                    <ThemedText type="small">Ver hoja</ThemedText>
                   </Pressable>
                 </View>
               )
@@ -279,6 +294,9 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     justifyContent: 'center',
+  },
+  lifeLine: {
+    color: Rolder.gold,
   },
   safeArea: {
     flex: 1,
@@ -339,7 +357,7 @@ const styles = StyleSheet.create({
     borderRadius: 24,
   },
   portraitFallback: {
-    backgroundColor: 'rgba(255,90,95,0.18)',
+    backgroundColor: 'rgba(229,72,77,0.18)',
     alignItems: 'center',
     justifyContent: 'center',
   },

@@ -227,7 +227,7 @@ export default function TutorialScreen() {
         <View style={styles.footer}>
           {isLast ? (
             <PrimaryButton
-              label={siguiente === 'onboarding' ? 'Crear mi perfil ›' : '¡A rodar dados! 🎲'}
+              label={siguiente === 'onboarding' ? 'Crear mi perfil ›' : '¡A rodar dados!'}
               onPress={finish}
             />
           ) : (

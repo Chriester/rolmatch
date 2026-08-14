@@ -191,7 +191,7 @@ const TopCard = forwardRef<TopCardHandle, TopCardProps>(function TopCard(
         }
       }
     })
-    .onEnd((event) => {
+    .onEnd((event, success) => {
       if (axis.value === 1) {
         const decided =
           sheet.value < 0.3 &&
@@ -214,12 +214,18 @@ const TopCard = forwardRef<TopCardHandle, TopCardProps>(function TopCard(
           : sheet.value > 0.5 ? 1
           : 0;
         sheet.value = withTiming(hasDetails ? target : 0, SHEET_TIMING);
-        // Tirón soltado pasado el umbral: recarga (la tarjeta vuelve seca)
-        if (pull.value > PULL_TRIGGER) runOnJS(triggerRefresh)();
-        pull.value = withTiming(0, SHEET_TIMING);
-        pullArmed.value = 0;
+        // Tirón SOLTADO a propósito pasado el umbral: recarga. `success`
+        // filtra los gestos que cancela el sistema (cortinilla de Android,
+        // llamada entrante…) — cancelar no debe costarte el mazo entero.
+        if (success && pull.value > PULL_TRIGGER) runOnJS(triggerRefresh)();
       }
       axis.value = 0;
+    })
+    // onFinalize corre SIEMPRE (fin, cancelación o fallo): el tirón nunca
+    // debe quedarse a medias aunque el gesto muera sin onEnd
+    .onFinalize(() => {
+      pull.value = withTiming(0, SHEET_TIMING);
+      pullArmed.value = 0;
     });
 
   const frameStyle = useAnimatedStyle(() => ({
@@ -354,7 +360,10 @@ export function SwipeDeck<T>({
   // no se ve. Resetear antes era el bump que se notaba al swipear.
   useEffect(() => {
     progress.value = 0;
-  }, [currentKey, progress]);
+    // si la tarjeta se desmontó con el dedo puesto (recarga a mitad de
+    // tirón), su onFinalize ya no corre: el mazo no debe nacer hundido
+    pull.value = 0;
+  }, [currentKey, progress, pull]);
 
   useEffect(() => {
     if (!deckRef) return;
@@ -456,13 +465,13 @@ const styles = StyleSheet.create({
   // aunque la tarjeta se desplace y rote con el arrastre.
   stampLike: {
     right: '14%',
-    backgroundColor: '#3BD16F',
+    backgroundColor: '#3FBF8F',
     borderColor: '#0B2416',
     boxShadow: '4px 4px 0 rgba(0,0,0,0.35)',
   },
   stampPass: {
     left: '14%',
-    backgroundColor: '#FF5A5F',
+    backgroundColor: '#E5484D',
     borderColor: '#3D0A0C',
     boxShadow: '4px 4px 0 rgba(0,0,0,0.35)',
   },
@@ -492,7 +501,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   pullGlyph: {
-    color: '#B9A6FF',
+    color: '#D8A9FF',
     fontSize: 20,
     fontWeight: '700',
   },

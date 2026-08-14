@@ -358,7 +358,7 @@ export default function OnboardingScreen() {
           {step === 1 && (
             <View style={styles.section}>
               <View style={styles.tzBanner}>
-                <Text style={styles.tzBannerText}>🌍 {timezone || 'Zona horaria'}</Text>
+                <Text style={styles.tzBannerText}>{timezone || 'Zona horaria'}</Text>
               </View>
               <Text style={styles.helper}>
                 Toca una franja o deja pulsado y arrastra para pintar varias (en tu hora local).
@@ -372,7 +372,7 @@ export default function OnboardingScreen() {
               </Text>
               <SectionLabel>Zona horaria</SectionLabel>
               <OutlineButton
-                label="📍 Detectar mi zona horaria"
+                label="Detectar mi zona horaria"
                 onPress={() => {
                   const tz = detectTimezone();
                   setTimezone(tz);
@@ -395,7 +395,7 @@ export default function OnboardingScreen() {
                   />
                 ))}
                 {!TIMEZONES.some((tz) => tz.value === timezone) && (
-                  <Chip label={`🌍 ${timezone}`} selected onPress={() => {}} />
+                  <Chip label={timezone} selected onPress={() => {}} />
                 )}
               </View>
             </View>
@@ -404,7 +404,7 @@ export default function OnboardingScreen() {
           {step === 2 && (
             <View style={styles.section}>
               <View style={styles.switchRow}>
-                <Text style={styles.switchLabel}>🎲 Abierto/a a cualquier sistema</Text>
+                <Text style={styles.switchLabel}>Abierto/a a cualquier sistema</Text>
                 <Switch
                   value={openToAny}
                   onValueChange={setOpenToAny}
@@ -460,7 +460,7 @@ export default function OnboardingScreen() {
                 onChange={setRoleplayWeight}
               />
               <View style={styles.switchRow}>
-                <Text style={styles.switchLabel}>🎙 Juego con voz</Text>
+                <Text style={styles.switchLabel}>Juego con voz</Text>
                 <Switch
                   value={voiceChat}
                   onValueChange={setVoiceChat}
@@ -468,7 +468,7 @@ export default function OnboardingScreen() {
                 />
               </View>
               <View style={styles.switchRow}>
-                <Text style={styles.switchLabel}>🎥 Cámara encendida</Text>
+                <Text style={styles.switchLabel}>Cámara encendida</Text>
                 <Switch
                   value={cameraOk}
                   onValueChange={setCameraOk}
@@ -486,9 +486,9 @@ export default function OnboardingScreen() {
                   />
                 ))}
                 {/* placeholder del modo presencial (fase 4, geolocalización) */}
-                <Chip label="📍 Presencial · pronto" selected={false} disabled onPress={() => {}} />
+                <Chip label="Presencial · pronto" selected={false} disabled onPress={() => {}} />
               </View>
-              <SectionLabel>🛡 Seguridad en mesa</SectionLabel>
+              <SectionLabel>Seguridad en mesa</SectionLabel>
               <Text style={styles.helper}>
                 Herramientas que usas o esperas en tus partidas. Se muestran en tu perfil para
                 que las mesas sepan cómo cuidas el juego.
@@ -530,8 +530,8 @@ export default function OnboardingScreen() {
                   : busy
                     ? 'Guardando…'
                     : wasComplete
-                      ? '💾 Guardar cambios'
-                      : '⚔ Guardar y buscar mesa'
+                      ? 'Guardar cambios'
+                      : 'Guardar y buscar mesa'
               }
               onPress={() => (step < TOTAL_STEPS - 1 ? setStep((s) => s + 1) : handleFinish())}
               disabled={!stepValid() || busy}
@@ -544,7 +544,7 @@ export default function OnboardingScreen() {
             <Pressable onPress={handleFinish} disabled={!allValid() || busy}>
               <Text
                 style={[styles.quickSave, (!allValid() || busy) && styles.quickSaveDisabled]}>
-                {busy ? 'Guardando…' : '💾 Guardar cambios ya'}
+                {busy ? 'Guardando…' : 'Guardar cambios ya'}
               </Text>
             </Pressable>
           )}
@@ -644,9 +644,9 @@ const styles = StyleSheet.create({
     fontFamily: RolderFonts.semibold,
   },
   tzBanner: {
-    backgroundColor: 'rgba(139,108,255,0.15)',
+    backgroundColor: 'rgba(199,125,255,0.15)',
     borderWidth: 1,
-    borderColor: 'rgba(139,108,255,0.4)',
+    borderColor: 'rgba(199,125,255,0.4)',
     borderRadius: 12,
     paddingVertical: 10,
     paddingHorizontal: 14,
@@ -688,7 +688,7 @@ const styles = StyleSheet.create({
     maxWidth: 360,
     backgroundColor: Rolder.surface,
     borderWidth: 1,
-    borderColor: 'rgba(139,108,255,0.4)',
+    borderColor: 'rgba(199,125,255,0.4)',
     borderRadius: 20,
     padding: 24,
     alignItems: 'center',

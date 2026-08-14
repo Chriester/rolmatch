@@ -5,6 +5,7 @@
 // Editar personaje. El selector de diseño cosmético va al final.
 
 import { LinearGradient } from 'expo-linear-gradient';
+import { Scroll, Zap } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 
@@ -20,6 +21,7 @@ import {
   type CharacterInput,
   type CharacterStatus,
 } from '@/lib/characters';
+import { fetchMyGroups, type GroupSummary } from '@/lib/groups';
 import { GENDER_LABELS, fetchSystems, type Gender, type System } from '@/lib/profile';
 import {
   SHEET_THEMES,
@@ -54,6 +56,10 @@ export function CharacterForm({
   const [systemId, setSystemId] = useState<number | null>(initial?.system_id ?? null);
   const [gender, setGender] = useState<Gender | null>(initial?.gender ?? null);
   const [status, setStatus] = useState<CharacterStatus>(initial?.status ?? 'looking');
+  const [playingGroupId, setPlayingGroupId] = useState<string | null>(
+    initial?.playing_group_id ?? null
+  );
+  const [myGroups, setMyGroups] = useState<GroupSummary[]>([]);
   const [isPublic, setIsPublic] = useState(initial?.is_public ?? true);
   const [traits, setTraits] = useState<Record<string, string>>(initial?.traits ?? {});
   const [sheetTheme, setSheetTheme] = useState<string | null>(initial?.sheet_theme ?? null);
@@ -69,6 +75,12 @@ export function CharacterForm({
   useEffect(() => {
     fetchSystems().then(setSystems).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    fetchMyGroups(userId)
+      .then((groups) => setMyGroups(groups.filter((g) => g.is_active)))
+      .catch(() => {});
+  }, [userId]);
 
   const systemSlug = systems.find((s) => s.id === systemId)?.slug ?? null;
   const theme = themeForCharacter(sheetTheme, systemSlug);
@@ -103,6 +115,7 @@ export function CharacterForm({
       status,
       traits: cleanTraits,
       sheet_theme: sheetTheme,
+      playing_group_id: status === 'playing' ? playingGroupId : null,
     });
   };
 
@@ -113,14 +126,14 @@ export function CharacterForm({
           <Pressable
             style={[styles.modeCard, mode === 'quick' && styles.modeCardActive]}
             onPress={() => setMode('quick')}>
-            <Text style={styles.modeEmoji}>⚡</Text>
+            <Zap color={Rolder.violetSoft} size={20} />
             <Text style={styles.modeTitle}>Ficha rápida</Text>
             <Text style={styles.modeDetail}>Nombre, clase y concepto. Listo en un minuto.</Text>
           </Pressable>
           <Pressable
             style={[styles.modeCard, mode === 'full' && styles.modeCardActive]}
             onPress={() => setMode('full')}>
-            <Text style={styles.modeEmoji}>📜</Text>
+            <Scroll color={Rolder.violetSoft} size={20} />
             <Text style={styles.modeTitle}>Hoja completa</Text>
             <Text style={styles.modeDetail}>La hoja del sistema entera, campo a campo.</Text>
           </Pressable>
@@ -184,12 +197,12 @@ export function CharacterForm({
             multiline
           />
           <Text style={styles.hint}>
-            📜 Su hoja completa podrás rellenarla cuando quieras desde «Editar personaje».
+            Su hoja completa podrás rellenarla cuando quieras desde «Editar personaje».
           </Text>
         </>
       ) : systemId === null ? (
         <Text style={styles.hint}>
-          🎲 Elige un sistema y su hoja aparecerá aquí, vacía y lista para tocar y rellenar.
+          Elige un sistema y su hoja aparecerá aquí, vacía y lista para tocar y rellenar.
         </Text>
       ) : (
         <>
@@ -265,6 +278,31 @@ export function CharacterForm({
         ))}
       </View>
 
+      {status === 'playing' && myGroups.length > 0 && (
+        <>
+          <SectionLabel>¿En qué mesa juega?</SectionLabel>
+          <ThemedText type="small">
+            Vinculado a una mesa, el personaje suma una sesión vivida cada vez que confirmes que
+            se jugó.
+          </ThemedText>
+          <View style={styles.chipRow}>
+            <Chip
+              label="Ninguna"
+              selected={playingGroupId === null}
+              onPress={() => setPlayingGroupId(null)}
+            />
+            {myGroups.map((g) => (
+              <Chip
+                key={g.id}
+                label={g.name}
+                selected={playingGroupId === g.id}
+                onPress={() => setPlayingGroupId(g.id)}
+              />
+            ))}
+          </View>
+        </>
+      )}
+
       <View style={styles.switchRow}>
         <View style={styles.switchLabel}>
           <ThemedText>Personaje público</ThemedText>
@@ -321,9 +359,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: Spacing.two,
-    backgroundColor: 'rgba(139,108,255,0.08)',
+    backgroundColor: 'rgba(199,125,255,0.08)',
     borderWidth: 1,
-    borderColor: 'rgba(139,108,255,0.3)',
+    borderColor: 'rgba(199,125,255,0.3)',
     borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 8,
@@ -376,11 +414,8 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   modeCardActive: {
-    backgroundColor: 'rgba(139,108,255,0.14)',
-    borderColor: 'rgba(139,108,255,0.8)',
-  },
-  modeEmoji: {
-    fontSize: 20,
+    backgroundColor: 'rgba(199,125,255,0.14)',
+    borderColor: 'rgba(199,125,255,0.8)',
   },
   modeTitle: {
     color: '#fff',

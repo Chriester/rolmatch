@@ -3,6 +3,7 @@
 
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
+import { Sparkles } from 'lucide-react-native';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -55,7 +56,7 @@ export default function PromoScreen() {
             </Animated.View>
           ) : (
             <>
-              <Text style={styles.sparkle}>✨</Text>
+              <Sparkles color={Rolder.gold} size={44} strokeWidth={2} style={styles.sparkle} />
               <Text style={styles.title}>Canjear código</Text>
               <Text style={styles.blurb}>
                 ¿Tienes un código de tester o promoción? Actívalo aquí y desbloquea las funciones
@@ -116,8 +117,7 @@ const styles = StyleSheet.create({
     paddingBottom: 80,
   },
   sparkle: {
-    fontSize: 44,
-    textAlign: 'center',
+    alignSelf: 'center',
   },
   title: {
     color: '#fff',
@@ -178,7 +178,7 @@ const styles = StyleSheet.create({
   },
   successButton: {
     borderWidth: 1,
-    borderColor: 'rgba(139,108,255,0.8)',
+    borderColor: 'rgba(199,125,255,0.8)',
     borderRadius: 14,
     paddingVertical: 12,
     paddingHorizontal: 24,

@@ -13,12 +13,12 @@ export type StatChipTone = 'green' | 'violet' | 'amber' | 'coral';
 const TONES: Record<StatChipTone, { bg: string; border: string; text: string }> = {
   green: { bg: Rolder.likeChipBg, border: Rolder.likeChipBorder, text: Rolder.likeChipText },
   violet: {
-    bg: 'rgba(139,108,255,0.18)',
-    border: 'rgba(139,108,255,0.55)',
+    bg: 'rgba(199,125,255,0.18)',
+    border: 'rgba(199,125,255,0.55)',
     text: Rolder.violetSofter,
   },
-  amber: { bg: 'rgba(245,166,35,0.15)', border: 'rgba(245,166,35,0.5)', text: '#F5C34D' },
-  coral: { bg: 'rgba(255,90,95,0.15)', border: 'rgba(255,90,95,0.5)', text: '#FF8A8E' },
+  amber: { bg: 'rgba(232,164,76,0.15)', border: 'rgba(232,164,76,0.5)', text: '#F0BE7A' },
+  coral: { bg: 'rgba(229,72,77,0.15)', border: 'rgba(229,72,77,0.5)', text: '#FF8A8E' },
 };
 
 export function StatChip({ label, tone = 'violet' }: { label: string; tone?: StatChipTone }) {

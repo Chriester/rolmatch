@@ -80,9 +80,35 @@ function page(title: string, description: string, image: string, url: string): s
 </html>`;
 }
 
+type CampaignPage = {
+  id: string;
+  name: string;
+  description: string | null;
+  image_url: string | null;
+  format: string;
+  system_name: string | null;
+};
+
+// Crónica pública (vista campaign_pages, migr. 00060): la vista ya filtra a
+// mesas con journal_public activo, así que un id privado devuelve 0 filas.
+async function fetchCampaign(groupId: string): Promise<CampaignPage | null> {
+  const url = process.env.EXPO_PUBLIC_SUPABASE_URL;
+  const anon = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !anon) return null;
+  const response = await fetch(
+    `${url}/rest/v1/campaign_pages?id=eq.${groupId}&select=id,name,description,image_url,format,system_name`,
+    { headers: { apikey: anon } }
+  );
+  if (!response.ok) return null;
+  const rows = (await response.json()) as CampaignPage[];
+  return rows[0] ?? null;
+}
+
 export default async function handler(req: OgRequest, res: OgResponse) {
   const raw = req.query.id;
   const id = Array.isArray(raw) ? raw[0] : raw;
+  const rawKind = req.query.kind;
+  const kind = Array.isArray(rawKind) ? rawKind[0] : rawKind;
 
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   // los crawlers reconsultan solos; 5 min de CDN evita machacar el RPC
@@ -97,6 +123,27 @@ export default async function handler(req: OgRequest, res: OgResponse) {
 
   if (!id || !UUID_RE.test(id)) {
     res.status(200).send(fallback);
+    return;
+  }
+
+  if (kind === 'campana') {
+    const campaign = await fetchCampaign(id).catch(() => null);
+    if (!campaign) {
+      res.status(200).send(fallback);
+      return;
+    }
+    const details = [campaign.system_name, FORMATS[campaign.format] ?? null].filter(Boolean);
+    const blurb = campaign.description?.trim()
+      ? ` — ${campaign.description.trim().slice(0, 160)}`
+      : '';
+    res.status(200).send(
+      page(
+        `Crónica de «${campaign.name}»`,
+        `${['La historia de esta campaña, sesión a sesión', ...details].join(' · ')}${blurb}`,
+        campaign.image_url ?? `${APP_URL}/icon-1024.png`,
+        `${APP_URL}/campana/${campaign.id}`
+      )
+    );
     return;
   }
 

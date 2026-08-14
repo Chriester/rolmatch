@@ -30,9 +30,9 @@ const FILTERS: { key: ReportStatus | 'all'; label: string }[] = [
 ];
 
 const STATUS_LABELS: Record<ReportStatus, string> = {
-  open: '🔴 Abierto',
-  reviewed: '👀 Revisado',
-  actioned: '✅ Con acción',
+  open: 'Abierto',
+  reviewed: 'Revisado',
+  actioned: 'Con acción',
 };
 
 function formatDate(iso: string) {
@@ -123,7 +123,7 @@ export default function ModerationScreen() {
           <AppHeader
             onBack={() => (router.canGoBack() ? router.back() : router.replace('/settings'))}
           />
-          <ScreenTitle>🛡️ Moderación</ScreenTitle>
+          <ScreenTitle>Moderación</ScreenTitle>
           <ScreenBlurb>
             Reportes y sugerencias de la comunidad. Marca cada uno cuando lo hayas mirado para que
             el resto del equipo no lo repase dos veces.
@@ -132,8 +132,8 @@ export default function ModerationScreen() {
           <View style={styles.tabRow}>
             {(
               [
-                { key: 'reports', label: '🚨 Reportes' },
-                { key: 'feedback', label: '💬 Sugerencias' },
+                { key: 'reports', label: 'Reportes' },
+                { key: 'feedback', label: 'Sugerencias' },
               ] as const
             ).map((option) => (
               <Pressable
@@ -179,13 +179,12 @@ export default function ModerationScreen() {
                 <View key={item.id} style={styles.card}>
                   <View style={styles.cardHead}>
                     <Text style={styles.reason}>
-                      {FEEDBACK_KINDS.find((k) => k.key === item.kind)?.emoji}{' '}
                       {FEEDBACK_KINDS.find((k) => k.key === item.kind)?.label}
                     </Text>
                     <Text style={styles.status}>{STATUS_LABELS[item.status]}</Text>
                   </View>
                   <Text style={styles.target}>
-                    {item.authorAlias ? `👤 ${item.authorAlias}` : 'Cuenta borrada'}
+                    {item.authorAlias ? item.authorAlias : 'Cuenta borrada'}
                     {' · '}
                     {formatDate(item.created_at)}
                   </Text>
@@ -224,9 +223,9 @@ export default function ModerationScreen() {
                 </View>
                 <Text style={styles.target}>
                   {report.reportedUserAlias
-                    ? `👤 ${report.reportedUserAlias}`
+                    ? report.reportedUserAlias
                     : report.reportedGroupName
-                      ? `🛡️ ${report.reportedGroupName}`
+                      ? report.reportedGroupName
                       : 'Sin objetivo'}
                   {' · '}
                   {formatDate(report.created_at)}
@@ -285,7 +284,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     backgroundColor: Rolder.surface,
   },
-  tabActive: { borderColor: Rolder.violetSoft, backgroundColor: 'rgba(139,108,255,0.18)' },
+  tabActive: { borderColor: Rolder.violetSoft, backgroundColor: 'rgba(199,125,255,0.18)' },
   tabLabel: { color: Rolder.textSecondary, fontSize: 13.5, fontFamily: RolderFonts.semibold },
   tabLabelActive: { color: '#fff' },
   filterRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
@@ -296,7 +295,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 12,
   },
-  filterActive: { borderColor: Rolder.violetSoft, backgroundColor: 'rgba(139,108,255,0.18)' },
+  filterActive: { borderColor: Rolder.violetSoft, backgroundColor: 'rgba(199,125,255,0.18)' },
   filterLabel: { color: Rolder.textSecondary, fontSize: 12.5, fontFamily: RolderFonts.semibold },
   filterLabelActive: { color: '#fff' },
   card: {

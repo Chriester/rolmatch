@@ -41,7 +41,7 @@ export default function MatchesScreen() {
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
         <AppHeader onBack={router.canGoBack() ? () => router.back() : undefined} />
-        <ScreenTitle>💬 Mis matches</ScreenTitle>
+        <ScreenTitle>Mis matches</ScreenTitle>
 
         {loadError ? (
           <View style={styles.errorBox}>
@@ -101,7 +101,7 @@ export default function MatchesScreen() {
                   {!DISCORD_ENABLED ? null : url ? (
                     <DiscordButton label="Abrir canal en Discord" onPress={() => Linking.openURL(url)} />
                   ) : (
-                    <Text style={styles.pending}>⏳ El canal de Discord se creará en unos segundos…</Text>
+                    <Text style={styles.pending}>El canal de Discord se creará en unos segundos…</Text>
                   )}
                 </ListRow>
               );
@@ -166,7 +166,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   thumbFallback: {
-    backgroundColor: 'rgba(139,108,255,0.2)',
+    backgroundColor: 'rgba(199,125,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
   },

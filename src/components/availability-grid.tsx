@@ -177,7 +177,7 @@ const styles = StyleSheet.create({
     borderRadius: Spacing.one,
   },
   cellSelected: {
-    backgroundColor: '#5865F2',
-    borderColor: '#5865F2',
+    backgroundColor: '#5D4A93',
+    borderColor: '#5D4A93',
   },
 });

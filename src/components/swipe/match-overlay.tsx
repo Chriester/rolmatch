@@ -63,12 +63,14 @@ export function MatchOverlay({ visible, left, right, subtitle, onClose }: MatchO
             onClose();
             router.push('/matches');
           }}>
+          {/* el match es EL momento de marca: gradiente Roldr (el verde
+              queda para el botón de like del swipe) */}
           <LinearGradient
-            colors={Rolder.likeGradient}
+            colors={Rolder.brandGradient}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.primaryButton}>
-            <Text style={styles.primaryLabel}>💬 Ver mis matches</Text>
+            <Text style={styles.primaryLabel}>Ver mis matches</Text>
           </LinearGradient>
         </Pressable>
         <Pressable
@@ -138,7 +140,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     paddingVertical: 14,
     alignItems: 'center',
-    boxShadow: '0 6px 18px rgba(59,209,111,0.35)',
+    boxShadow: '0 6px 18px rgba(63,191,143,0.35)',
   },
   primaryLabel: {
     color: '#fff',

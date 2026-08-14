@@ -1,0 +1,4 @@
+/* Roldr webfonts. NOTE: no font binaries were supplied with the brand handoff.
+   These are the closest Google Fonts matches to the wordmark's geometric sans.
+   Swap the @import for local @font-face rules when the real files arrive. */
+@import url("https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap");

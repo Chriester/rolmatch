@@ -9,23 +9,9 @@
 
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
-// La invoca el navegador (supabase.functions.invoke desde la web): sin
-// contestar el preflight OPTIONS con estas cabeceras, el POST real nunca
-// llega y la app solo ve un error opaco.
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { json, withCors } from '../_shared/cors.ts';
 
-function json(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { 'Content-Type': 'application/json', ...corsHeaders },
-  });
-}
-
-Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+Deno.serve(withCors(async (req) => {
   const jwt = (req.headers.get('Authorization') ?? '').replace('Bearer ', '');
   const { code } = await req.json().catch(() => ({ code: null }));
   if (!code || typeof code !== 'string') {
@@ -90,4 +76,4 @@ Deno.serve(async (req) => {
 
   console.log(`código ${normalized} canjeado por ${userId} → premium hasta ${premiumUntil}`);
   return json({ premium_until: premiumUntil });
-});
+}));

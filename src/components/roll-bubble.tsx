@@ -56,9 +56,9 @@ const styles = StyleSheet.create({
     // sin maxWidth propio: lo limita el messageCol del chat (un % aquí
     // se resolvería contra un padre content-sized y desbordaría)
     maxWidth: '100%',
-    backgroundColor: 'rgba(245,166,35,0.08)',
+    backgroundColor: 'rgba(232,164,76,0.08)',
     borderWidth: 1.5,
-    borderColor: 'rgba(245,166,35,0.45)',
+    borderColor: 'rgba(232,164,76,0.45)',
     borderRadius: 16,
     paddingVertical: 10,
     paddingHorizontal: 13,
@@ -79,13 +79,13 @@ const styles = StyleSheet.create({
   formula: {
     color: 'rgba(255,255,255,0.9)',
     fontSize: 13.5,
-    fontFamily: RolderFonts.bold,
+    fontFamily: RolderFonts.monoBold,
     fontWeight: '700',
   },
   total: {
     color: Rolder.gold,
     fontSize: 24,
-    fontFamily: RolderFonts.extrabold,
+    fontFamily: RolderFonts.monoBold,
     fontWeight: '800',
   },
   diceRow: {
@@ -105,17 +105,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   dieMax: {
-    borderColor: 'rgba(59,209,111,0.8)',
-    backgroundColor: 'rgba(59,209,111,0.12)',
+    borderColor: 'rgba(63,191,143,0.8)',
+    backgroundColor: 'rgba(63,191,143,0.12)',
   },
   dieMin: {
-    borderColor: 'rgba(255,90,95,0.8)',
-    backgroundColor: 'rgba(255,90,95,0.12)',
+    borderColor: 'rgba(229,72,77,0.8)',
+    backgroundColor: 'rgba(229,72,77,0.12)',
   },
   dieValue: {
     color: '#fff',
     fontSize: 14,
-    fontFamily: RolderFonts.bold,
+    fontFamily: RolderFonts.mono,
     fontWeight: '700',
   },
   dieValueMax: {
@@ -127,7 +127,7 @@ const styles = StyleSheet.create({
   modifier: {
     color: Rolder.textSecondary,
     fontSize: 14,
-    fontFamily: RolderFonts.bold,
+    fontFamily: RolderFonts.mono,
     fontWeight: '700',
     marginLeft: 3,
   },

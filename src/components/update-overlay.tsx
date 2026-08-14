@@ -40,7 +40,7 @@ export function UpdateOverlay() {
         <RolderLogo width={72} />
       </Animated.View>
       <Text style={styles.title}>Actualizando rolder…</Text>
-      <Text style={styles.subtitle}>Un momento, estamos afilando los dados 🎲</Text>
+      <Text style={styles.subtitle}>Un momento, estamos afilando los dados</Text>
       <ActivityIndicator color={Rolder.violetSoft} />
     </View>
   );

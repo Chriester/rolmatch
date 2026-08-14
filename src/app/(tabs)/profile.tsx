@@ -4,6 +4,7 @@
 
 import { Image } from 'expo-image';
 import { router, useFocusEffect } from 'expo-router';
+import { LogOut } from 'lucide-react-native';
 import { useCallback, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -16,19 +17,22 @@ import { MaxContentWidth, Rolder, RolderFonts, Spacing } from '@/constants/theme
 import { useSession } from '@/hooks/use-session';
 import { signOut } from '@/lib/auth';
 import { fetchProfileData, type ProfileData } from '@/lib/profile';
+import { ServiceStatsRow } from '@/components/service-stats';
+import { fetchServiceStats, type ServiceStats } from '@/lib/service';
 import { fetchXpTotals, levelInfoFromXp } from '@/lib/xp';
 
-const LINKS: { icon: string; label: string; route: string }[] = [
-  { icon: '👤', label: 'Editar perfil', route: '/onboarding' },
-  { icon: '🧙', label: 'Mis personajes', route: '/characters' },
-  { icon: '🤝', label: 'Mis matches', route: '/matches' },
-  { icon: '⚙️', label: 'Opciones', route: '/settings' },
+const LINKS: { label: string; route: string }[] = [
+  { label: 'Editar perfil', route: '/onboarding' },
+  { label: 'Mis personajes', route: '/characters' },
+  { label: 'Mis matches', route: '/matches' },
+  { label: 'Opciones', route: '/settings' },
 ];
 
 export default function ProfileTabScreen() {
   const session = useSession();
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [xp, setXp] = useState(0);
+  const [service, setService] = useState<ServiceStats | null>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -36,6 +40,9 @@ export default function ProfileTabScreen() {
       fetchProfileData(session.user.id).then(setProfile).catch(() => {});
       fetchXpTotals([session.user.id])
         .then((totals) => setXp(totals.get(session.user.id) ?? 0))
+        .catch(() => {});
+      fetchServiceStats([session.user.id])
+        .then((map) => setService(map.get(session.user.id) ?? null))
         .catch(() => {});
     }, [session])
   );
@@ -66,6 +73,8 @@ export default function ProfileTabScreen() {
             <Text style={styles.publicLink}>Ver mi perfil público ›</Text>
           </Pressable>
 
+          {service && <ServiceStatsRow stats={service} />}
+
           <Pressable
             style={({ pressed }) => [styles.xpBlock, pressed && styles.xpPressed]}
             accessibilityLabel="Ver misiones y recompensas"
@@ -76,7 +85,6 @@ export default function ProfileTabScreen() {
 
           {LINKS.map((link) => (
             <ListRow key={link.label} onPress={() => router.push(link.route as never)}>
-              <Text style={styles.linkIcon}>{link.icon}</Text>
               <Text style={styles.linkLabel}>{link.label}</Text>
               <Text style={styles.chevron}>›</Text>
             </ListRow>
@@ -91,7 +99,7 @@ export default function ProfileTabScreen() {
               );
               if (ok) signOut();
             }}>
-            <Text style={styles.linkIcon}>🚪</Text>
+            <LogOut size={18} color={Rolder.coral} />
             <Text style={[styles.linkLabel, styles.signOut]}>Cerrar sesión</Text>
           </ListRow>
         </ScrollView>
@@ -124,10 +132,10 @@ const styles = StyleSheet.create({
     height: 92,
     borderRadius: 46,
     borderWidth: 2,
-    borderColor: 'rgba(123,92,255,0.7)',
+    borderColor: 'rgba(199,125,255,0.7)',
   },
   avatarFallback: {
-    backgroundColor: 'rgba(139,108,255,0.2)',
+    backgroundColor: 'rgba(199,125,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -161,11 +169,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: RolderFonts.semibold,
     textAlign: 'right',
-  },
-  linkIcon: {
-    fontSize: 20,
-    width: 26,
-    textAlign: 'center',
   },
   linkLabel: {
     color: 'rgba(255,255,255,0.92)',

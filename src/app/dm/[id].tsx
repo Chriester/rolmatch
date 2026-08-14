@@ -19,6 +19,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { LinearGradient } from 'expo-linear-gradient';
+import { ArrowDown, Camera, Dices, FaceSlightlySmiling, SendHorizontal, Sticker } from 'lucide-react-native';
 
 import { Image } from 'expo-image';
 
@@ -314,7 +315,7 @@ export default function DmChatScreen() {
       await (navigator as { clipboard?: { writeText: (t: string) => Promise<void> } }).clipboard
         ?.writeText(text)
         .catch(() => {});
-      showAlert('📋 Copiado', 'El mensaje está en tu portapapeles.');
+      showAlert('Copiado', 'El mensaje está en tu portapapeles.');
     } else {
       // sin dependencia nativa de portapapeles: el share sheet incluye copiar
       await Share.share({ message: text }).catch(() => {});
@@ -479,7 +480,7 @@ export default function DmChatScreen() {
             ListEmptyComponent={
               <View style={styles.centerBox}>
                 <ThemedText style={styles.centerText}>
-                  Sin mensajes todavía. Rompe el hielo 🎲
+                  Sin mensajes todavía. Rompe el hielo
                 </ThemedText>
               </View>
             }
@@ -489,16 +490,16 @@ export default function DmChatScreen() {
               style={styles.jumpFab}
               accessibilityLabel="Bajar al último mensaje"
               onPress={() => listRef.current?.scrollToOffset({ offset: 0, animated: true })}>
-              <Text style={styles.jumpFabIcon}>⬇</Text>
+              <ArrowDown color="#fff" size={18} strokeWidth={2} />
             </Pressable>
           )}
           {otherTyping && (
-            <Text style={styles.typingText}>✍️ {thread.otherAlias} está escribiendo…</Text>
+            <Text style={styles.typingText}>{thread.otherAlias} está escribiendo…</Text>
           )}
           {editing && (
             <View style={styles.editingBanner}>
               <Text style={styles.editingLabel} numberOfLines={1}>
-                ✏️ Editando mensaje
+                Editando mensaje
               </Text>
               <Pressable
                 onPress={() => {
@@ -530,13 +531,13 @@ export default function DmChatScreen() {
               style={[styles.tabButton, pickerTab === 'emoji' && styles.tabActive]}
               onPress={() => setPickerTab(pickerTab === 'emoji' ? null : 'emoji')}
               accessibilityLabel="Emojis">
-              <Text style={styles.tabGlyph}>😀</Text>
+              <FaceSlightlySmiling color={Rolder.textSecondary} size={22} strokeWidth={2} />
             </Pressable>
             <Pressable
               style={[styles.tabButton, pickerTab === 'sticker' && styles.tabActive]}
               onPress={() => setPickerTab(pickerTab === 'sticker' ? null : 'sticker')}
               accessibilityLabel="Stickers">
-              <Text style={styles.tabGlyph}>🎟️</Text>
+              <Sticker color={Rolder.textSecondary} size={22} strokeWidth={2} />
             </Pressable>
             {gifSearchAvailable && (
               <Pressable
@@ -550,14 +551,14 @@ export default function DmChatScreen() {
               style={[styles.tabButton, pickerTab === 'dice' && styles.tabActive]}
               onPress={() => setPickerTab(pickerTab === 'dice' ? null : 'dice')}
               accessibilityLabel="Tirar dados">
-              <Text style={styles.tabGlyph}>🎲</Text>
+              <Dices color={Rolder.textSecondary} size={22} strokeWidth={2} />
             </Pressable>
             <Pressable
               style={styles.tabButton}
               onPress={handleSendPhoto}
               disabled={sending}
               accessibilityLabel="Enviar foto">
-              <Text style={styles.tabGlyph}>📷</Text>
+              <Camera color={Rolder.textSecondary} size={22} strokeWidth={2} />
             </Pressable>
           </View>
           <View style={styles.composerRow}>
@@ -590,7 +591,7 @@ export default function DmChatScreen() {
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={styles.sendButton}>
-                <Text style={styles.sendLabel}>➤</Text>
+                <SendHorizontal color="#fff" size={20} strokeWidth={2} />
               </LinearGradient>
             </Pressable>
           </View>
@@ -661,7 +662,7 @@ const styles = StyleSheet.create({
     borderRadius: 17,
   },
   headerAvatarFallback: {
-    backgroundColor: 'rgba(139,108,255,0.2)',
+    backgroundColor: 'rgba(199,125,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -732,8 +733,8 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   reactionChipMine: {
-    backgroundColor: 'rgba(139,108,255,0.2)',
-    borderColor: 'rgba(139,108,255,0.7)',
+    backgroundColor: 'rgba(199,125,255,0.2)',
+    borderColor: 'rgba(199,125,255,0.7)',
   },
   reactionChipLabel: {
     color: 'rgba(255,255,255,0.9)',
@@ -788,7 +789,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: 'rgba(139,108,255,0.15)',
+    backgroundColor: 'rgba(199,125,255,0.15)',
     borderRadius: 10,
     paddingVertical: 6,
     paddingHorizontal: 12,
@@ -812,14 +813,10 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: 'rgba(139,108,255,0.9)',
+    backgroundColor: 'rgba(199,125,255,0.9)',
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 5,
-  },
-  jumpFabIcon: {
-    color: '#fff',
-    fontSize: 17,
   },
   newSeparator: {
     flexDirection: 'row',
@@ -830,7 +827,7 @@ const styles = StyleSheet.create({
   newLine: {
     flex: 1,
     height: 1,
-    backgroundColor: 'rgba(139,108,255,0.4)',
+    backgroundColor: 'rgba(199,125,255,0.4)',
   },
   newLabel: {
     color: Rolder.violetSoft,
@@ -882,10 +879,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.05)',
   },
   tabActive: {
-    backgroundColor: 'rgba(139,108,255,0.3)',
-  },
-  tabGlyph: {
-    fontSize: 16,
+    backgroundColor: 'rgba(199,125,255,0.3)',
   },
   tabLabel: {
     color: Rolder.violetSofter,
@@ -921,11 +915,6 @@ const styles = StyleSheet.create({
     borderRadius: 21,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  sendLabel: {
-    color: '#fff',
-    fontSize: 17,
-    lineHeight: 20,
   },
   pressed: {
     opacity: 0.85,

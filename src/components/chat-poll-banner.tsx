@@ -40,7 +40,7 @@ export function ChatPollBanner({ groupId, poll, viewerId, onChanged }: ChatPollB
     <View style={styles.banner}>
       <Pressable style={styles.header} onPress={() => setOpen((v) => !v)}>
         <Text style={styles.title} numberOfLines={1}>
-          🗳️ {poll.title ?? '¿Cuándo jugamos?'} · {poll.options.length} opciones · {totalVotes}{' '}
+          {poll.title ?? '¿Cuándo jugamos?'} · {poll.options.length} opciones · {totalVotes}{' '}
           votos
         </Text>
         <Text style={styles.chevron}>{open ? '︿' : '﹀'}</Text>
@@ -55,10 +55,10 @@ export function ChatPollBanner({ groupId, poll, viewerId, onChanged }: ChatPollB
               onPress={() => toggleVote(option.id, !option.mine)}>
               <View style={styles.optionRow}>
                 <Text style={styles.optionLabel} numberOfLines={1}>
-                  {option.mine ? '✅ ' : ''}
+                  {option.mine ? '✓ ' : ''}
                   {formatSessionDate(option.starts_at)}
                 </Text>
-                <Text style={styles.optionVotes}>{option.votes} 🎲</Text>
+                <Text style={styles.optionVotes}>{option.votes}</Text>
               </View>
               <View style={styles.track}>
                 <View style={[styles.fill, { width: `${(option.votes / top) * 100}%` }]} />
@@ -69,7 +69,7 @@ export function ChatPollBanner({ groupId, poll, viewerId, onChanged }: ChatPollB
             onPress={() =>
               router.push({ pathname: '/groups/[id]/schedule', params: { id: groupId } })
             }>
-            <Text style={styles.link}>📅 Ver en Organizar partida ›</Text>
+            <Text style={styles.link}>Ver en Organizar partida ›</Text>
           </Pressable>
         </View>
       )}
@@ -79,9 +79,9 @@ export function ChatPollBanner({ groupId, poll, viewerId, onChanged }: ChatPollB
 
 const styles = StyleSheet.create({
   banner: {
-    backgroundColor: 'rgba(139,108,255,0.12)',
+    backgroundColor: 'rgba(199,125,255,0.12)',
     borderWidth: 1,
-    borderColor: 'rgba(139,108,255,0.45)',
+    borderColor: 'rgba(199,125,255,0.45)',
     borderRadius: 14,
     marginBottom: 8,
     overflow: 'hidden',
@@ -118,8 +118,8 @@ const styles = StyleSheet.create({
     gap: 5,
   },
   optionMine: {
-    borderColor: 'rgba(139,108,255,0.8)',
-    backgroundColor: 'rgba(139,108,255,0.14)',
+    borderColor: 'rgba(199,125,255,0.8)',
+    backgroundColor: 'rgba(199,125,255,0.14)',
   },
   optionRow: {
     flexDirection: 'row',

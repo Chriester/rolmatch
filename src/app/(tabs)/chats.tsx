@@ -3,6 +3,7 @@
 
 import { Image } from 'expo-image';
 import { router, useFocusEffect } from 'expo-router';
+import { Dices, Mail, MessagesSquare } from 'lucide-react-native';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -76,12 +77,12 @@ export default function ChatsScreen() {
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
         <AppHeader />
-        <ScreenTitle>💬 Mis chats</ScreenTitle>
+        <ScreenTitle>Mis chats</ScreenTitle>
 
         {['ready', 'ios-install'].includes(webPushState()) && (
           <Pressable style={styles.pushBanner} onPress={() => router.push('/settings')}>
             <Text style={styles.pushBannerText}>
-              🔔 Activa las notificaciones para no perderte matches ni mensajes ›
+              Activa las notificaciones para no perderte matches ni mensajes ›
             </Text>
           </Pressable>
         )}
@@ -128,7 +129,7 @@ export default function ChatsScreen() {
           <ActivityIndicator style={styles.loading} />
         ) : chats.length === 0 ? (
           <View style={styles.centerBox}>
-            <Text style={styles.centerEmoji}>🕸️</Text>
+            <MessagesSquare size={44} color={Rolder.textTertiary} />
             <Text style={styles.empty}>
               Todavía no estás en ninguna mesa. Cuando hagas match con una, su chat aparecerá
               aquí.
@@ -136,7 +137,11 @@ export default function ChatsScreen() {
           </View>
         ) : visible.length === 0 ? (
           <View style={styles.centerBox}>
-            <Text style={styles.centerEmoji}>{filter === 'dm' ? '✉️' : '🎲'}</Text>
+            {filter === 'dm' ? (
+              <Mail size={44} color={Rolder.textTertiary} />
+            ) : (
+              <Dices size={44} color={Rolder.textTertiary} />
+            )}
             <Text style={styles.empty}>
               {filter === 'dm'
                 ? 'Ningún privado todavía. Puedes escribir a cualquier compañero desde su perfil.'
@@ -223,9 +228,9 @@ const styles = StyleSheet.create({
     gap: Spacing.three,
   },
   pushBanner: {
-    backgroundColor: 'rgba(139,108,255,0.15)',
+    backgroundColor: 'rgba(199,125,255,0.15)',
     borderWidth: 1,
-    borderColor: 'rgba(139,108,255,0.4)',
+    borderColor: 'rgba(199,125,255,0.4)',
     borderRadius: 12,
     paddingVertical: 10,
     paddingHorizontal: 14,
@@ -244,9 +249,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: Spacing.three,
     paddingHorizontal: Spacing.four,
-  },
-  centerEmoji: {
-    fontSize: 56,
   },
   empty: {
     color: Rolder.textSecondary,
@@ -272,7 +274,7 @@ const styles = StyleSheet.create({
   },
   filterActive: {
     borderColor: Rolder.violetSoft,
-    backgroundColor: 'rgba(139,108,255,0.18)',
+    backgroundColor: 'rgba(199,125,255,0.18)',
   },
   filterLabel: {
     color: Rolder.textSecondary,
@@ -311,7 +313,7 @@ const styles = StyleSheet.create({
     borderRadius: 27,
   },
   thumbFallback: {
-    backgroundColor: 'rgba(139,108,255,0.2)',
+    backgroundColor: 'rgba(199,125,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
   },

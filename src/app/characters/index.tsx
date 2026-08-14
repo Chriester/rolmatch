@@ -12,13 +12,19 @@ import { ThemedView } from '@/components/themed-view';
 import { ListRow, OutlineButton, ScreenBlurb, ScreenTitle, StatusPill } from '@/components/ui';
 import { MaxContentWidth, Rolder, RolderFonts, Spacing } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
-import { fetchMyCharacters, type Character, type CharacterStatus } from '@/lib/characters';
+import {
+  characterMilestone,
+  fetchMyCharacters,
+  type Character,
+  type CharacterStatus,
+} from '@/lib/characters';
 import { cacheGet, cacheSet } from '@/lib/screen-cache';
 
 const STATUS_PILL: Record<CharacterStatus, { label: string; tone: 'violet' | 'green' | 'gray' }> = {
   playing: { label: 'EN JUEGO', tone: 'violet' },
   looking: { label: 'BUSCANDO MESA', tone: 'green' },
   retired: { label: 'RETIRADA', tone: 'gray' },
+  fallen: { label: 'CAÍDO EN COMBATE', tone: 'gray' },
 };
 
 export default function MyCharactersScreen() {
@@ -45,11 +51,63 @@ export default function MyCharactersScreen() {
 
   useFocusEffect(load);
 
+  const renderCharacterRow = (item: Character) => {
+    const pill = STATUS_PILL[item.status];
+    const life =
+      item.sessions_lived > 0
+        ? `${item.sessions_lived} ${item.sessions_lived === 1 ? 'sesión vivida' : 'sesiones vividas'}`
+        : null;
+    const milestone = characterMilestone(item.sessions_lived);
+    return (
+      <ListRow
+        onPress={() => router.push({ pathname: '/characters/[id]', params: { id: item.id } })}>
+        {item.portrait_url ? (
+          <Image source={{ uri: item.portrait_url }} style={styles.portrait} />
+        ) : (
+          <View style={[styles.portrait, styles.portraitFallback]}>
+            <Text style={styles.portraitEmoji}>{item.status === 'fallen' ? '🪦' : '🧝'}</Text>
+          </View>
+        )}
+        <View style={styles.body}>
+          <Text style={styles.name} numberOfLines={1}>
+            {item.name}
+          </Text>
+          <Text style={styles.meta} numberOfLines={1}>
+            {[item.archetype, item.systems?.name, item.level && `Nivel ${item.level}`]
+              .filter(Boolean)
+              .join(' · ') || 'Sin detalles todavía'}
+          </Text>
+          {(life || milestone) && (
+            <Text style={styles.life} numberOfLines={1}>
+              {[life, milestone].filter(Boolean).join(' · ')}
+            </Text>
+          )}
+          {item.concept && (
+            <Text style={styles.concept} numberOfLines={1}>
+              {item.concept}
+            </Text>
+          )}
+        </View>
+        <View style={styles.rowActions}>
+          <StatusPill label={pill.label} tone={pill.tone} />
+          <Pressable
+            onPress={() =>
+              router.push({ pathname: '/characters/[id]', params: { id: item.id, edit: '1' } })
+            }
+            hitSlop={8}
+            accessibilityLabel={`Editar ${item.name}`}>
+            <Text style={styles.editLink}>Editar</Text>
+          </Pressable>
+        </View>
+      </ListRow>
+    );
+  };
+
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
         <AppHeader onBack={router.canGoBack() ? () => router.back() : undefined} />
-        <ScreenTitle>🧙 Mis personajes</ScreenTitle>
+        <ScreenTitle>Mis personajes</ScreenTitle>
         <ScreenBlurb>Tu vitrina pública. Los GMs la ven al girar tu tarjeta.</ScreenBlurb>
 
         {loadError ? (
@@ -61,13 +119,30 @@ export default function MyCharactersScreen() {
           <ActivityIndicator style={styles.loading} />
         ) : (
           <FlatList
-            data={characters}
+            data={characters.filter((c) => c.status !== 'fallen')}
             keyExtractor={(c) => c.id}
             contentContainerStyle={styles.list}
             ListFooterComponent={
-              <ListRow dashed onPress={() => router.push('/characters/new')}>
-                <Text style={styles.dashedLabel}>+ Nuevo personaje</Text>
-              </ListRow>
+              <View style={styles.list}>
+                {characters.some((c) => c.status === 'fallen') && (
+                  <>
+                    <Text style={styles.cemeteryTitle}>Cementerio</Text>
+                    <Text style={styles.cemeteryBlurb}>
+                      Los que cayeron con las botas puestas. Descansen en paz.
+                    </Text>
+                    {characters
+                      .filter((c) => c.status === 'fallen')
+                      .map((item) => (
+                        <View key={item.id} style={styles.fallenRow}>
+                          {renderCharacterRow(item)}
+                        </View>
+                      ))}
+                  </>
+                )}
+                <ListRow dashed onPress={() => router.push('/characters/new')}>
+                  <Text style={styles.dashedLabel}>+ Nuevo personaje</Text>
+                </ListRow>
+              </View>
             }
             ListEmptyComponent={
               <Text style={styles.empty}>
@@ -75,52 +150,7 @@ export default function MyCharactersScreen() {
                 «buscando mesa» cuando aparezcas como candidato.
               </Text>
             }
-            renderItem={({ item }) => {
-              const pill = STATUS_PILL[item.status];
-              return (
-                <ListRow
-                  onPress={() =>
-                    router.push({ pathname: '/characters/[id]', params: { id: item.id } })
-                  }>
-                  {item.portrait_url ? (
-                    <Image source={{ uri: item.portrait_url }} style={styles.portrait} />
-                  ) : (
-                    <View style={[styles.portrait, styles.portraitFallback]}>
-                      <Text style={styles.portraitEmoji}>🧝</Text>
-                    </View>
-                  )}
-                  <View style={styles.body}>
-                    <Text style={styles.name} numberOfLines={1}>
-                      {item.name}
-                    </Text>
-                    <Text style={styles.meta} numberOfLines={1}>
-                      {[item.archetype, item.systems?.name, item.level && `Nivel ${item.level}`]
-                        .filter(Boolean)
-                        .join(' · ') || 'Sin detalles todavía'}
-                    </Text>
-                    {item.concept && (
-                      <Text style={styles.concept} numberOfLines={1}>
-                        {item.concept}
-                      </Text>
-                    )}
-                  </View>
-                  <View style={styles.rowActions}>
-                    <StatusPill label={pill.label} tone={pill.tone} />
-                    <Pressable
-                      onPress={() =>
-                        router.push({
-                          pathname: '/characters/[id]',
-                          params: { id: item.id, edit: '1' },
-                        })
-                      }
-                      hitSlop={8}
-                      accessibilityLabel={`Editar ${item.name}`}>
-                      <Text style={styles.editLink}>✏️ Editar</Text>
-                    </Pressable>
-                  </View>
-                </ListRow>
-              );
-            }}
+            renderItem={({ item }) => renderCharacterRow(item)}
           />
         )}
       </SafeAreaView>
@@ -178,7 +208,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
   },
   portraitFallback: {
-    backgroundColor: 'rgba(255,90,95,0.18)',
+    backgroundColor: 'rgba(229,72,77,0.18)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -205,6 +235,27 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: RolderFonts.regular,
     fontStyle: 'italic',
+  },
+  life: {
+    color: Rolder.gold,
+    fontSize: 12,
+    fontFamily: RolderFonts.semibold,
+  },
+  cemeteryTitle: {
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 15,
+    fontFamily: RolderFonts.bold,
+    fontWeight: '700',
+    marginTop: Spacing.two,
+  },
+  cemeteryBlurb: {
+    color: Rolder.textTertiary,
+    fontSize: 12,
+    fontFamily: RolderFonts.regular,
+    marginTop: -8,
+  },
+  fallenRow: {
+    opacity: 0.65,
   },
   dashedLabel: {
     color: Rolder.violetSofter,

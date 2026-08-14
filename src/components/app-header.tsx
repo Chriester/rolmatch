@@ -4,13 +4,14 @@
 
 import { Image } from 'expo-image';
 import { router, useFocusEffect } from 'expo-router';
+import { ArrowLeft, Bell, UserRound } from 'lucide-react-native';
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { RolderBrand } from '@/components/brand';
 import { Rolder, Spacing } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
-import { hasUnseenActivity } from '@/lib/activity';
+import { hasUnseenActivityCached, newsDot } from '@/lib/activity';
 import { fetchUnreadTotal } from '@/lib/messages';
 import { onUnreadChanged } from '@/lib/unread-events';
 import { fetchProfileData } from '@/lib/profile';
@@ -31,14 +32,27 @@ export function AppHeader({ onBack, right, extra }: AppHeaderProps) {
   /** enciende el punto de la campana: hay novedades sin ver */
   const [hasNews, setHasNews] = useState(false);
 
-  // El punto de la campana se recalcula en CADA focus de la pantalla: al
-  // volver de Novedades tiene que apagarse ya, no en el siguiente montaje.
+  // El punto de la campana se mira en cada focus, pero contra la versión
+  // cacheada (la tubería real de consultas corre como mucho una vez por
+  // minuto, no en cada pantalla); markActivitySeen invalida y emite newsDot
+  // para que se apague al instante al salir de Novedades.
   useFocusEffect(
     useCallback(() => {
       if (!session) return;
-      hasUnseenActivity(session.user.id)
-        .then(setHasNews)
-        .catch(() => {});
+      let alive = true;
+      const refresh = () => {
+        hasUnseenActivityCached(session.user.id)
+          .then((value) => {
+            if (alive) setHasNews(value);
+          })
+          .catch(() => {});
+      };
+      refresh();
+      const off = newsDot.on(refresh);
+      return () => {
+        alive = false;
+        off();
+      };
     }, [session])
   );
 
@@ -58,7 +72,7 @@ export function AppHeader({ onBack, right, extra }: AppHeaderProps) {
       <View style={styles.left}>
         {onBack && (
           <Pressable onPress={onBack} style={styles.back} accessibilityLabel="Volver">
-            <Text style={styles.backGlyph}>←</Text>
+            <ArrowLeft color={Rolder.violetSoft} size={22} />
           </Pressable>
         )}
         <Pressable onPress={() => router.navigate('/')} accessibilityLabel="Ir al feed">
@@ -72,9 +86,11 @@ export function AppHeader({ onBack, right, extra }: AppHeaderProps) {
         {session && (
           <Pressable
             accessibilityLabel="Novedades"
-            onPress={() => router.push('/novedades')}
+            // navigate, no push: desde la propia Novedades (o a doble toque)
+            // no debe apilarse otra copia de la pantalla
+            onPress={() => router.navigate('/novedades')}
             style={({ pressed }) => pressed && styles.bellPressed}>
-            <Text style={styles.bell}>🔔</Text>
+            <Bell color={Rolder.violetSoft} size={21} />
             {hasNews && <View style={styles.bellDot} />}
           </Pressable>
         )}
@@ -90,7 +106,7 @@ export function AppHeader({ onBack, right, extra }: AppHeaderProps) {
                 <Image source={{ uri: avatarUrl }} style={styles.avatar} />
               ) : (
                 <View style={[styles.avatar, styles.avatarFallback]}>
-                  <Text style={styles.avatarGlyph}>👤</Text>
+                  <UserRound color="#fff" size={18} />
                 </View>
               )}
               {unread > 0 && <View style={styles.unreadDot} />}
@@ -123,10 +139,6 @@ const styles = StyleSheet.create({
   back: {
     width: 28,
   },
-  backGlyph: {
-    color: Rolder.violetSoft,
-    fontSize: 20,
-  },
   menuButton: {
     width: 44,
     alignItems: 'flex-end',
@@ -136,16 +148,12 @@ const styles = StyleSheet.create({
     height: 38,
     borderRadius: 19,
     borderWidth: 2,
-    borderColor: 'rgba(123,92,255,0.7)',
+    borderColor: 'rgba(199,125,255,0.7)',
   },
   avatarFallback: {
-    backgroundColor: 'rgba(139,108,255,0.25)',
+    backgroundColor: 'rgba(199,125,255,0.25)',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  avatarGlyph: {
-    color: '#fff',
-    fontSize: 17,
   },
   spacer: {
     width: 44,
@@ -160,9 +168,6 @@ const styles = StyleSheet.create({
     backgroundColor: Rolder.coral,
     borderWidth: 2,
     borderColor: Rolder.page,
-  },
-  bell: {
-    fontSize: 20,
   },
   bellPressed: {
     opacity: 0.6,

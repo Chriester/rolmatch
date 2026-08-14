@@ -15,10 +15,12 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   View,
 } from 'react-native';
+import { Camera, Link2, SendHorizontal } from 'lucide-react-native';
 
 import { confirmAction, showAlert } from '@/lib/alert';
 import { InlineBanner } from '@/components/inline-banner';
@@ -32,15 +34,19 @@ import { useSession } from '@/hooks/use-session';
 import { fetchGroup, type GroupDetail } from '@/lib/groups';
 import { hapticArm } from '@/lib/haptics';
 import { pickAndUploadImage } from '@/lib/images';
+import { APP_URL } from '@/lib/config';
 import {
   addJournalEntry,
   deleteJournalEntry,
   editJournalEntry,
   ensureTodayHeader,
   fetchJournalEntries,
+  fetchJournalPublic,
   groupJournalEntries,
+  setJournalPublic,
   type JournalEntry,
 } from '@/lib/journal';
+import { shareLink } from '@/lib/share';
 import { cacheGet, cacheSet } from '@/lib/screen-cache';
 import { fetchTodaySession, formatSessionDay, type GameSession } from '@/lib/sessions';
 
@@ -74,6 +80,8 @@ export function GroupJournalPanel({
   );
   const [todaySession, setTodaySession] = useState<GameSession | null | undefined>(undefined);
   const [draft, setDraft] = useState('');
+  // null = migración 00060 sin aplicar (el toggle no se enseña)
+  const [journalPublic, setJournalPublicState] = useState<boolean | null>(null);
   const [pendingImage, setPendingImage] = useState<string | null>(null);
   const [pickingImage, setPickingImage] = useState(false);
   const [posting, setPosting] = useState(false);
@@ -114,7 +122,35 @@ export function GroupJournalPanel({
     fetchTodaySession(id)
       .then(setTodaySession)
       .catch(() => setTodaySession(null));
+    fetchJournalPublic(id)
+      .then(setJournalPublicState)
+      .catch(() => {});
   }, [id]);
+
+  const handleTogglePublic = async (next: boolean) => {
+    if (!id) return;
+    const previous = journalPublic;
+    setJournalPublicState(next);
+    try {
+      await setJournalPublic(id, next);
+    } catch (error) {
+      setJournalPublicState(previous);
+      showAlert('No se pudo cambiar', error instanceof Error ? error.message : String(error));
+    }
+  };
+
+  const handleShareCampaign = () => {
+    if (!id || !group) return;
+    shareLink({
+      title: `Crónica de «${group.name}»`,
+      text: `La crónica de nuestra campaña «${group.name}»`,
+      url: `${APP_URL}/campana/${id}`,
+    }).then((channel) => {
+      if (channel === 'clipboard') {
+        showAlert('Enlace copiado', 'Pégalo donde quieras presumir de campaña.');
+      }
+    });
+  };
 
   // Crea el capitulo del dia la primera vez que alguien entra hoy.
   useEffect(() => {
@@ -266,16 +302,36 @@ export function GroupJournalPanel({
     );
   };
 
+  const isOwner = group.owner_id === session?.user.id;
+
   // Panel embebido: la identidad de la mesa la pone el hero del hub.
   return (
     <View style={styles.panel}>
+        {/* Crónica pública (migr. 00060): decisión del GM, con enlace al lado */}
+        {isOwner && journalPublic !== null && (
+          <View style={styles.publicRow}>
+            <View style={styles.publicText}>
+              <Text style={styles.publicTitle}>Crónica pública</Text>
+              <Text style={styles.publicHelp}>
+                Cualquiera con el enlace puede leer el histórico. Sin chat, agenda ni miembros.
+              </Text>
+            </View>
+            {journalPublic && (
+              <Pressable onPress={handleShareCampaign} hitSlop={8} accessibilityLabel="Compartir crónica">
+                <Link2 color={Rolder.violetSoft} size={16} strokeWidth={2} />
+              </Pressable>
+            )}
+            <Switch value={journalPublic} onValueChange={handleTogglePublic} />
+          </View>
+        )}
+
         {/* Día de partida con la crónica en blanco: el empujón (3c) */}
         {iAmMember &&
           todaySession != null &&
           !entries.some((e) => e.session_id === todaySession.id && !e.is_system) && (
             <InlineBanner
               tone="green"
-              title="✍️ Crónica de hoy"
+              title="Crónica de hoy"
               body="La página de esta partida está en blanco. Lo que no se escribe hoy, mañana se ha olvidado — una frase basta."
             />
           )}
@@ -351,7 +407,7 @@ export function GroupJournalPanel({
                     {pickingImage ? (
                       <ActivityIndicator size="small" />
                     ) : (
-                      <Text style={styles.attachLabel}>📷</Text>
+                      <Camera color={Rolder.textSecondary} size={18} strokeWidth={2} />
                     )}
                   </Pressable>
                   <TextInput
@@ -386,7 +442,7 @@ export function GroupJournalPanel({
                       start={{ x: 0, y: 0 }}
                       end={{ x: 1, y: 1 }}
                       style={styles.sendButton}>
-                      <Text style={styles.sendLabel}>➤</Text>
+                      <SendHorizontal color="#fff" size={20} strokeWidth={2} />
                     </LinearGradient>
                   </Pressable>
                 </View>
@@ -398,7 +454,7 @@ export function GroupJournalPanel({
                   la sesión.
                 </ThemedText>
                 <OutlineButton
-                  label="📅 Ver calendario"
+                  label="Ver calendario"
                   onPress={() =>
                     onGoAgenda
                       ? onGoAgenda()
@@ -473,6 +529,34 @@ const styles = StyleSheet.create({
     flex: 1,
     width: '100%',
   },
+  publicRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: Rolder.surface,
+    borderWidth: 1,
+    borderColor: Rolder.surfaceBorder,
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: Spacing.two,
+  },
+  publicText: {
+    flex: 1,
+    gap: 2,
+  },
+  publicTitle: {
+    color: '#fff',
+    fontSize: 13.5,
+    fontFamily: RolderFonts.bold,
+    fontWeight: '700',
+  },
+  publicHelp: {
+    color: Rolder.textTertiary,
+    fontSize: 11.5,
+    fontFamily: RolderFonts.regular,
+    lineHeight: 15,
+  },
   loading: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -522,9 +606,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: Spacing.two,
-    backgroundColor: 'rgba(139,108,255,0.16)',
+    backgroundColor: 'rgba(199,125,255,0.16)',
     borderWidth: 1,
-    borderColor: 'rgba(139,108,255,0.4)',
+    borderColor: 'rgba(199,125,255,0.4)',
     borderRadius: 16,
     paddingHorizontal: 14,
     paddingVertical: 10,
@@ -573,7 +657,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
   },
   authorAvatarFallback: {
-    backgroundColor: 'rgba(139,108,255,0.2)',
+    backgroundColor: 'rgba(199,125,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -651,9 +735,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  attachLabel: {
-    fontSize: 18,
-  },
   input: {
     backgroundColor: Rolder.input,
     borderWidth: 1,
@@ -675,11 +756,6 @@ const styles = StyleSheet.create({
     borderRadius: 21,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  sendLabel: {
-    color: '#fff',
-    fontSize: 17,
-    lineHeight: 20,
   },
   pressed: {
     opacity: 0.85,

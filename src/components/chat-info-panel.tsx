@@ -69,7 +69,7 @@ export function ChatInfoPanel({ visible, group, onClose }: ChatInfoPanelProps) {
             {sessions.length === 0 ? (
               <Text style={styles.bodySoft}>Ninguna programada.</Text>
             ) : (
-              <Text style={styles.session}>📅 {formatSessionDate(sessions[0].starts_at)}</Text>
+              <Text style={styles.session}>{formatSessionDate(sessions[0].starts_at)}</Text>
             )}
 
             <SectionLabel>Miembros</SectionLabel>
@@ -110,7 +110,7 @@ export function ChatInfoPanel({ visible, group, onClose }: ChatInfoPanelProps) {
             })}
 
             <OutlineButton
-              label="📅 Organizar partida"
+              label="Organizar partida"
               onPress={() =>
                 navigate(() =>
                   router.push({ pathname: '/groups/[id]/schedule', params: { id: group.id } })
@@ -119,7 +119,7 @@ export function ChatInfoPanel({ visible, group, onClose }: ChatInfoPanelProps) {
               style={styles.groupButton}
             />
             <OutlineButton
-              label="🛡️ Ver mesa completa"
+              label="Ver mesa completa"
               tone="white"
               onPress={() =>
                 navigate(() =>
@@ -197,7 +197,7 @@ const styles = StyleSheet.create({
     borderColor: Rolder.gold,
   },
   memberAvatarFallback: {
-    backgroundColor: 'rgba(139,108,255,0.2)',
+    backgroundColor: 'rgba(199,125,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
   },

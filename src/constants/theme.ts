@@ -1,58 +1,70 @@
-// Design tokens de rolder (handoff design_handoff_rolder/README.md).
-// La app es dark-only: use-theme fuerza siempre la paleta oscura.
+// Design tokens Roldr — traducción a RN de docs/Roldr Design System/tokens/
+// (fase 1 del plan docs/plan-adopcion-roldr.md; ante conflicto, manda el
+// sistema). La app es dark-only: use-theme fuerza siempre la paleta oscura.
+// Se conservan los NOMBRES de token históricos (violet, like, coral, gold…)
+// para no tocar a cada consumidor: cambia lo que valen, no cómo se llaman.
 
 import '@/global.css';
 
 import { Platform } from 'react-native';
 
-/** Paleta rolder — fuente de verdad de color en toda la app */
+/** Paleta Roldr — fuente de verdad de color en toda la app */
 export const Rolder = {
-  // Fondos y superficies
-  page: '#0B0B12',
-  app: '#101018',
-  surface: '#16161F',
-  surfaceBorder: 'rgba(255,255,255,0.08)',
-  input: '#1B1B26',
-  sheet: '#14141E',
+  // Fondos y superficies (neutros teñidos de violeta, nunca gris puro)
+  page: '#0A090C', // --bg (neutral-900)
+  app: '#0F0D13',
+  surface: '#131119', // --surface (neutral-800)
+  surfaceBorder: '#2E2839', // --border: hairline sólido, no blanco alfa
+  input: '#1D1926', // --surface-raised (neutral-700)
+  sheet: '#1D1926', // --surface-overlay
 
-  // Marca
-  coral: '#FF5A5F',
-  violet: '#8B6CFF',
-  violetSoft: '#B9A6FF',
-  violetSofter: '#CBBAFF',
-  discord: '#5865F2',
+  // Marca (gradiente del logo, 100°: carmesí → ciruela → violeta; lila = acento)
+  carmine: '#B01B5E',
+  plum: '#8A2B76',
+  brandViolet: '#5D4A93',
+  coral: '#E5484D', // histórico: hoy es --danger
+  violet: '#C77DFF', // acento/link interactivo (--accent, lila)
+  violetSoft: '#D8A9FF',
+  violetSofter: '#E3C4FF',
+  /** --selected: relleno de fila/celda seleccionada (violeta de marca) */
+  selected: '#5D4A93',
+  discord: '#5865F2', // marca de Discord, no se toca
 
-  // Semánticos
-  like: '#3BD16F',
-  likeDark: '#22A855',
+  // Semánticos (--success / --warning / --danger)
+  like: '#3FBF8F',
+  likeDark: '#2E9B72',
   onLike: '#0B2416',
-  likeChipText: '#7FF2AC',
-  likeChipBg: 'rgba(59,209,111,0.22)',
-  likeChipBorder: 'rgba(59,209,111,0.6)',
-  pass: '#FF5A5F',
+  likeChipText: '#8FE9CB',
+  likeChipBg: 'rgba(63,191,143,0.22)',
+  likeChipBorder: 'rgba(63,191,143,0.6)',
+  pass: '#E5484D',
   onPass: '#3D0A0C',
-  gold: '#F5A623',
-  goldLight: '#F5C34D',
-  goldDark: '#D9902A',
+  gold: '#E8A44C',
+  goldLight: '#F0BE7A',
+  goldDark: '#C98634',
   onGold: '#3A2503',
 
-  // Texto (sobre fondo oscuro)
-  text: 'rgba(255,255,255,0.85)',
-  textSecondary: 'rgba(255,255,255,0.6)',
-  textTertiary: 'rgba(255,255,255,0.45)',
+  // Texto (--text / --text-muted; tertiary interpola hacia --text-disabled)
+  text: '#F5F2F8',
+  textSecondary: '#A39BB4',
+  textTertiary: '#7E7691',
 
   // Gradientes (para expo-linear-gradient / svg)
-  brandGradient: ['#FF5A5F', '#8B6CFF'] as const,
-  likeGradient: ['#3BD16F', '#22A855'] as const,
-  goldGradient: ['#F5C34D', '#D9902A'] as const,
+  brandGradient: ['#B01B5E', '#8A2B76', '#5D4A93'] as const,
+  likeGradient: ['#3FBF8F', '#2E9B72'] as const,
+  goldGradient: ['#F0BE7A', '#C98634'] as const,
 } as const;
 
-/** Familias tipográficas cargadas en _layout (Sora para todo; Nunito en sellos) */
+/** Familias tipográficas cargadas en _layout — sistema Roldr: Manrope para
+ *  cuerpo/UI, Outfit para display (títulos), JetBrains Mono para notación de
+ *  dados (2d6+3, CD 15). Nunito solo en los sellos ¡CRÍTICO!/PIFIA. */
 export const RolderFonts = {
-  regular: 'Sora_400Regular',
-  semibold: 'Sora_600SemiBold',
-  bold: 'Sora_700Bold',
-  extrabold: 'Sora_800ExtraBold',
+  regular: 'Manrope_400Regular',
+  semibold: 'Manrope_600SemiBold',
+  bold: 'Manrope_700Bold',
+  extrabold: 'Outfit_700Bold',
+  mono: 'JetBrainsMono_400Regular',
+  monoBold: 'JetBrainsMono_700Bold',
   sticker: 'Nunito_900Black',
 } as const;
 
@@ -77,22 +89,22 @@ export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
 
 export const Fonts = Platform.select({
   ios: {
-    sans: 'Sora_400Regular',
+    sans: 'Manrope_400Regular',
     serif: 'ui-serif',
     rounded: 'ui-rounded',
-    mono: 'ui-monospace',
+    mono: 'JetBrainsMono_400Regular',
   },
   default: {
-    sans: 'Sora_400Regular',
+    sans: 'Manrope_400Regular',
     serif: 'serif',
     rounded: 'normal',
-    mono: 'monospace',
+    mono: 'JetBrainsMono_400Regular',
   },
   web: {
-    sans: 'Sora_400Regular, var(--font-display)',
+    sans: 'Manrope_400Regular, var(--font-display)',
     serif: 'var(--font-serif)',
     rounded: 'var(--font-rounded)',
-    mono: 'var(--font-mono)',
+    mono: 'JetBrainsMono_400Regular, var(--font-mono)',
   },
 });
 

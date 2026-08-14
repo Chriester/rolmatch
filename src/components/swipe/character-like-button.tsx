@@ -71,7 +71,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.35)',
   },
   pillLiked: {
-    borderColor: '#3BD16F',
+    borderColor: '#3FBF8F',
   },
   glyph: {
     color: 'rgba(255,255,255,0.8)',
@@ -79,7 +79,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   glyphLiked: {
-    color: '#3BD16F',
+    color: '#3FBF8F',
   },
   count: {
     color: '#fff',

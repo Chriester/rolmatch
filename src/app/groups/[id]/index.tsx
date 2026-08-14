@@ -13,6 +13,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Calendar, Link2, Pencil } from 'lucide-react-native';
 import Animated, {
   Easing,
   Extrapolation,
@@ -195,7 +196,7 @@ function GroupDetailScreen() {
       await swipeOnGroup(session.user.id, id, 'like');
       setMySwipe('like');
       // el match ya solo lo cierra el GM al aceptar en Candidatos (00040)
-      showAlert('🙋 Sitio pedido', 'El GM verá tu solicitud y decidirá. Te avisamos si entras.');
+      showAlert('Sitio pedido', 'El GM verá tu solicitud y decidirá. Te avisamos si entras.');
     } catch (error) {
       showAlert('No se pudo pedir sitio', humanizeError(error));
     } finally {
@@ -212,7 +213,7 @@ function GroupDetailScreen() {
     });
     if (!via) return;
     if (via === 'clipboard')
-      showAlert('🔗 Enlace copiado', 'Pégalo donde quieras para invitar gente a la mesa.');
+      showAlert('Enlace copiado', 'Pégalo donde quieras para invitar gente a la mesa.');
     track(session?.user.id, 'share_group_link', { via });
   };
 
@@ -222,12 +223,12 @@ function GroupDetailScreen() {
     try {
       const until = await boostGroup(id);
       setBoostedUntil(until);
-      showAlert('🚀 Mesa destacada', 'Aparecerá primero en los feeds durante 7 días.');
+      showAlert('Mesa destacada', 'Aparecerá primero en los feeds durante 7 días.');
     } catch (error) {
       const message = humanizeError(error);
       if (message.includes('premium')) {
         showAlert(
-          '🚀 Destacar es premium',
+          'Destacar es premium',
           'Los testers de la alpha tienen premium incluido — pídeselo a Chris.'
         );
       } else {
@@ -438,7 +439,7 @@ function GroupDetailScreen() {
               />
             ) : (
               <LinearGradient
-                colors={['#4A55E2', '#8B6CFF']}
+                colors={['#8A2B76', '#5D4A93']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={[StyleSheet.absoluteFill, styles.heroFallback]}>
@@ -477,7 +478,7 @@ function GroupDetailScreen() {
                 style={styles.heroFab}
                 accessibilityLabel="Compartir mesa"
                 onPress={() => handleShare(group.name)}>
-                <Text style={styles.heroFabIcon}>🔗</Text>
+                <Link2 color="#fff" size={18} strokeWidth={2} />
               </Pressable>
               {isOwner && (
                 <Pressable
@@ -486,7 +487,7 @@ function GroupDetailScreen() {
                   onPress={() =>
                     router.push({ pathname: '/groups/[id]/edit', params: { id: group.id } })
                   }>
-                  <Text style={styles.heroFabIcon}>✏️</Text>
+                  <Pencil color="#fff" size={18} strokeWidth={2} />
                 </Pressable>
               )}
             </Animated.View>
@@ -523,7 +524,7 @@ function GroupDetailScreen() {
               en 7 días, la archiva. El GM la rescata con un toque. */}
           {isOwner && group.is_active && vitality?.warnedAt && (
             <View style={styles.vitalityBanner}>
-              <Text style={styles.vitalityTitle}>⏳ ¿Seguís jugando?</Text>
+              <Text style={styles.vitalityTitle}>¿Seguís jugando?</Text>
               <Text style={styles.vitalityBody}>
                 La mesa lleva parada desde el{' '}
                 {new Date(vitality.lastActivityAt).toLocaleDateString('es-ES', {
@@ -533,7 +534,7 @@ function GroupDetailScreen() {
                 . Si nadie da señales, se archivará sola y dejará de salir en el feed.
               </Text>
               <OutlineButton
-                label={aliveBusy ? 'Confirmando…' : '🔄 ¡Seguimos jugando!'}
+                label={aliveBusy ? 'Confirmando…' : '¡Seguimos jugando!'}
                 disabled={aliveBusy}
                 onPress={async () => {
                   setAliveBusy(true);
@@ -555,13 +556,13 @@ function GroupDetailScreen() {
 
           {isOwner && !group.is_active && (
             <View style={styles.vitalityBanner}>
-              <Text style={styles.vitalityTitle}>💤 Mesa archivada</Text>
+              <Text style={styles.vitalityTitle}>Mesa archivada</Text>
               <Text style={styles.vitalityBody}>
                 No sale en el feed ni recibe candidatos. Todo lo demás (chat, diario, miembros)
                 sigue intacto.
               </Text>
               <OutlineButton
-                label={aliveBusy ? 'Reabriendo…' : '☀️ Reabrir mesa'}
+                label={aliveBusy ? 'Reabriendo…' : 'Reabrir mesa'}
                 disabled={aliveBusy}
                 onPress={async () => {
                   setAliveBusy(true);
@@ -621,7 +622,6 @@ function GroupDetailScreen() {
                 router.push({ pathname: '/groups/[id]/candidates', params: { id: group.id } })
               }>
               <Text style={styles.candidatesText} numberOfLines={1}>
-                ⚔️{' '}
                 {applicantsCount === 1
                   ? '1 aventurero pide sitio'
                   : `${applicantsCount} aventureros piden sitio`}
@@ -638,7 +638,7 @@ function GroupDetailScreen() {
               onPress={() =>
                 router.replace({ pathname: '/groups/[id]/schedule', params: { id: group.id } })
               }>
-              <Text style={styles.nextSessionIcon}>📅</Text>
+              <Calendar color={Rolder.textSecondary} size={18} strokeWidth={2} />
               <View style={styles.nextSessionBody}>
                 <Text style={styles.nextSessionTitle} numberOfLines={1}>
                   Próxima partida: {formatSessionDate(sessions[0].starts_at)}
@@ -647,7 +647,7 @@ function GroupDetailScreen() {
                   <Text style={styles.nextSessionMeta}>
                     {confirmations.get(sessions[0].id)!.count} de {group.group_members.length}{' '}
                     confirmados
-                    {confirmations.get(sessions[0].id)!.mine ? ' · tú ya estás 💪' : ''}
+                    {confirmations.get(sessions[0].id)!.mine ? ' · tú ya estás' : ''}
                   </Text>
                 )}
               </View>
@@ -659,7 +659,7 @@ function GroupDetailScreen() {
           {invitacion && session && !isMember && !isOwner && (
             <View style={styles.inviteBanner}>
               <Text style={styles.inviteText}>
-                💌 Te han invitado a esta mesa. Échale un vistazo y, si te encaja,
+                Te han invitado a esta mesa. Échale un vistazo y, si te encaja,
                 pide sitio: el GM recibirá tu solicitud.
               </Text>
             </View>
@@ -667,11 +667,11 @@ function GroupDetailScreen() {
           {session && !isMember && !isOwner && (
             mySwipe === 'like' ? (
               <Text style={styles.appliedNote}>
-                🙋 Ya has pedido sitio — el GM decidirá y te avisamos.
+                Ya has pedido sitio — el GM decidirá y te avisamos.
               </Text>
             ) : (
               <PrimaryButton
-                label={applyBusy ? 'Enviando…' : '🙋 Pedir sitio en esta mesa'}
+                label={applyBusy ? 'Enviando…' : 'Pedir sitio en esta mesa'}
                 onPress={handleApply}
                 disabled={applyBusy || mySwipe === undefined}
               />
@@ -680,7 +680,7 @@ function GroupDetailScreen() {
 
           {lastPlayed && pendingToRate.length > 0 && (
             <View style={styles.rateBox}>
-              <Text style={styles.rateBoxTitle}>🎲 ¿Qué tal la partida?</Text>
+              <Text style={styles.rateBoxTitle}>¿Qué tal la partida?</Text>
               <Text style={styles.rateBoxHelp}>
                 {formatSessionDate(lastPlayed.starts_at)} · valora a quien jugó contigo. Es lo
                 que construye la fiabilidad que ve el resto.
@@ -758,7 +758,7 @@ function GroupDetailScreen() {
                 </Pressable>
                 <View style={styles.stackActions}>
                   <OutlineButton
-                    label="🔗 Invitar"
+                    label="Invitar"
                     style={styles.stackButton}
                     onPress={() => handleShare(group.name)}
                   />
@@ -826,7 +826,7 @@ function GroupDetailScreen() {
                             },
                           })
                         }>
-                        <Text style={styles.rateHint}>🎲 valorar</Text>
+                        <Text style={styles.rateHint}>valorar</Text>
                       </Pressable>
                     )}
                     {session?.user.id === group.owner_id && !isGm && (
@@ -874,7 +874,7 @@ function GroupDetailScreen() {
                     <Text style={styles.seatHolePlus}>+</Text>
                   </View>
                   <Text style={styles.seatName}>Libre</Text>
-                  <Text style={styles.rateHint}>🔗 invitar</Text>
+                  <Text style={styles.rateHint}>invitar</Text>
                 </Pressable>
               ))}
             </View>
@@ -939,7 +939,7 @@ function GroupDetailScreen() {
 
           {group.group_members.some((m) => m.user_id === session?.user.id) && (
             <View style={styles.block}>
-              <SectionLabel>📅 Próximas sesiones</SectionLabel>
+              <SectionLabel>Próximas sesiones</SectionLabel>
               {sessions.length === 0 ? (
                 <ThemedText type="small">Ninguna programada todavía.</ThemedText>
               ) : (
@@ -979,7 +979,7 @@ function GroupDetailScreen() {
               {recentSessions.length > 0 && (
                 <View style={styles.confirmBlock}>
                   <ThemedText type="small" style={styles.confirmTitle}>
-                    🎲 Últimas sesiones — ¿se jugó?
+                    Últimas sesiones — ¿se jugó?
                   </ThemedText>
                   {recentSessions.map((s) => {
                     const state = confirmations.get(s.id) ?? { count: 0, mine: false };
@@ -992,13 +992,13 @@ function GroupDetailScreen() {
                         {state.mine ? (
                           <ThemedText type="small" style={played ? styles.confirmDone : styles.confirmPending}>
                             {played
-                              ? `✅ Jugada · +${SESSION_XP} XP`
+                              ? `✓ Jugada · +${SESSION_XP} XP`
                               : `Confirmada ${state.count}/${SESSION_CONFIRM_QUORUM} — faltan ${SESSION_CONFIRM_QUORUM - state.count}`}
                           </ThemedText>
                         ) : (
                           <Pressable onPress={() => handleConfirmSession(s)}>
                             <ThemedText type="small" style={styles.rateLink}>
-                              ✅ Confirmar ({state.count}/{SESSION_CONFIRM_QUORUM})
+                              Confirmar ({state.count}/{SESSION_CONFIRM_QUORUM})
                             </ThemedText>
                           </Pressable>
                         )}
@@ -1015,10 +1015,10 @@ function GroupDetailScreen() {
               no repartidas por la pantalla */}
           {isOwner && (
             <View style={styles.block}>
-              <SectionLabel>⚙️ Gestionar mesa</SectionLabel>
+              <SectionLabel>Gestionar mesa</SectionLabel>
               <View style={styles.manageGrid}>
                 <OutlineButton
-                  label="✏️ Editar"
+                  label="Editar"
                   style={styles.manageButton}
                   onPress={() =>
                     router.push({ pathname: '/groups/[id]/edit', params: { id: group.id } })
@@ -1026,14 +1026,14 @@ function GroupDetailScreen() {
                 />
                 {group.group_members.some((m) => m.user_id !== session!.user.id) && (
                   <OutlineButton
-                    label={transferOpen ? '✖️ Cancelar' : '👑 Traspasar'}
+                    label={transferOpen ? 'Cancelar' : 'Traspasar'}
                     style={styles.manageButton}
                     onPress={() => setTransferOpen((open) => !open)}
                   />
                 )}
                 {isBoostActive(boostedUntil) ? (
                   <Text style={[styles.boostActive, styles.manageButton]}>
-                    🚀 Destacada hasta el{' '}
+                    Destacada hasta el{' '}
                     {new Date(boostedUntil!).toLocaleDateString('es-ES', {
                       day: 'numeric',
                       month: 'short',
@@ -1041,7 +1041,7 @@ function GroupDetailScreen() {
                   </Text>
                 ) : (
                   <OutlineButton
-                    label="🚀 Destacar ✦"
+                    label="Destacar ✦"
                     tone="gold"
                     style={styles.manageButton}
                     onPress={handleBoost}
@@ -1050,7 +1050,7 @@ function GroupDetailScreen() {
                 )}
                 {group.is_active && (
                   <OutlineButton
-                    label="💤 Archivar"
+                    label="Archivar"
                     tone="white"
                     style={styles.manageButton}
                     onPress={async () => {
@@ -1093,7 +1093,7 @@ function GroupDetailScreen() {
                           const fresh = await fetchGroup(group.id);
                           cacheSet(`group:${group.id}`, fresh);
                           setGroup(fresh);
-                          showAlert('👑 Mesa traspasada', `${alias} es GM a partir de ahora.`);
+                          showAlert('Mesa traspasada', `${alias} es GM a partir de ahora.`);
                         } catch (error) {
                           showAlert(
                             'No se pudo traspasar',
@@ -1102,7 +1102,7 @@ function GroupDetailScreen() {
                         }
                       }}>
                       <Text style={styles.transferAlias}>
-                        👤 {member.profiles?.alias ?? 'Sin alias'}
+                        {member.profiles?.alias ?? 'Sin alias'}
                       </Text>
                       <Text style={styles.transferHint}>Hacer GM ›</Text>
                     </Pressable>
@@ -1116,7 +1116,7 @@ function GroupDetailScreen() {
             session.user.id !== group.owner_id &&
             group.group_members.some((m) => m.user_id === session.user.id) && (
               <OutlineButton
-                label="🚪 Salir de la mesa"
+                label="Salir de la mesa"
                 tone="red"
                 onPress={async () => {
                   const ok = await confirmAction(
@@ -1140,7 +1140,7 @@ function GroupDetailScreen() {
 
           {DISCORD_ENABLED && group.discord_invite_url && (
             <DiscordButton
-              label="🔗 Servidor de Discord"
+              label="Servidor de Discord"
               onPress={() => Linking.openURL(group.discord_invite_url!)}
             />
           )}
@@ -1260,7 +1260,7 @@ const styles = StyleSheet.create({
     borderColor: Rolder.gold,
   },
   seatAvatarFallback: {
-    backgroundColor: 'rgba(139,108,255,0.2)',
+    backgroundColor: 'rgba(199,125,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1304,7 +1304,7 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   rateChip: {
-    backgroundColor: 'rgba(139,108,255,0.18)',
+    backgroundColor: 'rgba(199,125,255,0.18)',
     borderWidth: 1,
     borderColor: Rolder.violetSoft,
     borderRadius: 999,
@@ -1325,7 +1325,7 @@ const styles = StyleSheet.create({
   seatHole: {
     borderWidth: 2,
     borderStyle: 'dashed',
-    borderColor: 'rgba(139,108,255,0.6)',
+    borderColor: 'rgba(199,125,255,0.6)',
     backgroundColor: 'transparent',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1344,7 +1344,7 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
   rateLink: {
-    color: '#5865F2',
+    color: '#C77DFF',
   },
   confirmBlock: {
     gap: Spacing.one,
@@ -1375,9 +1375,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   actionOutline: {
-    backgroundColor: 'rgba(139,108,255,0.14)',
+    backgroundColor: 'rgba(199,125,255,0.14)',
     borderWidth: 1,
-    borderColor: 'rgba(139,108,255,0.45)',
+    borderColor: 'rgba(199,125,255,0.45)',
   },
   actionIcon: {
     fontSize: 20,
@@ -1400,9 +1400,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  heroFabIcon: {
-    fontSize: 15,
-  },
   matchRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1422,23 +1419,23 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   matchLink: {
-    color: '#5865F2',
+    color: '#C77DFF',
     fontWeight: '600',
   },
   boostButton: {
     borderWidth: 1,
-    borderColor: '#F5A623',
+    borderColor: '#E8A44C',
     borderRadius: Spacing.two,
     paddingVertical: Spacing.two,
     paddingHorizontal: Spacing.four,
     alignSelf: 'flex-start',
   },
   boostLabel: {
-    color: '#F5A623',
+    color: '#E8A44C',
     fontWeight: '600',
   },
   boostActive: {
-    color: '#F5A623',
+    color: '#E8A44C',
   },
   stackRow: {
     flexDirection: 'row',
@@ -1475,9 +1472,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.two,
-    backgroundColor: 'rgba(139,108,255,0.14)',
+    backgroundColor: 'rgba(199,125,255,0.14)',
     borderWidth: 1,
-    borderColor: 'rgba(139,108,255,0.5)',
+    borderColor: 'rgba(199,125,255,0.5)',
     borderRadius: 14,
     paddingVertical: 13,
     paddingHorizontal: 14,
@@ -1505,9 +1502,6 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     paddingVertical: 12,
     paddingHorizontal: 14,
-  },
-  nextSessionIcon: {
-    fontSize: 20,
   },
   nextSessionBody: {
     flex: 1,
@@ -1542,7 +1536,7 @@ const styles = StyleSheet.create({
     borderColor: Rolder.gold,
   },
   gmAvatarFallback: {
-    backgroundColor: 'rgba(245,166,35,0.2)',
+    backgroundColor: 'rgba(232,164,76,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1571,16 +1565,16 @@ const styles = StyleSheet.create({
     flexBasis: '47%',
   },
   vitalityBanner: {
-    backgroundColor: 'rgba(245,166,35,0.08)',
+    backgroundColor: 'rgba(232,164,76,0.08)',
     borderWidth: 1,
-    borderColor: 'rgba(245,166,35,0.4)',
+    borderColor: 'rgba(232,164,76,0.4)',
     borderRadius: 16,
     padding: 14,
     gap: Spacing.two,
     marginBottom: Spacing.three,
   },
   vitalityTitle: {
-    color: '#F5A623',
+    color: '#E8A44C',
     fontSize: 15,
     fontFamily: RolderFonts.semibold,
     fontWeight: '700',

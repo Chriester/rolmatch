@@ -1,6 +1,7 @@
 import { matchPlayerToGroup, type MatchGroup, type MatchPlayer, type MatchResult } from '@/lib/matching';
 import { fetchBlockRelations } from '@/lib/moderation';
 import { fetchReliability } from '@/lib/ratings';
+import { fetchServiceStats, type ServiceStats } from '@/lib/service';
 import { hasColumn, supabase } from '@/lib/supabase';
 import { fetchXpTotals, levelFromXp } from '@/lib/xp';
 import type { GroupFormat } from '@/lib/groups';
@@ -27,6 +28,9 @@ export type GroupCandidate = {
       avatar_url: string | null;
       level: number;
       reliability: { average: number; count: number } | null;
+      /** cosméticos equipados (migr. 00056); null sin migración o sin elegir */
+      cardFrame: string | null;
+      avatarFlair: string | null;
     };
   };
   result: MatchResult;
@@ -58,6 +62,11 @@ export type PlayerCandidate = {
     birth_year: number | null;
     characters: ShowcaseCharacter[];
     xpTotal: number;
+    /** cosméticos equipados (migr. 00056); null sin migración o sin elegir */
+    cardFrame: string | null;
+    avatarFlair: string | null;
+    /** ficha de servicio (migr. 00057); null sin migración */
+    service: ServiceStats | null;
   };
   /** true si este jugador ya dio like a la mesa */
   likedGroup: boolean;
@@ -142,19 +151,33 @@ export async function fetchPlayerFeed(
 
   const visible = (groups ?? []).filter((g) => !excluded.has(g.id) && !blocked.has(g.owner_id));
 
-  // Identidad del GM en la tarjeta: alias, nivel y fiabilidad
+  // Identidad del GM en la tarjeta: alias, nivel, fiabilidad y cosméticos
   const ownerIds = [...new Set(visible.map((g) => g.owner_id))];
+  const ownerCosmetics = (await hasColumn('profiles', 'card_frame'))
+    ? ', card_frame, avatar_flair'
+    : '';
   const [{ data: ownerProfiles }, ownerReliability, ownerXp] = await Promise.all([
-    supabase.from('profiles').select('id, alias, avatar_url').in('id', ownerIds),
+    supabase.from('profiles').select(`id, alias, avatar_url${ownerCosmetics}`).in('id', ownerIds),
     fetchReliability(ownerIds).catch(
       () => new Map<string, { average: number; count: number }>()
     ),
     fetchXpTotals(ownerIds).catch(() => new Map<string, number>()),
   ]);
   const ownersById = new Map(
-    (ownerProfiles ?? []).map((p) => [
-      p.id as string,
-      { alias: p.alias as string, avatar_url: p.avatar_url as string | null },
+    ((ownerProfiles ?? []) as unknown as {
+      id: string;
+      alias: string;
+      avatar_url: string | null;
+      card_frame?: string | null;
+      avatar_flair?: string | null;
+    }[]).map((p) => [
+      p.id,
+      {
+        alias: p.alias,
+        avatar_url: p.avatar_url,
+        card_frame: p.card_frame ?? null,
+        avatar_flair: p.avatar_flair ?? null,
+      },
     ])
   );
 
@@ -169,6 +192,8 @@ export async function fetchPlayerFeed(
         avatar_url: ownerProfile?.avatar_url ?? null,
         level: levelFromXp(ownerXp.get(g.owner_id) ?? 0),
         reliability: ownerReliability.get(g.owner_id) ?? null,
+        cardFrame: ownerProfile?.card_frame ?? null,
+        avatarFlair: ownerProfile?.avatar_flair ?? null,
       };
       const seatsFree = Math.max(0, ((g.max_players as number) ?? 5) - players);
       return {
@@ -203,6 +228,9 @@ type CandidateRow = {
   birth_year: number | null;
   characters: unknown;
   availability_slots: { weekday: number; slot: number }[];
+  /** cosméticos (migr. 00056); ausentes sin la migración */
+  card_frame?: string | null;
+  avatar_flair?: string | null;
 } & Parameters<typeof toMatchPlayer>[0];
 
 /** Lo que excluye a un candidato de UNA mesa, y quién le ha pedido sitio. */
@@ -277,14 +305,15 @@ const CANDIDATE_POOL_LIMIT = 120;
 
 async function fetchCandidatePool(applicantIds?: string[]): Promise<CandidateRow[]> {
   if (applicantIds && applicantIds.length === 0) return [];
+  const cosmetics = (await hasColumn('profiles', 'card_frame')) ? ', card_frame, avatar_flair' : '';
   const query = applicantIds
     ? supabase
         .from('profiles')
-        .select(`${CANDIDATE_COLUMNS}, availability_slots(weekday, slot)`)
+        .select(`${CANDIDATE_COLUMNS}${cosmetics}, availability_slots(weekday, slot)`)
         .in('id', applicantIds)
     : supabase
         .from('profiles')
-        .select(`${CANDIDATE_COLUMNS}, availability_slots!inner(weekday, slot)`)
+        .select(`${CANDIDATE_COLUMNS}${cosmetics}, availability_slots!inner(weekday, slot)`)
         .order('created_at', { ascending: false })
         .limit(CANDIDATE_POOL_LIMIT);
   // Pausados fuera del DESCUBRIMIENTO, pero no de los aspirantes: quien
@@ -297,11 +326,12 @@ async function fetchCandidatePool(applicantIds?: string[]): Promise<CandidateRow
   return (data ?? []) as unknown as CandidateRow[];
 }
 
-/** Fiabilidad (10 % del score) y XP (solo para pintar el nivel en la tarjeta). */
+/** Fiabilidad (10 % del score), XP (nivel en la tarjeta) y ficha de servicio. */
 async function fetchCandidateScores(ids: string[]) {
   return Promise.all([
     fetchReliability(ids).catch(() => new Map<string, { average: number; count: number }>()),
     fetchXpTotals(ids).catch(() => new Map<string, number>()),
+    fetchServiceStats(ids),
   ]);
 }
 
@@ -315,7 +345,8 @@ export function buildCandidates(
   { excluded, likesByUser }: GroupExclusions,
   reliability: Map<string, { average: number; count: number }>,
   xpTotals: Map<string, number>,
-  onlyApplicants: boolean
+  onlyApplicants: boolean,
+  serviceStats: Map<string, ServiceStats> = new Map()
 ): PlayerCandidate[] {
   return pool
     .filter((p) =>
@@ -338,6 +369,9 @@ export function buildCandidates(
           birth_year: p.birth_year,
           characters,
           xpTotal: xpTotals.get(p.id) ?? 0,
+          cardFrame: p.card_frame ?? null,
+          avatarFlair: p.avatar_flair ?? null,
+          service: serviceStats.get(p.id) ?? null,
         },
         likedGroup,
         proposal: characters.find((c) => c.id === proposedId) ?? null,
@@ -380,14 +414,15 @@ export async function fetchGroupCandidates(
   const pool = await fetchCandidatePool(
     onlyApplicants ? [...exclusions.likesByUser.keys()] : undefined
   );
-  const [reliability, xpTotals] = await fetchCandidateScores(pool.map((p) => p.id));
+  const [reliability, xpTotals, serviceStats] = await fetchCandidateScores(pool.map((p) => p.id));
   return buildCandidates(
     pool,
     group as unknown as MatchGroup,
     exclusions,
     reliability,
     xpTotals,
-    onlyApplicants
+    onlyApplicants,
+    serviceStats
   );
 }
 
@@ -456,7 +491,7 @@ export async function fetchUnifiedFeed(userId: string): Promise<UnifiedFeed> {
       fetchGroupExclusions(groupIds, userId, false),
       groupIds.length > 0 ? fetchCandidatePool() : Promise.resolve([]),
     ]);
-    const [reliability, xpTotals] = await fetchCandidateScores(pool.map((p) => p.id));
+    const [reliability, xpTotals, serviceStats] = await fetchCandidateScores(pool.map((p) => p.id));
 
     // Un candidato puede encajar en varias de mis mesas: nos quedamos con la
     // mejor combinación (like previo gana; si no, mayor score)
@@ -470,7 +505,8 @@ export async function fetchUnifiedFeed(userId: string): Promise<UnifiedFeed> {
         exclusions,
         reliability,
         xpTotals,
-        false
+        false,
+        serviceStats
       );
       for (const c of candidates) {
         const previous = bestByUser.get(c.player.id);

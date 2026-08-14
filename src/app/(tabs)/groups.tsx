@@ -39,13 +39,13 @@ function TableCard({ table, onVitality }: { table: MyTableRow; onVitality: () =>
 
   const chips: { label: string; tone: 'green' | 'violet' | 'amber' }[] = [];
   if (table.unread > 0)
-    chips.push({ label: `💬 ${table.unread === 1 ? '1 nuevo' : `${table.unread} nuevos`}`, tone: 'violet' });
+    chips.push({ label: table.unread === 1 ? '1 nuevo' : `${table.unread} nuevos`, tone: 'violet' });
   if (table.applicants > 0)
     chips.push({
-      label: `⚔️ ${table.applicants === 1 ? '1 pide sitio' : `${table.applicants} piden sitio`}`,
+      label: table.applicants === 1 ? '1 pide sitio' : `${table.applicants} piden sitio`,
       tone: 'green',
     });
-  if (table.voteAwaits) chips.push({ label: '📅 Te falta votar fecha', tone: 'amber' });
+  if (table.voteAwaits) chips.push({ label: 'Te falta votar fecha', tone: 'amber' });
 
   const meta =
     table.role === 'gm'
@@ -97,10 +97,10 @@ function TableCard({ table, onVitality }: { table: MyTableRow; onVitality: () =>
         {table.warned && table.role === 'gm' && (
           <InlineBanner
             tone="amber"
-            title="⚠️ Sin señales de vida en semanas. ¿Seguís jugando?"
+            title="Sin señales de vida en semanas. ¿Seguís jugando?"
             actions={[
               {
-                label: busy ? 'Un momento…' : '¡Seguimos! 🎲',
+                label: busy ? 'Un momento…' : '¡Seguimos!',
                 primary: true,
                 disabled: busy,
                 onPress: async () => {
@@ -171,7 +171,7 @@ export default function MyGroupsScreen() {
       <SafeAreaView style={styles.safeArea}>
         <AppHeader />
         <View style={styles.titleRow}>
-          <ScreenTitle>🛡️ Mis mesas</ScreenTitle>
+          <ScreenTitle>Mis mesas</ScreenTitle>
           {overview !== undefined && overview.tables.length > 0 && (
             <Text style={styles.countLabel}>
               {overview.tables.length} {overview.tables.length === 1 ? 'mesa' : 'mesas'} · {active}{' '}
@@ -200,13 +200,13 @@ export default function MyGroupsScreen() {
                         start={{ x: 0, y: 0 }}
                         end={{ x: 1, y: 1 }}
                         style={[styles.spotlight, pressed && styles.cardPressed]}>
-                        <Text style={styles.spotlightKicker}>🔥 HOY TOCA PARTIDA</Text>
+                        <Text style={styles.spotlightKicker}>HOY TOCA PARTIDA</Text>
                         <Text style={styles.spotlightName} numberOfLines={1}>
                           {today.groupName}
                         </Text>
                         <Text style={styles.spotlightMeta}>
                           {timeLabel(today.startsAt)} h · {today.confirmed}/{today.members}{' '}
-                          confirmados 💪
+                          confirmados
                         </Text>
                         <Text style={styles.spotlightCta}>Ir a la mesa →</Text>
                       </LinearGradient>
@@ -224,7 +224,7 @@ export default function MyGroupsScreen() {
 
             {gmTables.length > 0 && (
               <>
-                <SectionLabel>🧙 Dirijo</SectionLabel>
+                <SectionLabel>Dirijo</SectionLabel>
                 {gmTables.map((table) => (
                   <TableCard key={table.id} table={table} onVitality={load} />
                 ))}
@@ -233,7 +233,7 @@ export default function MyGroupsScreen() {
 
             {playerTables.length > 0 && (
               <>
-                <SectionLabel>⚔️ Juego</SectionLabel>
+                <SectionLabel>Juego</SectionLabel>
                 {playerTables.map((table) => (
                   <TableCard key={table.id} table={table} onVitality={load} />
                 ))}
@@ -247,7 +247,7 @@ export default function MyGroupsScreen() {
               accessibilityLabel="Buscar mesas en el feed"
               style={({ pressed }) => [styles.feedLink, pressed && styles.cardPressed]}
               onPress={() => router.navigate('/')}>
-              <Text style={styles.feedLinkLabel}>🔭 Buscar en el feed</Text>
+              <Text style={styles.feedLinkLabel}>Buscar en el feed</Text>
             </Pressable>
           </ScrollView>
         )}

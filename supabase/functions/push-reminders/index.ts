@@ -9,6 +9,10 @@
 // calendario de la sesión en la timezone de la mesa (migr. 00029) — el
 // mismo momento en que el histórico de la mesa se abre para escribir.
 //
+// Y un cuarto aviso post-sesión (migr. 00055): unas horas después del
+// inicio pregunta "¿qué tal fue?" para que la mesa confirme que se jugó
+// (XP por quórum), valore compañeros y escriba el histórico.
+//
 // Además de Expo (APK), envía Web Push a los navegadores suscritos en
 // web_push_subscriptions (migr. 00024) — el canal de los usuarios de iOS.
 //
@@ -165,7 +169,7 @@ Deno.serve(async (request) => {
     let update: Partial<SessionRow> | null = null;
     if (hoursLeft <= 1 && !row.push_reminded_1h) {
       content = {
-        title: `⏰ ¡«${groupName}» empieza en menos de una hora!`,
+        title: `¡«${groupName}» empieza en menos de una hora!`,
         body: `Preparad los dados 🎲${sessionTitle}`,
       };
       update = { push_reminded_1h: true, push_reminded_24h: true };
@@ -181,7 +185,7 @@ Deno.serve(async (request) => {
         timeZone: tz,
       });
       content = {
-        title: `📅 Sesión de «${groupName}»`,
+        title: `Sesión de «${groupName}»`,
         body: `${when} (hora de ${tzLabel(tz)})${sessionTitle}. ¡Confirma tu asistencia!`,
       };
       update = { push_reminded_24h: true };
@@ -245,6 +249,55 @@ Deno.serve(async (request) => {
     }
   }
 
+  // Aviso post-sesión: unas horas después del inicio (una sesión típica
+  // dura 3-5 h), toda la mesa recibe el "¿qué tal fue?" que enlaza a la
+  // pantalla de la mesa, donde viven confirmar la sesión y valorar. La
+  // ventana de 24 h evita rescatar sesiones viejas si el cron estuvo caído.
+  const POST_SESSION_HOURS = 4;
+  const { data: finishedSessions, error: postError } = await supabase
+    .from('sessions')
+    .select('id, group_id, starts_at, title, groups(name)')
+    .eq('push_reminded_post', false)
+    .lte('starts_at', new Date(now - POST_SESSION_HOURS * 3600_000).toISOString())
+    .gte('starts_at', new Date(now - 24 * 3600_000).toISOString());
+  if (postError) {
+    // migración 00055 sin aplicar: sin aviso post-sesión
+    console.log(`aviso post-sesión no disponible: ${postError.message}`);
+  } else {
+    for (const row of (finishedSessions ?? []) as unknown as {
+      id: string;
+      group_id: string;
+      starts_at: string;
+      title: string | null;
+      groups: { name: string } | null;
+    }[]) {
+      const groupName = row.groups?.name ?? 'tu mesa';
+      const sessionTitle = row.title ? ` — ${row.title}` : '';
+      const content = {
+        title: `🎲 ¿Qué tal fue la sesión de «${groupName}»?`,
+        body: `Confirma que se jugó, valora a tus compañeros y deja tu crónica en el histórico${sessionTitle}.`,
+      };
+      try {
+        const url = `/groups/${row.group_id}`;
+        const { tokens, userIds } = await memberTokens(row.group_id);
+        const pushes: PushMessage[] = tokens.map((token) => ({
+          to: token,
+          title: content.title,
+          body: content.body,
+          data: { url },
+          sound: 'default',
+          channelId: 'default',
+        }));
+        if (pushes.length > 0) sent += await sendPushes(pushes);
+        sent += await sendWebPushes(userIds, { ...content, url });
+        // marcamos aunque no haya destinatarios: la sesión ya pasó, no reintentamos en bucle
+        await supabase.from('sessions').update({ push_reminded_post: true }).eq('id', row.id);
+      } catch (err) {
+        console.error(`fallo con el aviso post-sesión ${row.id}: ${err}`);
+      }
+    }
+  }
+
   // Aviso al GM: votaciones cuyo plazo de cierre venció (migr. 00030) —
   // le toca entrar, ver el resultado y fijar la fecha ganadora.
   const { data: duePolls, error: pollsError } = await supabase
@@ -266,7 +319,7 @@ Deno.serve(async (request) => {
     }[]) {
       if (!poll.groups) continue;
       const content = {
-        title: '🗳️ Votación lista para cerrar',
+        title: 'Votación lista para cerrar',
         body: `«${poll.title ?? '¿Cuándo jugamos?'}» de ${poll.groups.name} llegó a su plazo. Entra y fija la fecha.`,
       };
       try {

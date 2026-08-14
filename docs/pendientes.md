@@ -8,6 +8,13 @@ proponer una mejora, mirar aquí: si ya está listada, no es un hallazgo nuevo.
 
 ## Operativo (bloquea funcionalidad ya mergeada)
 
+- **Aplicar las migraciones 00055–00060** (tanda de retención, PRs #191-#197,
+  2026-08-13) en el SQL Editor, en orden: 00055 push post-sesión · 00056
+  cosméticos por nivel · 00057 ficha de servicio · 00058 cadena semanal ·
+  00059 personaje con vida · 00060 crónica pública. Todo el código degrada
+  con gracia mientras tanto (hasColumn / catch), pero sin ellas no hay push
+  de "¿qué tal fue?", ni cosméticos persistidos, ni ficha, ni bonus semanal,
+  ni sesiones vividas, ni página pública.
 - **Aplicar la migración 00044** (bucket `chat-media` privado) en el SQL
   Editor. Lleva pendiente desde su PR — verificado por REST (2026-08-11) que
   el bucket sigue sin existir; hasta entonces las fotos de chat siguen yendo
@@ -76,6 +83,15 @@ proponer una mejora, mirar aquí: si ya está listada, no es un hallazgo nuevo.
   Crear ya va en 3 pasos; editar sigue en un scroll. El acordeón (secciones
   plegadas con el valor actual de resumen) es su propia PR. Señal: al
   retomar pulido, o si los testers editan mucho.
+
+## Discord: integración desactivada por completo (decisión de 2026-08-12)
+
+No se va a usar de la forma planeada en un futuro cercano. `DISCORD_ENABLED
+= false` en el cliente, webhooks y cron pausados en el dashboard; el login
+OAuth con Discord sigue activo como simple proveedor de identidad. La skill
+**bot-discord** lleva el aviso. Señal de reactivación: decisión explícita
+de Chris (si llega, revisar antes el rol de Administrador del bot — sigue
+sin rebajarse a permisos mínimos).
 
 ## Esperando a la estrategia de marca (decisión de 2026-08)
 

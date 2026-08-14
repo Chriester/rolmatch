@@ -4,9 +4,11 @@
 // falló sin abrir la consola. Class component: los boundaries no existen
 // como hook.
 
+import { Dices } from 'lucide-react-native';
 import { Component, type ReactNode } from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, Text } from 'react-native';
 
+import { Rolder } from '@/constants/theme';
 import { reportClientError } from '@/lib/error-log';
 
 type ErrorBoundaryState = { error: Error | null };
@@ -37,7 +39,7 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, ErrorBound
     const { message, stack } = this.state.error;
     return (
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-        <Text style={styles.emoji}>💥🎲</Text>
+        <Dices color={Rolder.pass} size={44} style={styles.icon} />
         <Text style={styles.title}>Pifia crítica</Text>
         <Text style={styles.body}>
           Algo ha fallado dentro de la app. Pásale este mensaje a los desarrolladores:
@@ -68,9 +70,8 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     width: '100%',
   },
-  emoji: {
-    fontSize: 48,
-    textAlign: 'center',
+  icon: {
+    alignSelf: 'center',
   },
   title: {
     color: '#fff',
@@ -88,15 +89,15 @@ const styles = StyleSheet.create({
     color: '#FF8A8E',
     fontSize: 12,
     fontFamily: Platform.OS === 'web' ? 'monospace' : undefined,
-    backgroundColor: 'rgba(255,90,95,0.08)',
+    backgroundColor: 'rgba(229,72,77,0.08)',
     borderWidth: 1,
-    borderColor: 'rgba(255,90,95,0.35)',
+    borderColor: 'rgba(229,72,77,0.35)',
     borderRadius: 12,
     padding: 12,
     lineHeight: 17,
   },
   button: {
-    backgroundColor: '#8B6CFF',
+    backgroundColor: '#C77DFF',
     borderRadius: 14,
     paddingVertical: 14,
     alignItems: 'center',

@@ -1,0 +1,41 @@
+:root{
+--font-display:"Outfit","Century Gothic",system-ui,sans-serif;
+--font-body:"Manrope",system-ui,-apple-system,sans-serif;
+--font-mono:"JetBrains Mono",ui-monospace,monospace;
+
+--fw-regular:400; /* @kind font */
+--fw-medium:500; /* @kind font */
+--fw-semibold:600; /* @kind font */
+--fw-bold:700; /* @kind font */
+
+--fs-display-1:40px;
+--fs-display-2:32px;
+--fs-title-1:24px;
+--fs-title-2:20px;
+--fs-body-lg:17px;
+--fs-body:15px;
+--fs-caption:13px;
+--fs-micro:11px;
+
+--lh-tight:1.1; /* @kind font */
+--lh-heading:1.2; /* @kind font */
+--lh-body:1.5; /* @kind font */
+--lh-relaxed:1.6; /* @kind font */
+
+--ls-display:-0.02em; /* @kind font */
+--ls-title:-0.01em; /* @kind font */
+--ls-body:0em; /* @kind font */
+--ls-overline:0.08em; /* @kind font */
+
+/* composed roles */
+--text-display-1:var(--fw-bold) var(--fs-display-1)/var(--lh-tight) var(--font-display);
+--text-display-2:var(--fw-bold) var(--fs-display-2)/var(--lh-tight) var(--font-display);
+--text-title-1:var(--fw-semibold) var(--fs-title-1)/var(--lh-heading) var(--font-display);
+--text-title-2:var(--fw-semibold) var(--fs-title-2)/var(--lh-heading) var(--font-display);
+--text-body-lg:var(--fw-regular) var(--fs-body-lg)/var(--lh-body) var(--font-body);
+--text-body:var(--fw-regular) var(--fs-body)/var(--lh-body) var(--font-body);
+--text-body-strong:var(--fw-semibold) var(--fs-body)/var(--lh-body) var(--font-body);
+--text-caption:var(--fw-medium) var(--fs-caption)/var(--lh-body) var(--font-body);
+--text-overline:var(--fw-semibold) var(--fs-micro)/1.3 var(--font-body);
+--text-dice:var(--fw-semibold) var(--fs-caption)/1.2 var(--font-mono);
+}

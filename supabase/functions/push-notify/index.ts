@@ -128,10 +128,10 @@ type PushMessage = {
 const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SB_SECRET_KEY')!);
 
 function messagePreview(record: { body: string | null; kind: MessageRecord['kind'] }): string {
-  if (record.kind === 'gif') return 'ha enviado un GIF 🎞️';
+  if (record.kind === 'gif') return 'ha enviado un GIF';
   if (record.kind === 'sticker') return `ha enviado ${record.body ?? 'un sticker'}`;
   if (record.kind === 'roll') return record.body ?? 'ha tirado los dados 🎲';
-  if (record.kind === 'image') return 'ha enviado una foto 📷';
+  if (record.kind === 'image') return 'ha enviado una foto';
   const body = (record.body ?? '').trim();
   return body.length > 120 ? `${body.slice(0, 117)}…` : body;
 }
@@ -153,12 +153,12 @@ async function buildForMatch(record: MatchRecord): Promise<Map<string, { title: 
   const url = `/groups/${record.group_id}`;
   const out = new Map<string, { title: string; body: string; url: string }>();
   out.set(record.user_id, {
-    title: '🤝 ¡Match!',
+    title: '¡Match!',
     body: `Te has unido a «${group.name}». Ya tienes su chat de mesa en la app.`,
     url,
   });
   out.set(group.owner_id, {
-    title: '🤝 ¡Match en tu mesa!',
+    title: '¡Match en tu mesa!',
     body: `${player?.alias ?? 'Alguien'} se ha unido a «${group.name}».`,
     url,
   });
@@ -175,7 +175,7 @@ async function buildForMessage(record: MessageRecord): Promise<Map<string, { tit
   if (!group || !members) return new Map();
 
   const url = `/groups/${record.group_id}/chat`;
-  const title = `💬 ${group.name}`;
+  const title = `${group.name}`;
   const body = `${sender?.alias ?? 'Alguien'}: ${messagePreview(record)}`;
   // tag: el service worker agrupa los mensajes seguidos del mismo chat en
   // UNA notificación con contador (estilo WhatsApp) en vez de apilarlas
@@ -198,7 +198,7 @@ async function buildForDm(record: DmMessageRecord): Promise<Map<string, { title:
   const recipient = thread.user_lo === record.sender_id ? thread.user_hi : thread.user_lo;
   const out = new Map<string, { title: string; body: string; url: string; tag?: string }>();
   out.set(recipient, {
-    title: `💬 ${sender?.alias ?? 'Alguien'}`,
+    title: `${sender?.alias ?? 'Alguien'}`,
     body: messagePreview(record),
     url: `/dm/${record.thread_id}`,
     tag: `dm-${record.thread_id}`,
@@ -216,7 +216,7 @@ async function buildForPoll(record: PollRecord): Promise<Map<string, { title: st
   if (!group || !members) return new Map();
 
   const url = `/groups/${record.group_id}/schedule`;
-  const title = `🗳️ Votación en «${group.name}»`;
+  const title = `Votación en «${group.name}»`;
   const body = `${creator?.alias ?? 'Alguien'} propone fechas${record.title ? ` — ${record.title}` : ''}. Vota cuándo puedes jugar.`;
   const out = new Map<string, { title: string; body: string; url: string }>();
   for (const member of members) {
@@ -252,15 +252,15 @@ async function buildForSwipe(record: SwipeRecord): Promise<Map<string, { title: 
     ]);
     if (!group) return out;
     out.set(group.owner_id, {
-      title: `⚔️ Candidato para «${group.name}»`,
+      title: `Candidato para «${group.name}»`,
       body: `${player?.alias ?? 'Alguien'} quiere unirse a tu mesa.`,
       url: `/groups/${record.group_id}/candidates`,
     });
   } else {
     // mesa → jugador: teaser sin nombre
     out.set(record.user_id, {
-      title: '💜 ¡Le gustas a una mesa!',
-      body: 'Descubre cuál en tu pestaña de Encuentros 🔭.',
+      title: '¡Le gustas a una mesa!',
+      body: 'Descubre cuál en tu pestaña de Encuentros.',
       url: '/likes',
     });
   }
@@ -278,7 +278,7 @@ async function buildForCharacterLike(record: CharacterLikeRecord): Promise<Map<s
 
   const out = new Map<string, { title: string; body: string; url: string }>();
   out.set(character.user_id, {
-    title: `💜 A alguien le gusta ${character.name}`,
+    title: `A alguien le gusta ${character.name}`,
     body: 'Tu vitrina está haciendo su trabajo.',
     url: `/characters/${record.character_id}`,
   });
@@ -313,7 +313,7 @@ async function buildForProposal(record: ProposalRecord): Promise<Map<string, { t
 
   const out = new Map<string, { title: string; body: string; url: string }>();
   out.set(groups.owner_id, {
-    title: `🙋 Fecha propuesta en «${groups.name}»`,
+    title: `Fecha propuesta en «${groups.name}»`,
     body: `${proposer?.alias ?? 'Alguien'} propone ${formatDateEs(record.starts_at, groups.timezone)}. Añádela o recházala.`,
     url: `/groups/${poll.group_id}/schedule`,
   });
@@ -359,7 +359,7 @@ async function buildForPollVote(record: PollVoteRecord): Promise<Map<string, { t
 
   const out = new Map<string, { title: string; body: string; url: string }>();
   out.set(poll.groups.owner_id, {
-    title: '🗳️ ¡Todos han votado!',
+    title: '¡Todos han votado!',
     body: `La mesa al completo votó en «${poll.title ?? '¿Cuándo jugamos?'}» de ${poll.groups.name}. Entra y fija la fecha.`,
     url: `/groups/${poll.group_id}/schedule`,
   });
@@ -375,7 +375,7 @@ async function buildForSession(record: SessionRecord): Promise<Map<string, { tit
   if (!group || !members) return new Map();
 
   const url = `/groups/${record.group_id}/schedule`;
-  const title = `📅 Partida fijada en «${group.name}»`;
+  const title = `Partida fijada en «${group.name}»`;
   const body = `${formatDateEs(record.starts_at, group.timezone)}${record.title ? ` — ${record.title}` : ''}`;
   const out = new Map<string, { title: string; body: string; url: string }>();
   for (const member of members) {
@@ -395,7 +395,7 @@ async function buildForSessionCancelled(
   if (!group || !members) return new Map();
 
   const url = `/groups/${record.group_id}/schedule`;
-  const title = `📅 Partida cancelada en «${group.name}»`;
+  const title = `Partida cancelada en «${group.name}»`;
   const body = `Se canceló la sesión del ${formatDateEs(record.starts_at, group.timezone)}${record.title ? ` — ${record.title}` : ''}.`;
   const out = new Map<string, { title: string; body: string; url: string }>();
   for (const member of members) {
@@ -418,7 +418,7 @@ async function buildForNudge(record: NudgeRecord): Promise<Map<string, { title: 
     [
       record.to_user,
       {
-        title: '🫵 Te dan un toque',
+        title: 'Te dan un toque',
         body:
           record.kind === 'confirm'
             ? `${who}: ¿vienes a la partida de «${mesa}»? Falta tu confirmación.`
@@ -459,7 +459,7 @@ async function buildForReport(record: ReportRecord): Promise<Map<string, { title
   const out = new Map<string, { title: string; body: string; url: string }>();
   for (const moderator of moderators) {
     out.set(moderator.id, {
-      title: '🚨 Reporte nuevo',
+      title: 'Reporte nuevo',
       body: `${reporter?.alias ?? 'Alguien'} reporta a ${target}: ${record.reason}`,
       url,
     });

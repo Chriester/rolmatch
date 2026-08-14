@@ -49,7 +49,7 @@ const SEAT_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8];
 
 // Los 11 campos partidos en tres pantallas cortas (entregable 3a):
 // Identidad → Cómo jugáis → Estilo. El scroll infinito producía abandono.
-const STEPS = ['🪪 Identidad', '📅 Cómo jugáis', '🎭 Estilo'];
+const STEPS = ['Identidad', 'Cómo jugáis', 'Estilo'];
 
 export default function NewGroupScreen() {
   const session = useSession();
@@ -125,7 +125,7 @@ export default function NewGroupScreen() {
           }
         />
         <ScrollView contentContainerStyle={styles.scroll}>
-          <ScreenTitle>🛡️ Crear mesa</ScreenTitle>
+          <ScreenTitle>Crear mesa</ScreenTitle>
           <StepperHeader steps={STEPS} current={step} />
 
           {step === 0 && (
@@ -317,7 +317,7 @@ export default function NewGroupScreen() {
               />
             ) : (
               <PrimaryButton
-                label={busy ? 'Publicando…' : '🛡 Publicar mesa'}
+                label={busy ? 'Publicando…' : 'Publicar mesa'}
                 onPress={handleCreate}
                 disabled={!valid || busy}
                 style={styles.publishButton}

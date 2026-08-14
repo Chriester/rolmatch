@@ -51,10 +51,10 @@ export const DM_CHAT: ChatScope = {
 
 /** Preview de un mensaje para listas (los media no tienen body legible) */
 export function messagePreview(message: { body: string | null; kind: MessageKind }): string {
-  if (message.kind === 'gif') return '🎞️ GIF';
+  if (message.kind === 'gif') return 'GIF';
   if (message.kind === 'sticker') return `${message.body ?? '🎟️'} sticker`;
   if (message.kind === 'roll') return message.body ?? '🎲 tirada';
-  if (message.kind === 'image') return '📷 Foto';
+  if (message.kind === 'image') return 'Foto';
   return message.body ?? '';
 }
 

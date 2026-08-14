@@ -54,10 +54,10 @@ function arm(result?: unknown) {
 describe('messagePreview', () => {
   it('describe cada tipo sin body legible', () => {
     expect(messagePreview({ body: 'hola', kind: 'text' })).toBe('hola');
-    expect(messagePreview({ body: null, kind: 'gif' })).toBe('🎞️ GIF');
+    expect(messagePreview({ body: null, kind: 'gif' })).toBe('GIF');
     expect(messagePreview({ body: '🎟️', kind: 'sticker' })).toBe('🎟️ sticker');
     expect(messagePreview({ body: '1d20 → 17', kind: 'roll' })).toBe('1d20 → 17');
-    expect(messagePreview({ body: null, kind: 'image' })).toBe('📷 Foto');
+    expect(messagePreview({ body: null, kind: 'image' })).toBe('Foto');
   });
 
   it('no revienta con un texto vacío', () => {

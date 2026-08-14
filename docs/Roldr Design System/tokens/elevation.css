@@ -1,0 +1,11 @@
+:root{
+/* dark-first: elevation is carried by surface value first, shadow second */
+--shadow-sm:0 1px 2px rgba(10,9,12,.6);
+--shadow-card:0 6px 20px rgba(10,9,12,.55);
+--shadow-swipe:0 18px 48px rgba(10,9,12,.7);
+--shadow-sheet:0 -12px 40px rgba(10,9,12,.75);
+--glow-brand:0 8px 28px rgba(176,27,94,.35);
+--glow-accent:0 0 0 1px var(--alpha-lilac-40),0 8px 24px rgba(199,125,255,.22);
+--inset-hairline:inset 0 1px 0 rgba(255,255,255,.06);
+--blur-glass:14px; /* @kind other */
+}

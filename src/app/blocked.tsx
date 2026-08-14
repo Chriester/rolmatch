@@ -4,6 +4,7 @@
 
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
+import { Bird } from 'lucide-react-native';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -61,7 +62,7 @@ export default function BlockedScreen() {
           <AppHeader
             onBack={() => (router.canGoBack() ? router.back() : router.replace('/settings'))}
           />
-          <ScreenTitle>🚫 Bloqueados</ScreenTitle>
+          <ScreenTitle>Bloqueados</ScreenTitle>
           <ScreenBlurb>
             Ni os veis en el feed ni podéis escribiros. Solo aparece aquí la gente que has
             bloqueado tú.
@@ -71,7 +72,7 @@ export default function BlockedScreen() {
             <ActivityIndicator style={styles.loading} />
           ) : blocked.length === 0 ? (
             <View style={styles.emptyBox}>
-              <Text style={styles.emptyEmoji}>🕊️</Text>
+              <Bird color={Rolder.textTertiary} size={44} strokeWidth={2} />
               <ThemedText type="small" style={styles.empty}>
                 No has bloqueado a nadie.
               </ThemedText>
@@ -153,9 +154,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.two,
     marginTop: Spacing.four,
-  },
-  emptyEmoji: {
-    fontSize: 34,
   },
   empty: {
     textAlign: 'center',

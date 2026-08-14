@@ -68,7 +68,7 @@ export const SHEET_SECTIONS: Record<string, SheetSection[]> = {
     { kind: 'table', title: 'Ataques', key: 'ataques', headers: ['Arma', 'Bono', 'Daño'], hint: 'Espada larga · +7 · 1d8+4 cort.' },
     { kind: 'cards', title: 'Rasgos y aptitudes', key: 'rasgos', hint: 'Segundo aliento :: Recupera 1d10+7 PV…' },
     { kind: 'chips', title: 'Equipo', key: 'equipo', hint: 'Cota de malla, Escudo, Cuerda 15 m' },
-    { kind: 'text', title: 'Notas', key: 'notas', placeholder: '💰 34 po · idiomas, contactos…' },
+    { kind: 'text', title: 'Notas', key: 'notas', placeholder: '34 po · idiomas, contactos…' },
   ],
   pathfinder2e: [
     { kind: 'fields', fields: [
@@ -251,7 +251,7 @@ export const SHEET_THEMES: SheetTheme[] = [
   { id: 'cyberpunk-red', name: 'Neón', emblem: '🕶', colors: ['#26210A', '#4A4012'], accent: '#F5E04A', border: 'rgba(245,224,74,0.5)', unlock: 'free' },
   { id: 'savage-worlds', name: 'Salvaje', emblem: '🌪️', colors: ['#101C26', '#1E3448'], accent: '#7FBBF2', border: 'rgba(127,187,242,0.5)', unlock: 'free' },
   { id: 'pbta', name: 'Apocalipsis', emblem: '🔥', colors: ['#26140E', '#48261A'], accent: '#F2925C', border: 'rgba(242,146,92,0.5)', unlock: 'free' },
-  { id: 'dorado', name: 'Dorado', emblem: '👑', colors: ['#251E0C', '#3A2E0E'], accent: '#F5C34D', border: 'rgba(245,195,77,0.7)', unlock: 'premium' },
+  { id: 'dorado', name: 'Dorado', emblem: '👑', colors: ['#251E0C', '#3A2E0E'], accent: '#F0BE7A', border: 'rgba(240,190,122,0.7)', unlock: 'premium' },
   { id: 'mitico', name: 'Mítico', emblem: '⚡', colors: ['#1C0E2E', '#320E3A'], accent: '#E08FF5', border: 'rgba(224,143,245,0.7)', unlock: { level: 10 } },
 ];
 
@@ -277,8 +277,8 @@ export function canUseTheme(
 
 export function unlockLabel(theme: SheetTheme): string | null {
   if (theme.unlock === 'free') return null;
-  if (theme.unlock === 'premium') return '✨ Premium';
-  return `⚔️ Nv. ${theme.unlock.level}`;
+  if (theme.unlock === 'premium') return 'Premium';
+  return `Nv. ${theme.unlock.level}`;
 }
 
 /** ¿Es un valor homebrew? (campo con opciones cuyo valor no está en la lista) */

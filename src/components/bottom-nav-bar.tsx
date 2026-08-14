@@ -13,12 +13,14 @@
 // está apagada (tabBarStyle: display none) para no duplicar esta.
 
 import { router, usePathname } from 'expo-router';
+import { MessagesSquare, Shield, Telescope, UserRound, type LucideIcon } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Rolder, RolderFonts } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
+import { RolderLogo } from '@/components/brand';
 import { setAppBadge } from '@/lib/badge';
 import { emitFeedRefresh } from '@/lib/feed-events';
 import { hapticTap } from '@/lib/haptics';
@@ -56,17 +58,21 @@ function resolveActiveTab(pathname: string): TabKey | null {
 }
 
 function TabIcon({
-  emoji,
+  Icon,
   active,
   badge = 0,
 }: {
-  emoji: string;
+  Icon: LucideIcon;
   active: boolean;
   badge?: number;
 }) {
   return (
     <View style={styles.button}>
-      <Text style={[styles.buttonEmoji, !active && styles.buttonEmojiInactive]}>{emoji}</Text>
+      <Icon
+        color={active ? Rolder.violetSoft : Rolder.textTertiary}
+        size={24}
+        strokeWidth={active ? 2.4 : 2}
+      />
       {active && <View style={styles.activeDot} />}
       {badge > 0 && (
         <View style={styles.badge}>
@@ -77,16 +83,14 @@ function TabIcon({
   );
 }
 
-// El arte original de marca (assets/roldr-logo-v2.png), tal cual — no se
-// recrea en SVG: es un diseño entregado y no se toca.
-const DIE_ART = require('../../assets/roldr-logo-v2.png');
-
 function FeedIcon({ active }: { active: boolean }) {
   return (
     <View style={styles.feedButton}>
       {/* halo violeta cuando el feed es la pestaña activa */}
       {active && <View style={styles.feedGlow} />}
-      <Image source={DIE_ART} style={styles.feedDie} resizeMode="contain" />
+      {/* el arte original de marca, vía el componente compartido; el canvas
+          trae ~20% de margen: a 78px el dado visible queda en torno a 60px */}
+      <RolderLogo width={78} />
     </View>
   );
 }
@@ -163,7 +167,7 @@ export function BottomNavBar() {
         onPress={() => go('likes')}
         accessibilityRole="button"
         accessibilityLabel={newLikes > 0 ? `Encuentros, ${newLikes} nuevos` : 'Encuentros'}>
-        <TabIcon emoji="🔭" active={active === 'likes'} badge={newLikes} />
+        <TabIcon Icon={Telescope} active={active === 'likes'} badge={newLikes} />
       </Pressable>
       <Pressable
         style={({ pressed }) => [styles.item, pressed && styles.itemPressed]}
@@ -171,7 +175,7 @@ export function BottomNavBar() {
         onPress={() => go('groups')}
         accessibilityRole="button"
         accessibilityLabel="Mis mesas">
-        <TabIcon emoji="🛡️" active={active === 'groups'} />
+        <TabIcon Icon={Shield} active={active === 'groups'} />
       </Pressable>
       <Pressable
         style={({ pressed }) => [styles.item, pressed && styles.itemPressed]}
@@ -187,7 +191,7 @@ export function BottomNavBar() {
         onPress={() => go('chats')}
         accessibilityRole="button"
         accessibilityLabel={unread > 0 ? `Chats, ${unread} sin leer` : 'Chats'}>
-        <TabIcon emoji="💬" active={active === 'chats'} badge={unread} />
+        <TabIcon Icon={MessagesSquare} active={active === 'chats'} badge={unread} />
       </Pressable>
       <Pressable
         style={({ pressed }) => [styles.item, pressed && styles.itemPressed]}
@@ -195,7 +199,7 @@ export function BottomNavBar() {
         onPress={() => go('profile')}
         accessibilityRole="button"
         accessibilityLabel="Mi perfil">
-        <TabIcon emoji="👤" active={active === 'profile'} />
+        <TabIcon Icon={UserRound} active={active === 'profile'} />
       </Pressable>
     </View>
   );
@@ -215,7 +219,7 @@ const styles = StyleSheet.create({
     borderRadius: 31,
   },
   itemPressed: {
-    backgroundColor: 'rgba(139,108,255,0.22)',
+    backgroundColor: 'rgba(199,125,255,0.22)',
     transform: [{ scale: 0.94 }],
   },
   button: {
@@ -224,12 +228,6 @@ const styles = StyleSheet.create({
     borderRadius: 23,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  buttonEmoji: {
-    fontSize: 22,
-  },
-  buttonEmojiInactive: {
-    opacity: 0.4,
   },
   activeDot: {
     position: 'absolute',
@@ -246,19 +244,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  // el canvas del arte trae ~33% de margen transparente: se pinta a 92px
-  // para que el dado visible quede en torno a 60px
-  feedDie: {
-    width: 92,
-    height: 92,
-  },
   feedGlow: {
     position: 'absolute',
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(139,108,255,0.3)',
-    boxShadow: '0 0 26px 10px rgba(139,108,255,0.4)',
+    backgroundColor: 'rgba(199,125,255,0.3)',
+    boxShadow: '0 0 26px 10px rgba(199,125,255,0.4)',
   },
   badge: {
     position: 'absolute',

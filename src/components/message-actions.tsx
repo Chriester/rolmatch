@@ -55,28 +55,28 @@ export function MessageActions({
             <Pressable
               style={({ pressed }) => [styles.action, pressed && styles.pressed]}
               onPress={onCopy}>
-              <Text style={styles.actionLabel}>📋 Copiar</Text>
+              <Text style={styles.actionLabel}>Copiar</Text>
             </Pressable>
           )}
           {canEdit && (
             <Pressable
               style={({ pressed }) => [styles.action, pressed && styles.pressed]}
               onPress={onEdit}>
-              <Text style={styles.actionLabel}>✏️ Editar</Text>
+              <Text style={styles.actionLabel}>Editar</Text>
             </Pressable>
           )}
           {canDelete && (
             <Pressable
               style={({ pressed }) => [styles.action, pressed && styles.pressed]}
               onPress={onDelete}>
-              <Text style={[styles.actionLabel, styles.deleteLabel]}>🗑️ Borrar</Text>
+              <Text style={[styles.actionLabel, styles.deleteLabel]}>Borrar</Text>
             </Pressable>
           )}
           {onReport && (
             <Pressable
               style={({ pressed }) => [styles.action, pressed && styles.pressed]}
               onPress={onReport}>
-              <Text style={styles.actionLabel}>🚩 Reportar</Text>
+              <Text style={styles.actionLabel}>Reportar</Text>
             </Pressable>
           )}
           <Pressable
@@ -114,7 +114,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
   },
   pressed: {
-    backgroundColor: 'rgba(139,108,255,0.15)',
+    backgroundColor: 'rgba(199,125,255,0.15)',
   },
   actionLabel: {
     color: '#fff',

@@ -27,6 +27,8 @@ import { blockUser } from '@/lib/moderation';
 import { fetchPlayerProfile, type PlayerProfile } from '@/lib/players';
 import { GENDER_LABELS, SAFETY_TOOL_LABELS, ageFromBirthYear } from '@/lib/profile';
 import { cacheGet, cacheSet } from '@/lib/screen-cache';
+import { ServiceStatsRow } from '@/components/service-stats';
+import { flairFor } from '@/lib/cosmetics';
 import { levelInfoFromXp } from '@/lib/xp';
 
 const ROLE_LABELS: Record<string, string> = {
@@ -39,6 +41,7 @@ const STATUS_PILL = {
   playing: { label: 'EN JUEGO', tone: 'violet' as const },
   looking: { label: 'BUSCANDO MESA', tone: 'green' as const },
   retired: { label: 'RETIRADA', tone: 'gray' as const },
+  fallen: { label: 'CAÍDO EN COMBATE', tone: 'gray' as const },
 };
 
 export default function PlayerProfileScreen() {
@@ -95,6 +98,7 @@ export default function PlayerProfileScreen() {
   const isMe = session?.user.id === id;
   const publicCharacters = profile.characters.filter((c) => c.is_public || isMe);
   const levelInfo = levelInfoFromXp(profile.xpTotal);
+  const flair = flairFor(profile.cosmetics.avatarFlair, levelInfo.level);
   const age = ageFromBirthYear(profile.birth_year);
 
   return (
@@ -113,25 +117,28 @@ export default function PlayerProfileScreen() {
             )}
             <Text style={styles.alias}>
               {profile.alias}
+              {flair ? ` ${flair.emoji}` : ''}
               {age !== null ? `, ${age}` : ''}
             </Text>
             <CardChipRow>
               <CardChip label={ROLE_LABELS[profile.role] ?? profile.role} />
               {profile.gender && <CardChip label={GENDER_LABELS[profile.gender]} />}
-              <CardChip label={`🌍 ${profile.timezone}`} />
-              <CardChip label={`⚔️ Nv. ${levelInfo.level} · ${levelInfo.title}`} />
+              <CardChip label={profile.timezone} />
+              <CardChip label={`Nv. ${levelInfo.level} · ${levelInfo.title}`} />
               {profile.reliability && profile.reliability.count > 0 && (
                 <CardChip
                   variant="green"
-                  label={`🎲 ${profile.reliability.average.toFixed(1)}/5 (${profile.reliability.count})`}
+                  label={`${profile.reliability.average.toFixed(1)}/5 (${profile.reliability.count})`}
                 />
               )}
             </CardChipRow>
           </View>
 
+          {profile.service && <ServiceStatsRow stats={profile.service} />}
+
           {session && !isMe && (
             <OutlineButton
-              label={dmBusy ? 'Abriendo…' : '💬 Enviar mensaje'}
+              label={dmBusy ? 'Abriendo…' : 'Enviar mensaje'}
               onPress={handleOpenDm}
               disabled={dmBusy}
             />
@@ -175,8 +182,8 @@ export default function PlayerProfileScreen() {
             />
             <Text style={styles.bodySoft}>
               {[
-                profile.voice_chat ? '🎙 con voz' : 'sin voz',
-                profile.camera_ok ? '🎥 cámara ok' : null,
+                profile.voice_chat ? 'con voz' : 'sin voz',
+                profile.camera_ok ? 'cámara ok' : null,
                 VTT_LABELS[profile.preferred_vtt],
               ]
                 .filter(Boolean)
@@ -186,7 +193,7 @@ export default function PlayerProfileScreen() {
 
           {profile.safety_tools.length > 0 && (
             <View style={styles.block}>
-              <SectionLabel>🛡 Seguridad en mesa</SectionLabel>
+              <SectionLabel>Seguridad en mesa</SectionLabel>
               <CardChipRow>
                 {profile.safety_tools
                   .filter((tool) => SAFETY_TOOL_LABELS[tool])
@@ -360,10 +367,10 @@ const styles = StyleSheet.create({
     height: 96,
     borderRadius: 48,
     borderWidth: 2,
-    borderColor: 'rgba(123,92,255,0.7)',
+    borderColor: 'rgba(199,125,255,0.7)',
   },
   avatarFallback: {
-    backgroundColor: 'rgba(139,108,255,0.2)',
+    backgroundColor: 'rgba(199,125,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -396,7 +403,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   portraitFallback: {
-    backgroundColor: 'rgba(255,90,95,0.18)',
+    backgroundColor: 'rgba(229,72,77,0.18)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -429,7 +436,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   groupThumbFallback: {
-    backgroundColor: 'rgba(139,108,255,0.18)',
+    backgroundColor: 'rgba(199,125,255,0.18)',
     alignItems: 'center',
     justifyContent: 'center',
   },

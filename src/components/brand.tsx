@@ -1,96 +1,27 @@
-// Marca Roldr (logo 2026-08): wordmark «R⟐ldr» con el d20 de facetas como
-// «o», en gradiente carmesí→púrpura. El dado es SVG (react-native-svg);
-// las letras son <Text> planos porque sus colores son sólidos — así la
-// versión web (brand.web.tsx) comparte forma. Mantener exports en paralelo.
+// Marca Roldr — versión NATIVA. El logo y el wordmark (PNG del arte
+// original) viven en brand-art.tsx, compartidos con web; aquí solo se
+// define el texto con gradiente, que en nativo va por react-native-svg.
+// Mantener exports en paralelo con brand.web.tsx.
 
 import { useId } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
 import Svg, {
   Defs,
   LinearGradient as SvgGradient,
-  Polygon,
   Stop,
   Text as SvgText,
 } from 'react-native-svg';
 
-import { Rolder } from '@/constants/theme';
+import { BRAND_CRIMSON, BRAND_PURPLE } from '@/components/brand-art';
 
-// Gradiente propio del logo — más profundo que los acentos coral/violeta
-// de la UI, que no cambian.
-export const BRAND_CRIMSON = '#DE1458';
-export const BRAND_PURPLE = '#8E44AD';
-const DIE_FROM = '#F50747';
-const DIE_TO = '#7A4FC0';
-
-// Las letras del wordmark van en Poppins (geométrica: cuencos circulares,
-// pata recta de la R) — el arte de marca 2026-08 no es Sora, que sigue
-// siendo la fuente del resto de la UI.
-const WORDMARK_FONT = 'Poppins_600SemiBold';
-
-type LogoProps = {
-  /** ancho en px; el alto mantiene el ratio 44:48 del hexágono */
-  width?: number;
-  /** color de las juntas entre facetas (por defecto, el fondo de página) */
-  line?: string;
-};
-
-/** El d20 de facetas — icono de la marca (la «o» del wordmark) */
-export function RolderLogo({ width = 24, line }: LogoProps) {
-  // id único por instancia: con id fijo, durante la transición de ruta
-  // conviven dos <defs> iguales y al desmontarse el viejo el url(#...) del
-  // dado que queda se rompe (hexágono invisible hasta recargar)
-  const dieId = `roldr-die-${useId().replace(/:/g, '')}`;
-  const height = (width * 48) / 44;
-  const stroke = line ?? Rolder.page;
-  const joint = Math.max(1.4, width * 0.055);
-  return (
-    <Svg width={width} height={height} viewBox="0 0 44 48">
-      <Defs>
-        <SvgGradient id={dieId} x1="0" y1="0" x2="1" y2="1">
-          <Stop offset="0" stopColor={DIE_FROM} />
-          <Stop offset="1" stopColor={DIE_TO} />
-        </SvgGradient>
-      </Defs>
-      <Polygon points="22,1 43,13 43,35 22,47 1,35 1,13" fill={`url(#${dieId})`} />
-      {/* la estrella de facetas: las dos caras trianguladas del d20 */}
-      <Polygon
-        points="22,1 43,35 1,35"
-        fill="none"
-        stroke={stroke}
-        strokeWidth={joint}
-        strokeLinejoin="round"
-      />
-      <Polygon
-        points="1,13 43,13 22,47"
-        fill="none"
-        stroke={stroke}
-        strokeWidth={joint}
-        strokeLinejoin="round"
-      />
-    </Svg>
-  );
-}
-
-type WordmarkProps = {
-  /** tamaño de fuente del wordmark */
-  size?: number;
-};
-
-/** «Roldr» con el d20 como «o» — carmesí a la izquierda, púrpura a la derecha */
-export function RolderWordmark({ size = 21 }: WordmarkProps) {
-  return (
-    <View style={[styles.row, { gap: size * 0.13 }]}>
-      <Text style={[styles.letters, { fontSize: size, color: BRAND_CRIMSON }]}>R</Text>
-      <RolderLogo width={size * 0.92} />
-      <Text style={[styles.letters, { fontSize: size, color: BRAND_PURPLE }]}>ldr</Text>
-    </View>
-  );
-}
+export { BRAND_CRIMSON, BRAND_PURPLE, RolderBrand, RolderLogo, RolderWordmark } from '@/components/brand-art';
 
 /** Texto arbitrario con el gradiente de marca (p. ej. «¡Es un match!») */
 export function RolderGradientText({ text, size = 34 }: { text: string; size?: number }) {
-  // id único por instancia — mismo motivo que en RolderLogo
-  const textId = `roldr-gtext-${useId().replace(/:/g, '')}`;
+  // id único por instancia: con id fijo, durante la transición de ruta
+  // conviven dos <defs> iguales y al desmontarse el viejo el url(#...) se
+  // rompe (texto invisible hasta recargar). OJO: useId en React 19 devuelve
+  // «r0» (guillemetes, ya no :r0:) — se filtra todo lo no alfanumérico.
+  const textId = `roldr-gtext-${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`;
   const width = Math.max(text.length * size * 0.62, size * 4);
   const height = size * 1.4;
   return (
@@ -105,36 +36,12 @@ export function RolderGradientText({ text, size = 34 }: { text: string; size?: n
         x={width / 2}
         y={size * 1.05}
         fill={`url(#${textId})`}
-        fontFamily="Sora_800ExtraBold"
+        fontFamily="Outfit_700Bold"
         fontSize={size}
-        fontWeight="800"
+        fontWeight="700"
         textAnchor="middle">
         {text}
       </SvgText>
     </Svg>
   );
 }
-
-/** El lockup de las cabeceras: ahora es el propio wordmark (dado integrado) */
-export function RolderBrand({
-  logoWidth: _logoWidth = 24,
-  wordmarkSize = 21,
-}: {
-  logoWidth?: number;
-  wordmarkSize?: number;
-}) {
-  return <RolderWordmark size={wordmarkSize + 3} />;
-}
-
-const styles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  letters: {
-    fontFamily: WORDMARK_FONT,
-    fontWeight: '600',
-    letterSpacing: -0.5,
-    includeFontPadding: false,
-  },
-});
