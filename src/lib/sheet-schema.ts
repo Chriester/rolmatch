@@ -241,7 +241,7 @@ export type SheetTheme = {
 };
 
 export const SHEET_THEMES: SheetTheme[] = [
-  { id: 'rolder', name: 'rolder', emblem: '🎲', colors: ['#1B1533', '#241B3A'], accent: '#A78BFF', border: 'rgba(167,139,255,0.55)', unlock: 'free' },
+  { id: 'rolder', name: 'Roldr', emblem: '🎲', colors: ['#1B1533', '#241B3A'], accent: '#A78BFF', border: 'rgba(167,139,255,0.55)', unlock: 'free' },
   { id: 'dnd5e', name: 'Mazmorra', emblem: '🛡', colors: ['#1A2333', '#2A3A55'], accent: '#FF6B6B', border: 'rgba(255,107,107,0.5)', unlock: 'free' },
   { id: 'pathfinder2e', name: 'Sendero', emblem: '🪓', colors: ['#2A1A0E', '#4A3018'], accent: '#F0A84B', border: 'rgba(240,168,75,0.5)', unlock: 'free' },
   { id: 'cthulhu', name: 'Abismo', emblem: '🕯', colors: ['#0D1F18', '#1E4D3B'], accent: '#5FC98F', border: 'rgba(95,201,143,0.45)', unlock: 'free' },

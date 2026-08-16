@@ -8,15 +8,15 @@ const fs = require('fs');
 const file = process.argv[2] ?? '.vercel/output/static/index.html';
 
 const TAGS = [
-  '<meta property="og:site_name" content="rolder"/>',
+  '<meta property="og:site_name" content="Roldr"/>',
   '<meta property="og:type" content="website"/>',
-  '<meta property="og:title" content="rolder — encuentra tu mesa de rol"/>',
+  '<meta property="og:title" content="Roldr — encuentra tu mesa de rol"/>',
   '<meta property="og:description" content="Matchmaking de rol de mesa online en español: haz match con mesas y jugadores, organiza sesiones y chatea con tu grupo."/>',
   '<meta property="og:image" content="https://rolmatch.vercel.app/icon-1024.png"/>',
   '<meta property="og:url" content="https://rolmatch.vercel.app"/>',
   '<meta name="twitter:card" content="summary"/>',
   '<meta name="description" content="Matchmaking de rol de mesa online en español: haz match con mesas y jugadores, organiza sesiones y chatea con tu grupo."/>',
-  '<meta name="theme-color" content="#0B0B12"/>',
+  '<meta name="theme-color" content="#0A090C"/>',
 ].join('');
 
 const html = fs.readFileSync(file, 'utf8');

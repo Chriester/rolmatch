@@ -151,6 +151,9 @@ export default function RootLayout() {
               <Stack.Screen name="groups/[id]/index" />
               {/* Crónica pública de campaña (migr. 00060): 100% sin sesión */}
               <Stack.Screen name="campana/[id]" />
+              {/* Páginas legales de la ficha de Play: públicas, sin sesión */}
+              <Stack.Screen name="privacidad" />
+              <Stack.Screen name="eliminar-cuenta" />
             </Stack>
           </RouteFade>
           {/* Espacio real (no flotante) reservado para el escudo/dado/chat:

@@ -134,7 +134,7 @@ function PremiumSection() {
       <Text style={styles.pushDetail}>
         {status?.active
           ? `Activo ${untilLabel}. Tienes desbloqueado:`
-          : 'Qué desbloquea el premium de rolder:'}
+          : 'Qué desbloquea el premium de Roldr:'}
       </Text>
       <View style={styles.perksList}>
         {PREMIUM_PERKS.map((perk) => (
@@ -152,7 +152,7 @@ function PremiumSection() {
       {SUPPORT_URL && (
         <>
           <Text style={styles.pushDetail}>
-            rolder es gratis y sin anuncios. Si te está encontrando mesa, puedes invitarnos a
+            Roldr es gratis y sin anuncios. Si te está encontrando mesa, puedes invitarnos a
             un café:
           </Text>
           <OutlineButton
@@ -244,7 +244,7 @@ function WebPushSection() {
       <Text style={styles.pushTitle}>Notificaciones</Text>
       {state === 'ios-install' ? (
         <Text style={styles.pushDetail}>
-          Para recibir avisos de matches, mensajes y sesiones en iPhone/iPad: abre rolder en
+          Para recibir avisos de matches, mensajes y sesiones en iPhone/iPad: abre Roldr en
           Safari, toca Compartir → «Añadir a pantalla de inicio» y entra desde el icono. El
           botón de activar aparecerá aquí.
         </Text>
@@ -291,18 +291,18 @@ function ShareAppRow() {
     <ListRow
       onPress={async () => {
         const via = await shareLink({
-          title: 'rolder — encuentra tu mesa de rol',
-          text: 'Estoy en rolder buscando gente para jugar rol 🎲 Échale un ojo:',
+          title: 'Roldr — encuentra tu mesa de rol',
+          text: 'Estoy en Roldr buscando gente para jugar rol 🎲 Échale un ojo:',
           url: APP_URL,
         });
         if (!via) return;
         if (via === 'clipboard')
-          showAlert('Enlace copiado', 'Pégalo donde quieras para invitar a alguien a rolder.');
+          showAlert('Enlace copiado', 'Pégalo donde quieras para invitar a alguien a Roldr.');
         track(session?.user.id, 'share_app', { via });
       }}>
       <Dices color={Rolder.violetSoft} size={20} strokeWidth={2} />
       <View style={styles.body}>
-        <Text style={styles.label}>Invitar a rolder</Text>
+        <Text style={styles.label}>Invitar a Roldr</Text>
         <Text style={styles.detail}>Comparte la app con quien le falte mesa (o jugadores)</Text>
       </View>
       <Text style={styles.chevron}>›</Text>
@@ -405,8 +405,12 @@ export default function SettingsScreen() {
             <Text style={styles.deleteAccount}>Eliminar mi cuenta</Text>
           </Pressable>
 
+          <Pressable onPress={() => router.push('/privacidad')}>
+            <Text style={styles.legalLink}>Política de privacidad</Text>
+          </Pressable>
+
           <Text style={styles.version}>
-            rolder {Constants.expoConfig?.version ?? ''} · hecho con 🎲 en la comunidad
+            Roldr {Constants.expoConfig?.version ?? ''} · hecho con 🎲 en la comunidad
           </Text>
         </View>
       </SafeAreaView>
@@ -496,6 +500,14 @@ const styles = StyleSheet.create({
     fontFamily: RolderFonts.semibold,
     textAlign: 'center',
     marginTop: Spacing.four,
+  },
+  legalLink: {
+    color: Rolder.textTertiary,
+    fontSize: 12.5,
+    fontFamily: RolderFonts.regular,
+    textAlign: 'center',
+    marginTop: Spacing.three,
+    textDecorationLine: 'underline',
   },
   version: {
     color: Rolder.textTertiary,

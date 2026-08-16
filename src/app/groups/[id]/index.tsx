@@ -207,8 +207,8 @@ function GroupDetailScreen() {
   const handleShare = async (name: string) => {
     if (!id) return;
     const via = await shareLink({
-      title: `«${name}» en rolder`,
-      text: `Únete a mi mesa «${name}» en rolder 🎲`,
+      title: `«${name}» en Roldr`,
+      text: `Únete a mi mesa «${name}» en Roldr 🎲`,
       url: `${APP_URL}/groups/${id}?invitacion=1`,
     });
     if (!via) return;

@@ -106,7 +106,7 @@ export function setupWebPwa(userId: string | null) {
     document.head.appendChild(capable);
     const title = document.createElement('meta');
     title.name = 'apple-mobile-web-app-title';
-    title.content = 'rolder';
+    title.content = 'Roldr';
     document.head.appendChild(title);
   }
   if (userId && webPushState() === 'granted') {

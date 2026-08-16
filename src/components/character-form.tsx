@@ -238,7 +238,7 @@ export function CharacterForm({
                         showAlert(
                           `Diseño «${t.name}» bloqueado`,
                           t.unlock === 'premium'
-                            ? 'Será parte de rolder premium.'
+                            ? 'Será parte de Roldr premium.'
                             : `Se desbloquea al alcanzar el ${unlockLabel(t)} de cuenta.`
                         );
                         return;
