@@ -250,7 +250,7 @@ export default function GroupCandidatesScreen() {
       </Text>
       {c.player.reliability && c.player.reliability.count > 0 && (
         <Text style={sheetText.body}>
-          Fiabilidad: {c.player.reliability.average.toFixed(1)}/5 (
+          Fiabilidad: {c.player.reliability.average.toFixed(1).replace('.', ',')}/5 (
           {c.player.reliability.count}{' '}
           {c.player.reliability.count === 1 ? 'valoración' : 'valoraciones'})
         </Text>

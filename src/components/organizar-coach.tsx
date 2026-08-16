@@ -89,7 +89,7 @@ export function OrganizarCoach({ visible, isOwner, onClose }: OrganizarCoachProp
               <OutlineButton label="Saltar" tone="white" onPress={close} style={styles.navSmall} />
             )}
             <PrimaryButton
-              label={isLast ? '¡Entendido!' : 'Siguiente'}
+              label={isLast ? 'Entendido' : 'Siguiente'}
               onPress={() => (isLast ? close() : setStep((s) => s + 1))}
               style={styles.navBig}
             />

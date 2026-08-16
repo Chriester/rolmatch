@@ -44,7 +44,7 @@ export default function PromoScreen() {
               entering={ZoomIn.springify().damping(12).reduceMotion(ReduceMotion.Never)}
               style={styles.successBox}>
               <Text style={styles.successEmoji}>✓</Text>
-              <Text style={styles.successTitle}>¡Premium activado!</Text>
+              <Text style={styles.successTitle}>Premium activado</Text>
               <Text style={styles.blurb}>
                 Rewind, likes recibidos y boost desbloqueados. A jugar.
               </Text>

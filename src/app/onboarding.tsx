@@ -556,13 +556,13 @@ export default function OnboardingScreen() {
           <View style={styles.celebrateBackdrop}>
             <View style={styles.celebrateCard}>
               <Text style={styles.celebrateEmoji}>🎲</Text>
-              <Text style={styles.celebrateTitle}>¡Perfil listo!</Text>
+              <Text style={styles.celebrateTitle}>Perfil listo</Text>
               <Text style={styles.celebrateBody}>
                 Ya apareces en el feed de las mesas compatibles contigo. Completa tu foto y bio
                 (si no lo has hecho) y gana tus primeros puntos de experiencia.
               </Text>
               <PrimaryButton
-                label="¡A rodar dados!"
+                label="A rodar dados"
                 onPress={() => router.replace(nextRouteAfterOnboarding() as never)}
               />
             </View>

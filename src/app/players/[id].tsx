@@ -128,7 +128,7 @@ export default function PlayerProfileScreen() {
               {profile.reliability && profile.reliability.count > 0 && (
                 <CardChip
                   variant="green"
-                  label={`${profile.reliability.average.toFixed(1)}/5 (${profile.reliability.count})`}
+                  label={`${profile.reliability.average.toFixed(1).replace('.', ',')}/5 (${profile.reliability.count})`}
                 />
               )}
             </CardChipRow>

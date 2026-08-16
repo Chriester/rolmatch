@@ -50,7 +50,7 @@ export default function FeedbackScreen() {
           {sent ? (
             <View style={styles.thanksBox}>
               <PartyPopper color={Rolder.textTertiary} size={44} strokeWidth={2} />
-              <Text style={styles.thanksTitle}>Recibido, ¡gracias!</Text>
+              <Text style={styles.thanksTitle}>Recibido — gracias</Text>
               <Text style={styles.thanksBody}>
                 Tu mensaje ya está en la bandeja del equipo. Si quieres contar otra cosa, aquí
                 estaremos.

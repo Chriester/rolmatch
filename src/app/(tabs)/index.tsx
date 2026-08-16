@@ -587,7 +587,7 @@ export default function HomeScreen() {
             <Text style={sheetText.body}>
               {g.owner.alias} · Nv. {g.owner.level}
               {g.owner.reliability && g.owner.reliability.count > 0
-                ? ` · ${g.owner.reliability.average.toFixed(1)}/5 (${g.owner.reliability.count})`
+                ? ` · ${g.owner.reliability.average.toFixed(1).replace('.', ',')}/5 (${g.owner.reliability.count})`
                 : ''}
               {'  '}
               <Text style={styles.profileLink}>ver perfil ›</Text>
@@ -641,7 +641,7 @@ export default function HomeScreen() {
         </Text>
         {c.player.reliability && c.player.reliability.count > 0 && (
           <Text style={sheetText.body}>
-            Fiabilidad: {c.player.reliability.average.toFixed(1)}/5 (
+            Fiabilidad: {c.player.reliability.average.toFixed(1).replace('.', ',')}/5 (
             {c.player.reliability.count}{' '}
             {c.player.reliability.count === 1 ? 'valoración' : 'valoraciones'})
           </Text>

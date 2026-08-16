@@ -81,7 +81,7 @@ Deno.serve(async (req) => {
       if (hoursLeft <= 1 && !row.reminded_1h) {
         await postMessage(
           channelId,
-          `**¡La sesión de «${row.groups!.name}» empieza en menos de una hora!**${title}\n@here preparad los dados 🎲`
+          `**La sesión de «${row.groups!.name}» empieza en menos de una hora**${title}\n@here preparad los dados 🎲`
         );
         await supabase
           .from('sessions')
