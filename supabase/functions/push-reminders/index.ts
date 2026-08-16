@@ -169,7 +169,7 @@ Deno.serve(async (request) => {
     let update: Partial<SessionRow> | null = null;
     if (hoursLeft <= 1 && !row.push_reminded_1h) {
       content = {
-        title: `¡«${groupName}» empieza en menos de una hora!`,
+        title: `«${groupName}» empieza en menos de una hora`,
         body: `Preparad los dados 🎲${sessionTitle}`,
       };
       update = { push_reminded_1h: true, push_reminded_24h: true };
@@ -186,7 +186,7 @@ Deno.serve(async (request) => {
       });
       content = {
         title: `Sesión de «${groupName}»`,
-        body: `${when} (hora de ${tzLabel(tz)})${sessionTitle}. ¡Confirma tu asistencia!`,
+        body: `${when} (hora de ${tzLabel(tz)})${sessionTitle}. Confirma tu asistencia`,
       };
       update = { push_reminded_24h: true };
     }
@@ -225,7 +225,7 @@ Deno.serve(async (request) => {
       const groupName = row.group_name ?? 'tu mesa';
       const sessionTitle = row.title ? ` — ${row.title}` : '';
       const content = {
-        title: `🎲 ¡Hoy toca «${groupName}»!`,
+        title: `🎲 Hoy toca «${groupName}»`,
         body: `El histórico de la mesa se abre para escribir${sessionTitle}.`,
       };
       try {

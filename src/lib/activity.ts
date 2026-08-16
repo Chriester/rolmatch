@@ -142,7 +142,7 @@ export async function fetchActivity(userId: string): Promise<ActivityItem[]> {
       id: `match-${match.id}`,
       kind: 'match',
       emoji: '🤝',
-      title: `¡Match con «${name}»!`,
+      title: `Match con «${name}»`,
       detail: `Ya estás dentro · ${relative(match.created_at)}`,
       at: match.created_at,
       route: { pathname: '/groups/[id]', params: { id: match.group_id } },

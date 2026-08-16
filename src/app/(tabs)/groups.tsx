@@ -100,7 +100,7 @@ function TableCard({ table, onVitality }: { table: MyTableRow; onVitality: () =>
             title="Sin señales de vida en semanas. ¿Seguís jugando?"
             actions={[
               {
-                label: busy ? 'Un momento…' : '¡Seguimos!',
+                label: busy ? 'Un momento…' : 'Seguimos jugando',
                 primary: true,
                 disabled: busy,
                 onPress: async () => {

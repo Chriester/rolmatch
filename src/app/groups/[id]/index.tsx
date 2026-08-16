@@ -534,7 +534,7 @@ function GroupDetailScreen() {
                 . Si nadie da señales, se archivará sola y dejará de salir en el feed.
               </Text>
               <OutlineButton
-                label={aliveBusy ? 'Confirmando…' : '¡Seguimos jugando!'}
+                label={aliveBusy ? 'Confirmando…' : 'Seguimos jugando'}
                 disabled={aliveBusy}
                 onPress={async () => {
                   setAliveBusy(true);

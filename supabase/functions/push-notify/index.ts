@@ -259,7 +259,7 @@ async function buildForSwipe(record: SwipeRecord): Promise<Map<string, { title: 
   } else {
     // mesa → jugador: teaser sin nombre
     out.set(record.user_id, {
-      title: '¡Le gustas a una mesa!',
+      title: 'Le gustas a una mesa',
       body: 'Descubre cuál en tu pestaña de Encuentros.',
       url: '/likes',
     });
@@ -359,7 +359,7 @@ async function buildForPollVote(record: PollVoteRecord): Promise<Map<string, { t
 
   const out = new Map<string, { title: string; body: string; url: string }>();
   out.set(poll.groups.owner_id, {
-    title: '¡Todos han votado!',
+    title: 'Todos han votado',
     body: `La mesa al completo votó en «${poll.title ?? '¿Cuándo jugamos?'}» de ${poll.groups.name}. Entra y fija la fecha.`,
     url: `/groups/${poll.group_id}/schedule`,
   });
