@@ -3,7 +3,7 @@
 
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { Rolder, RolderFonts, Spacing } from '@/constants/theme';
+import { Rolder, RolderFonts, RolderRadius, Spacing } from '@/constants/theme';
 
 const REACTIONS = ['👍', '❤️', '😂', '😮', '🎲', '🔥'];
 
@@ -93,7 +93,7 @@ export function MessageActions({
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
+    backgroundColor: Rolder.scrim,
     alignItems: 'center',
     justifyContent: 'center',
     padding: 24,
@@ -104,7 +104,7 @@ const styles = StyleSheet.create({
     backgroundColor: Rolder.surface,
     borderWidth: 1,
     borderColor: Rolder.surfaceBorder,
-    borderRadius: 18,
+    borderRadius: RolderRadius.xl,
     padding: Spacing.two,
     gap: 2,
   },
@@ -140,7 +140,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   reaction: {
-    borderRadius: 999,
+    borderRadius: RolderRadius.pill,
     padding: 8,
   },
   reactionEmoji: {

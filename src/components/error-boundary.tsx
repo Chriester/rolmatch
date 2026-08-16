@@ -8,7 +8,7 @@ import { Dices } from 'lucide-react-native';
 import { Component, type ReactNode } from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, Text } from 'react-native';
 
-import { Rolder } from '@/constants/theme';
+import { Rolder, RolderRadius } from '@/constants/theme';
 import { reportClientError } from '@/lib/error-log';
 
 type ErrorBoundaryState = { error: Error | null };
@@ -98,7 +98,7 @@ const styles = StyleSheet.create({
   },
   button: {
     backgroundColor: '#C77DFF',
-    borderRadius: 14,
+    borderRadius: RolderRadius.md,
     paddingVertical: 14,
     alignItems: 'center',
     marginTop: 8,

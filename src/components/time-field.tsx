@@ -5,7 +5,7 @@
 import { useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { Rolder, RolderFonts, Spacing } from '@/constants/theme';
+import { Rolder, RolderFonts, RolderRadius, Spacing } from '@/constants/theme';
 
 export type TimeValue = { hour: number; minute: number };
 
@@ -87,7 +87,7 @@ const styles = StyleSheet.create({
     backgroundColor: Rolder.input,
     borderWidth: 1,
     borderColor: 'rgba(199,125,255,0.5)',
-    borderRadius: 999,
+    borderRadius: RolderRadius.pill,
     paddingHorizontal: 14,
     paddingVertical: 8,
     alignSelf: 'flex-start',
@@ -107,7 +107,7 @@ const styles = StyleSheet.create({
   },
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.65)',
+    backgroundColor: Rolder.scrim,
     alignItems: 'center',
     justifyContent: 'center',
     padding: 24,
@@ -118,7 +118,7 @@ const styles = StyleSheet.create({
     backgroundColor: Rolder.surface,
     borderWidth: 1,
     borderColor: Rolder.surfaceBorder,
-    borderRadius: 18,
+    borderRadius: RolderRadius.xl,
     padding: 16,
     gap: Spacing.three,
   },
@@ -138,7 +138,7 @@ const styles = StyleSheet.create({
   hourCell: {
     width: 44,
     paddingVertical: 7,
-    borderRadius: 10,
+    borderRadius: RolderRadius.md,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.12)',
     alignItems: 'center',
@@ -151,7 +151,7 @@ const styles = StyleSheet.create({
   minuteCell: {
     paddingHorizontal: 16,
     paddingVertical: 7,
-    borderRadius: 10,
+    borderRadius: RolderRadius.md,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.12)',
   },

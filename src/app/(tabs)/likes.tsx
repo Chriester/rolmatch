@@ -12,7 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppHeader } from '@/components/app-header';
 import { ThemedView } from '@/components/themed-view';
 import { ListRow, OutlineButton, ScreenTitle } from '@/components/ui';
-import { Rolder, RolderFonts, Spacing } from '@/constants/theme';
+import { Rolder, RolderFonts, RolderRadius, Spacing } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
 import { emitLikesSeenChanged } from '@/lib/likes-events';
 import { markLikesSeenNow } from '@/lib/likes-seen';
@@ -178,7 +178,7 @@ const styles = StyleSheet.create({
     fontFamily: RolderFonts.semibold,
   },
   upsell: {
-    borderRadius: 14,
+    borderRadius: RolderRadius.lg,
     padding: 14,
   },
   upsellText: {

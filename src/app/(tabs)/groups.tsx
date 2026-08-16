@@ -17,7 +17,7 @@ import { InlineBanner } from '@/components/inline-banner';
 import { StatChip } from '@/components/stat-chip';
 import { ThemedView } from '@/components/themed-view';
 import { ListRow, ScreenTitle, SectionLabel, StatusPill } from '@/components/ui';
-import { MaxContentWidth, Rolder, RolderFonts, Spacing } from '@/constants/theme';
+import { MaxContentWidth, Rolder, RolderFonts, RolderRadius, Spacing } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
 import { showAlert } from '@/lib/alert';
 import { FORMAT_LABELS, archiveGroup, confirmGroupAlive } from '@/lib/groups';
@@ -297,7 +297,7 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.four,
   },
   spotlight: {
-    borderRadius: 18,
+    borderRadius: RolderRadius.lg,
     padding: 16,
     gap: 4,
   },
@@ -331,7 +331,7 @@ const styles = StyleSheet.create({
     backgroundColor: Rolder.surface,
     borderWidth: 1,
     borderColor: Rolder.surfaceBorder,
-    borderRadius: 18,
+    borderRadius: RolderRadius.lg,
     overflow: 'hidden',
   },
   cardPressed: {

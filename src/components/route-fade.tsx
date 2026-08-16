@@ -14,6 +14,8 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
+import { MotionDur, MotionEase } from '@/constants/motion';
+
 export function RouteFade({ children, style }: { children: ReactNode; style?: StyleProp<ViewStyle> }) {
   const pathname = usePathname();
   const progress = useSharedValue(1);
@@ -27,8 +29,8 @@ export function RouteFade({ children, style }: { children: ReactNode; style?: St
     }
     progress.value = 0;
     progress.value = withTiming(1, {
-      duration: 180,
-      easing: Easing.out(Easing.quad),
+      duration: MotionDur.md,
+      easing: Easing.bezier(...MotionEase.out),
       // que corra aunque el sistema tenga los efectos apagados (Windows)
       reduceMotion: ReduceMotion.Never,
     });

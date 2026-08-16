@@ -17,7 +17,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import type { ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { Rolder, RolderFonts } from '@/constants/theme';
+import { Rolder, RolderFonts, RolderRadius } from '@/constants/theme';
 
 type CardShellProps = {
   imageUrl: string | null;
@@ -230,14 +230,14 @@ const blurbStyles = StyleSheet.create({
 const styles = StyleSheet.create({
   card: {
     flex: 1,
-    borderRadius: 20,
+    borderRadius: RolderRadius.xl,
     overflow: 'hidden',
     backgroundColor: Rolder.surface,
   },
   // marco cosmético: borde por encima de todo, mismo radio que la tarjeta
   frame: {
     borderWidth: 3,
-    borderRadius: 20,
+    borderRadius: RolderRadius.xl,
   },
   fallback: {
     alignItems: 'center',

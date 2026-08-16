@@ -9,7 +9,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { RolderWordmark } from '@/components/brand';
 import { ThemedView } from '@/components/themed-view';
-import { Rolder, RolderFonts } from '@/constants/theme';
+import { Rolder, RolderFonts, RolderRadius } from '@/constants/theme';
 import { signInWithDiscord, signInWithEmail, signInWithGoogle } from '@/lib/auth';
 
 export default function LoginScreen() {
@@ -146,7 +146,7 @@ const styles = StyleSheet.create({
   },
   discordButton: {
     backgroundColor: Rolder.discord,
-    borderRadius: 14,
+    borderRadius: RolderRadius.md,
     paddingVertical: 15,
     alignItems: 'center',
   },
@@ -158,7 +158,7 @@ const styles = StyleSheet.create({
   },
   googleButton: {
     backgroundColor: '#fff',
-    borderRadius: 14,
+    borderRadius: RolderRadius.md,
     paddingVertical: 15,
     alignItems: 'center',
   },
@@ -193,7 +193,7 @@ const styles = StyleSheet.create({
     backgroundColor: Rolder.input,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.15)',
-    borderRadius: 14,
+    borderRadius: RolderRadius.md,
     paddingHorizontal: 16,
     paddingVertical: 13,
     color: '#fff',
@@ -203,7 +203,7 @@ const styles = StyleSheet.create({
   emailButton: {
     borderWidth: 1,
     borderColor: 'rgba(199,125,255,0.8)',
-    borderRadius: 14,
+    borderRadius: RolderRadius.md,
     paddingVertical: 14,
     alignItems: 'center',
   },

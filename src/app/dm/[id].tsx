@@ -39,7 +39,7 @@ import {
 } from '@/components/chat-media-pickers';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { MaxContentWidth, Rolder, RolderFonts, Spacing } from '@/constants/theme';
+import { MaxContentWidth, Rolder, RolderFonts, RolderRadius, Spacing } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
 import { hapticArm } from '@/lib/haptics';
 import {
@@ -728,7 +728,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.06)',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.15)',
-    borderRadius: 999,
+    borderRadius: RolderRadius.pill,
     paddingHorizontal: 8,
     paddingVertical: 2,
   },
@@ -840,13 +840,13 @@ const styles = StyleSheet.create({
   gifMessage: {
     width: 200,
     height: 150,
-    borderRadius: 14,
+    borderRadius: RolderRadius.lg,
     backgroundColor: Rolder.surface,
   },
   photoMessage: {
     width: 220,
     height: 165,
-    borderRadius: 14,
+    borderRadius: RolderRadius.lg,
     backgroundColor: Rolder.surface,
   },
   viewerBackdrop: {
@@ -873,7 +873,7 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.two,
   },
   tabButton: {
-    borderRadius: 10,
+    borderRadius: RolderRadius.md,
     paddingHorizontal: 10,
     paddingVertical: 5,
     backgroundColor: 'rgba(255,255,255,0.05)',

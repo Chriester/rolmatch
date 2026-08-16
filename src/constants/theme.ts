@@ -53,6 +53,31 @@ export const Rolder = {
   brandGradient: ['#B01B5E', '#8A2B76', '#5D4A93'] as const,
   likeGradient: ['#3FBF8F', '#2E9B72'] as const,
   goldGradient: ['#F0BE7A', '#C98634'] as const,
+
+  // Superficies de sistema (F4): scrim de modales/sheets y el sólido que
+  // sustituye al blur de cabeceras/barras hasta que haya build nativo con
+  // expo-blur (fallback oficial del propio design system)
+  scrim: 'rgba(10,9,12,0.72)',
+  chromeSolid: 'rgba(19,17,25,0.86)',
+} as const;
+
+/** Escala de radios Roldr (--radius-*): controles md, cards lg, tarjetas de
+ *  swipe y sheets xl, chips/pills pill. Nada de valores sueltos nuevos. */
+export const RolderRadius = {
+  xs: 4,
+  sm: 8,
+  md: 12,
+  lg: 16,
+  xl: 24,
+  pill: 999,
+} as const;
+
+/** Sombras del sistema: casi-negras siempre; el glow SOLO bajo el CTA de
+ *  marca (--glow-brand) — nunca sombras de color en el resto. */
+export const RolderShadow = {
+  card: '0 4px 14px rgba(0,0,0,0.45)',
+  floating: '0 6px 18px rgba(0,0,0,0.45)',
+  glowBrand: '0 8px 28px rgba(176,27,94,0.35)',
 } as const;
 
 /** Familias tipográficas cargadas en _layout — sistema Roldr: Manrope para

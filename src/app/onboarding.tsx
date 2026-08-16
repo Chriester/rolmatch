@@ -12,7 +12,7 @@ import { PhotoPicker } from '@/components/photo-picker';
 import { StyleAxis } from '@/components/style-axis';
 import { ThemedView } from '@/components/themed-view';
 import { OutlineButton, PrimaryButton, SectionLabel } from '@/components/ui';
-import { MaxContentWidth, Rolder, RolderFonts, Spacing } from '@/constants/theme';
+import { MaxContentWidth, Rolder, RolderFonts, RolderRadius, Spacing } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
 import {
   GENDER_LABELS,
@@ -665,7 +665,7 @@ const styles = StyleSheet.create({
     backgroundColor: Rolder.input,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.15)',
-    borderRadius: 14,
+    borderRadius: RolderRadius.md,
     paddingHorizontal: 16,
     paddingVertical: 12,
     color: '#fff',
@@ -678,7 +678,7 @@ const styles = StyleSheet.create({
   },
   celebrateBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.7)',
+    backgroundColor: Rolder.scrim,
     alignItems: 'center',
     justifyContent: 'center',
     padding: 24,
@@ -689,7 +689,7 @@ const styles = StyleSheet.create({
     backgroundColor: Rolder.surface,
     borderWidth: 1,
     borderColor: 'rgba(199,125,255,0.4)',
-    borderRadius: 20,
+    borderRadius: RolderRadius.xl,
     padding: 24,
     alignItems: 'center',
     gap: Spacing.three,

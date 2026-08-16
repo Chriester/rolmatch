@@ -21,7 +21,7 @@ import { OrganizarCoach } from '@/components/organizar-coach';
 import { Reveal } from '@/components/reveal';
 import { TimeField, type TimeValue } from '@/components/time-field';
 import { OutlineButton, PrimaryButton, SectionLabel } from '@/components/ui';
-import { MaxContentWidth, Rolder, RolderFonts, Spacing } from '@/constants/theme';
+import { MaxContentWidth, Rolder, RolderFonts, RolderRadius, Spacing } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
 import { confirmAction, humanizeError, showAlert } from '@/lib/alert';
 import { fetchGroup, type GroupDetail } from '@/lib/groups';
@@ -828,7 +828,7 @@ const styles = StyleSheet.create({
     backgroundColor: Rolder.surface,
     borderWidth: 1,
     borderColor: Rolder.surfaceBorder,
-    borderRadius: 14,
+    borderRadius: RolderRadius.lg,
     paddingHorizontal: 14,
     paddingVertical: 11,
     gap: 8,
@@ -846,7 +846,7 @@ const styles = StyleSheet.create({
   rsvpButton: {
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.15)',
-    borderRadius: 999,
+    borderRadius: RolderRadius.pill,
     paddingHorizontal: 12,
     paddingVertical: 5,
   },
@@ -1120,7 +1120,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(232,164,76,0.5)',
     backgroundColor: 'rgba(232,164,76,0.1)',
-    borderRadius: 999,
+    borderRadius: RolderRadius.pill,
     paddingVertical: 6,
     paddingHorizontal: 12,
   },

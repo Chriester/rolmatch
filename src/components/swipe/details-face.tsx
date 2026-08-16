@@ -5,7 +5,7 @@
 import type { ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { Rolder, RolderFonts } from '@/constants/theme';
+import { Rolder, RolderFonts, RolderRadius } from '@/constants/theme';
 
 type DetailsFaceProps = {
   title: string;
@@ -54,7 +54,7 @@ const styles = StyleSheet.create({
     backgroundColor: Rolder.sheet,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.1)',
-    borderRadius: 20,
+    borderRadius: RolderRadius.xl,
     paddingHorizontal: 20,
     paddingTop: 10,
     paddingBottom: 14,

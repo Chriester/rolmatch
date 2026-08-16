@@ -11,7 +11,8 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeIn, ReduceMotion, ZoomIn } from 'react-native-reanimated';
 
 import { RolderGradientText, RolderLogo } from '@/components/brand';
-import { Rolder, RolderFonts } from '@/constants/theme';
+import { MotionDur } from '@/constants/motion';
+import { Rolder, RolderFonts, RolderRadius, RolderShadow } from '@/constants/theme';
 import { hapticMatch } from '@/lib/haptics';
 
 type Side = { imageUrl: string | null; fallbackEmoji: string };
@@ -44,7 +45,7 @@ export function MatchOverlay({ visible, left, right, subtitle, onClose }: MatchO
   if (!visible) return null;
   return (
     <Animated.View
-      entering={FadeIn.duration(250).reduceMotion(ReduceMotion.Never)}
+      entering={FadeIn.duration(MotionDur.md).reduceMotion(ReduceMotion.Never)}
       style={styles.backdrop}>
       <Animated.View
         entering={ZoomIn.springify().damping(14).reduceMotion(ReduceMotion.Never)}
@@ -137,10 +138,10 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   primaryButton: {
-    borderRadius: 14,
+    borderRadius: RolderRadius.md,
     paddingVertical: 14,
     alignItems: 'center',
-    boxShadow: '0 6px 18px rgba(63,191,143,0.35)',
+    boxShadow: RolderShadow.glowBrand,
   },
   primaryLabel: {
     color: '#fff',
@@ -151,7 +152,7 @@ const styles = StyleSheet.create({
   secondaryButton: {
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.3)',
-    borderRadius: 14,
+    borderRadius: RolderRadius.md,
     paddingVertical: 13,
     alignItems: 'center',
     alignSelf: 'stretch',

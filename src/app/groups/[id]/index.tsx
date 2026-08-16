@@ -42,7 +42,7 @@ import { CardChip, CardChipRow } from '@/components/swipe/card-shell';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { DiscordButton, OutlineButton, PrimaryButton, SectionLabel, StyleBar } from '@/components/ui';
-import { MaxContentWidth, Rolder, RolderFonts, Spacing } from '@/constants/theme';
+import { MaxContentWidth, Rolder, RolderFonts, RolderRadius, Spacing } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
 import {
   EXPERIENCE_LABELS,
@@ -1307,7 +1307,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(199,125,255,0.18)',
     borderWidth: 1,
     borderColor: Rolder.violetSoft,
-    borderRadius: 999,
+    borderRadius: RolderRadius.pill,
     paddingVertical: 6,
     paddingHorizontal: 12,
   },
@@ -1475,7 +1475,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(199,125,255,0.14)',
     borderWidth: 1,
     borderColor: 'rgba(199,125,255,0.5)',
-    borderRadius: 14,
+    borderRadius: RolderRadius.lg,
     paddingVertical: 13,
     paddingHorizontal: 14,
   },
@@ -1499,7 +1499,7 @@ const styles = StyleSheet.create({
     backgroundColor: Rolder.surface,
     borderWidth: 1,
     borderColor: Rolder.surfaceBorder,
-    borderRadius: 14,
+    borderRadius: RolderRadius.lg,
     paddingVertical: 12,
     paddingHorizontal: 14,
   },
@@ -1525,7 +1525,7 @@ const styles = StyleSheet.create({
     backgroundColor: Rolder.surface,
     borderWidth: 1,
     borderColor: Rolder.surfaceBorder,
-    borderRadius: 14,
+    borderRadius: RolderRadius.lg,
     padding: 12,
   },
   gmAvatar: {
@@ -1594,7 +1594,7 @@ const styles = StyleSheet.create({
     backgroundColor: Rolder.surface,
     borderWidth: 1,
     borderColor: Rolder.surfaceBorder,
-    borderRadius: 14,
+    borderRadius: RolderRadius.lg,
     paddingVertical: 12,
     paddingHorizontal: 14,
   },

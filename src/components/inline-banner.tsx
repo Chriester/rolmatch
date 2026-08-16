@@ -6,7 +6,7 @@
 import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { Rolder, RolderFonts } from '@/constants/theme';
+import { Rolder, RolderFonts, RolderRadius } from '@/constants/theme';
 
 export type InlineBannerTone = 'amber' | 'green' | 'violet';
 
@@ -72,7 +72,7 @@ export function InlineBanner({ tone = 'amber', title, body, actions, children }:
 const styles = StyleSheet.create({
   banner: {
     borderWidth: 1,
-    borderRadius: 14,
+    borderRadius: RolderRadius.lg,
     padding: 12,
     gap: 6,
   },
@@ -94,7 +94,7 @@ const styles = StyleSheet.create({
   },
   action: {
     minHeight: 34,
-    borderRadius: 999,
+    borderRadius: RolderRadius.pill,
     borderWidth: 1,
     paddingHorizontal: 14,
     justifyContent: 'center',

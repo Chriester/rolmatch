@@ -16,7 +16,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import { Rolder } from '@/constants/theme';
+import { Rolder, RolderRadius } from '@/constants/theme';
 
 export function CardSkeleton() {
   const pulse = useSharedValue(0);
@@ -52,7 +52,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    borderRadius: 20,
+    borderRadius: RolderRadius.xl,
     overflow: 'hidden',
     backgroundColor: Rolder.surface,
     borderWidth: 1,
