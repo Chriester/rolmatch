@@ -6,7 +6,7 @@ import Constants from 'expo-constants';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { Dices, Shield } from 'lucide-react-native';
-import { Linking, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
+import { AppState, Linking, Platform, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { confirmAction, showAlert } from '@/lib/alert';
@@ -19,6 +19,7 @@ import { useSession } from '@/hooks/use-session';
 import { track } from '@/lib/analytics';
 import { APP_URL, SUPPORT_URL } from '@/lib/config';
 import { fetchMyOwnedGroups } from '@/lib/groups';
+import { nativePushState, registerPushToken, type NativePushState } from '@/lib/notifications';
 import { amIModerator } from '@/lib/moderation';
 import { fetchPremiumStatus, type PremiumStatus } from '@/lib/premium';
 import { fetchSearching, setSearching } from '@/lib/profile';
@@ -164,8 +165,73 @@ function PremiumSection() {
   );
 }
 
-// Estado del web push en frases que entienda cualquiera. Solo aparece en web:
-// en el APK las notificaciones nativas ya van solas.
+// Estado de las notificaciones NATIVAS (Android/iOS). Antes no existía
+// ninguna vía en la app para reactivarlas tras un «No permitir» (el diálogo
+// del sistema solo sale una o dos veces): esta caja enseña el estado real y
+// da salida — pedir el permiso si aún se puede, o abrir Ajustes si no.
+function NativePushSection() {
+  const session = useSession();
+  const [state, setState] = useState<NativePushState | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const refresh = useCallback(() => {
+    nativePushState().then(setState).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    refresh();
+    // al volver de los Ajustes del sistema la app pasa a active: re-mirar
+    const sub = AppState.addEventListener('change', (s) => {
+      if (s === 'active') refresh();
+    });
+    return () => sub.remove();
+  }, [refresh]);
+
+  if (Platform.OS === 'web' || !state || state === 'unavailable') return null;
+
+  return (
+    <View style={styles.pushBox}>
+      <Text style={styles.pushTitle}>Notificaciones</Text>
+      {state === 'granted' ? (
+        <Text style={styles.pushDetail}>Activadas en este dispositivo.</Text>
+      ) : state === 'denied' ? (
+        <>
+          <Text style={styles.pushDetail}>
+            Están bloqueadas a nivel de sistema, así que no podemos avisarte de matches,
+            mensajes ni sesiones. Se reactivan en los ajustes de la app.
+          </Text>
+          <OutlineButton
+            label="Abrir ajustes del sistema"
+            onPress={() => Linking.openSettings().catch(() => {})}
+          />
+        </>
+      ) : (
+        <>
+          <Text style={styles.pushDetail}>
+            Avisos de matches, mensajes y sesiones aunque no tengas la app abierta.
+          </Text>
+          <OutlineButton
+            label={busy ? 'Activando…' : 'Activar notificaciones'}
+            disabled={busy || !session}
+            onPress={async () => {
+              if (!session) return;
+              setBusy(true);
+              try {
+                await registerPushToken(session.user.id);
+              } finally {
+                setBusy(false);
+                refresh();
+              }
+            }}
+          />
+        </>
+      )}
+    </View>
+  );
+}
+
+// Estado del web push en frases que entienda cualquiera. Solo aparece en web
+// (en nativo la caja de arriba cubre el permiso del sistema).
 function WebPushSection() {
   const session = useSession();
   const [state, setState] = useState<WebPushState>(() => webPushState());
@@ -278,6 +344,7 @@ export default function SettingsScreen() {
           <ScreenBlurb>Ajustes y utilidades de tu cuenta.</ScreenBlurb>
 
           <SearchingSection />
+          <NativePushSection />
           <WebPushSection />
           <PremiumSection />
 

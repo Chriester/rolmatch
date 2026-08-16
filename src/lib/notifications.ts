@@ -62,6 +62,25 @@ export async function registerPushToken(userId: string) {
   }
 }
 
+/** Estado del permiso de push nativo, en categorías que entienda la UI. */
+export type NativePushState = 'granted' | 'denied' | 'undetermined' | 'unavailable';
+
+/**
+ * Estado actual del permiso (Android 13+/iOS). 'denied' = el sistema ya no
+ * dejará re-preguntar (hay que ir a Ajustes); 'undetermined' = aún se puede
+ * pedir. En web o sin dispositivo real: 'unavailable'.
+ */
+export async function nativePushState(): Promise<NativePushState> {
+  if (Platform.OS === 'web' || !Device.isDevice) return 'unavailable';
+  try {
+    const { status, canAskAgain } = await Notifications.getPermissionsAsync();
+    if (status === 'granted') return 'granted';
+    return canAskAgain ? 'undetermined' : 'denied';
+  } catch {
+    return 'unavailable';
+  }
+}
+
 /**
  * Al tocar una notificación, navega a la ruta que manda el servidor en
  * data.url (p. ej. /groups/<id>/chat). Cubre app abierta, en segundo plano

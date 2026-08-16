@@ -8,25 +8,17 @@ proponer una mejora, mirar aquí: si ya está listada, no es un hallazgo nuevo.
 
 ## Operativo (bloquea funcionalidad ya mergeada)
 
-- **Aplicar las migraciones 00055–00060** (tanda de retención, PRs #191-#197,
-  2026-08-13) en el SQL Editor, en orden: 00055 push post-sesión · 00056
-  cosméticos por nivel · 00057 ficha de servicio · 00058 cadena semanal ·
-  00059 personaje con vida · 00060 crónica pública. Todo el código degrada
-  con gracia mientras tanto (hasColumn / catch), pero sin ellas no hay push
-  de "¿qué tal fue?", ni cosméticos persistidos, ni ficha, ni bonus semanal,
-  ni sesiones vividas, ni página pública.
-- **Aplicar la migración 00044** (bucket `chat-media` privado) en el SQL
-  Editor. Lleva pendiente desde su PR — verificado por REST (2026-08-11) que
-  el bucket sigue sin existir; hasta entonces las fotos de chat siguen yendo
-  al bucket público `avatars`. Las 00045-00054 están todas aplicadas ✔.
-  (Nota: los «redespliega la función» de los PRs ya no son tarea — desde el
-  PR #114 Actions despliega las 7 Edge Functions en cada merge; verificado
-  en el log del run de #164, `push-notify` incluida.)
+- ✔ Migraciones al día (verificado por REST el 2026-08-16): las 00044 y
+  00055–00060 están APLICADAS — bucket `chat-media` existe y las columnas de
+  la tanda de retención responden 200. (Nota histórica: los «redespliega la
+  función» de los PRs ya no son tarea — desde el PR #114 Actions despliega
+  las 7 Edge Functions en cada merge.)
 - **Migrar las fotos de chat viejas** del bucket público `avatars` a
   `chat-media` (privado). No se puede desde SQL: script contra la API de
   Storage, objeto a objeto. El cliente ya distingue ambas formas (URL completa
   = vieja/pública; ruta = nueva/firmada), así que no corre prisa funcional —
-  es un tema de privacidad retroactiva.
+  es un tema de privacidad retroactiva. Sube de prioridad al publicar la
+  política de privacidad de Play (barrido 2026-08-16).
 
 ## Aplazado con motivo (del barrido de 2026-08)
 
