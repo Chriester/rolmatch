@@ -6,7 +6,7 @@ import { useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { OutlineButton, PrimaryButton } from '@/components/ui';
-import { Rolder, RolderFonts } from '@/constants/theme';
+import { Rolder, RolderFonts, RolderRadius } from '@/constants/theme';
 
 type CoachStep = { title: string; body: string };
 
@@ -107,7 +107,7 @@ export function OrganizarCoach({ visible, isOwner, onClose }: OrganizarCoachProp
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.72)',
+    backgroundColor: Rolder.scrim,
     alignItems: 'center',
     justifyContent: 'center',
     padding: 24,
@@ -118,7 +118,7 @@ const styles = StyleSheet.create({
     backgroundColor: Rolder.surface,
     borderWidth: 1,
     borderColor: Rolder.surfaceBorder,
-    borderRadius: 20,
+    borderRadius: RolderRadius.xl,
     padding: 24,
     paddingTop: 28,
     gap: 10,

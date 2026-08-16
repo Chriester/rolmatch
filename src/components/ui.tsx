@@ -6,7 +6,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 
-import { Rolder, RolderFonts } from '@/constants/theme';
+import { Rolder, RolderFonts, RolderRadius, RolderShadow } from '@/constants/theme';
 import type { LevelInfo } from '@/lib/xp';
 
 /** Título de pantalla (20/800 según handoff) */
@@ -215,11 +215,12 @@ const styles = StyleSheet.create({
     letterSpacing: 0.9,
   },
   primary: {
-    borderRadius: 14,
+    borderRadius: RolderRadius.md,
     paddingVertical: 14,
     paddingHorizontal: 18,
     alignItems: 'center',
-    boxShadow: '0 6px 18px rgba(63,191,143,0.25)',
+    // el ÚNICO glow de color permitido: --glow-brand bajo el CTA
+    boxShadow: RolderShadow.glowBrand,
   },
   primaryLabel: {
     color: '#fff',
@@ -229,7 +230,7 @@ const styles = StyleSheet.create({
   },
   outline: {
     borderWidth: 1,
-    borderRadius: 14,
+    borderRadius: RolderRadius.md,
     paddingVertical: 13,
     paddingHorizontal: 18,
     alignItems: 'center',
@@ -241,7 +242,7 @@ const styles = StyleSheet.create({
   },
   discord: {
     backgroundColor: Rolder.discord,
-    borderRadius: 14,
+    borderRadius: RolderRadius.md,
     paddingVertical: 14,
     paddingHorizontal: 18,
     alignItems: 'center',
@@ -250,11 +251,13 @@ const styles = StyleSheet.create({
     backgroundColor: Rolder.surface,
     borderWidth: 1,
     borderColor: Rolder.surfaceBorder,
-    borderRadius: 16,
+    borderRadius: RolderRadius.lg,
     padding: 14,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+    // inset blanco 6% arriba: la luz cenital de las superficies del sistema
+    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06)',
   },
   rowDashed: {
     backgroundColor: 'transparent',
@@ -305,7 +308,7 @@ const styles = StyleSheet.create({
     borderRadius: 5,
   },
   pill: {
-    borderRadius: 999,
+    borderRadius: RolderRadius.pill,
     paddingHorizontal: 10,
     paddingVertical: 4,
   },
@@ -315,8 +318,10 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 0.6,
   },
+  // estado press del sistema: scale(.97) — el feedback es el encogimiento
   pressed: {
-    opacity: 0.85,
+    transform: [{ scale: 0.97 }],
+    opacity: 0.9,
   },
   disabled: {
     opacity: 0.4,

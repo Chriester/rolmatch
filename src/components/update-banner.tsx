@@ -3,7 +3,7 @@
 
 import { Pressable, StyleSheet, Text } from 'react-native';
 
-import { Rolder, RolderFonts } from '@/constants/theme';
+import { Rolder, RolderFonts, RolderRadius } from '@/constants/theme';
 
 export function UpdateBanner() {
   return (
@@ -24,7 +24,7 @@ const styles = StyleSheet.create({
     top: 10,
     alignSelf: 'center',
     backgroundColor: Rolder.violet,
-    borderRadius: 999,
+    borderRadius: RolderRadius.pill,
     paddingVertical: 9,
     paddingHorizontal: 16,
     shadowColor: '#000',

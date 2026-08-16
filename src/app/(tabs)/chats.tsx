@@ -11,7 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppHeader } from '@/components/app-header';
 import { ThemedView } from '@/components/themed-view';
 import { ListRow, OutlineButton, ScreenTitle } from '@/components/ui';
-import { MaxContentWidth, Rolder, RolderFonts, Spacing } from '@/constants/theme';
+import { MaxContentWidth, Rolder, RolderFonts, RolderRadius, Spacing } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
 import { fetchChatRows, type ChatRow } from '@/lib/chats-overview';
 import { warmGroupChat } from '@/lib/prefetch';
@@ -268,7 +268,7 @@ const styles = StyleSheet.create({
     gap: 6,
     borderWidth: 1,
     borderColor: Rolder.surfaceBorder,
-    borderRadius: 999,
+    borderRadius: RolderRadius.pill,
     paddingVertical: 6,
     paddingHorizontal: 14,
   },

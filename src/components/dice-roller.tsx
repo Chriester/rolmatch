@@ -5,7 +5,7 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { Rolder, RolderFonts, Spacing } from '@/constants/theme';
+import { Rolder, RolderFonts, RolderRadius, Spacing } from '@/constants/theme';
 import {
   DICE_SIDES,
   MAX_DICE,
@@ -103,7 +103,7 @@ const styles = StyleSheet.create({
   die: {
     borderWidth: 1.5,
     borderColor: 'rgba(255,255,255,0.15)',
-    borderRadius: 10,
+    borderRadius: RolderRadius.md,
     paddingHorizontal: 11,
     paddingVertical: 7,
   },

@@ -29,7 +29,7 @@ import { MessageActions } from '@/components/message-actions';
 import { Reveal } from '@/components/reveal';
 import { ThemedText } from '@/components/themed-text';
 import { OutlineButton } from '@/components/ui';
-import { MaxContentWidth, Rolder, RolderFonts, Spacing } from '@/constants/theme';
+import { MaxContentWidth, Rolder, RolderFonts, RolderRadius, Spacing } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
 import { fetchGroup, type GroupDetail } from '@/lib/groups';
 import { hapticArm } from '@/lib/haptics';
@@ -536,7 +536,7 @@ const styles = StyleSheet.create({
     backgroundColor: Rolder.surface,
     borderWidth: 1,
     borderColor: Rolder.surfaceBorder,
-    borderRadius: 14,
+    borderRadius: RolderRadius.lg,
     paddingHorizontal: 12,
     paddingVertical: 10,
     marginBottom: Spacing.two,
@@ -615,7 +615,7 @@ const styles = StyleSheet.create({
   },
   chapterHeaderToday: {
     alignSelf: 'center',
-    borderRadius: 999,
+    borderRadius: RolderRadius.pill,
     paddingVertical: 6,
   },
   chapterHeaderLabel: {
@@ -765,7 +765,7 @@ const styles = StyleSheet.create({
   },
   editBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
+    backgroundColor: Rolder.scrim,
     alignItems: 'center',
     justifyContent: 'center',
     padding: 24,
@@ -776,7 +776,7 @@ const styles = StyleSheet.create({
     backgroundColor: Rolder.surface,
     borderWidth: 1,
     borderColor: Rolder.surfaceBorder,
-    borderRadius: 18,
+    borderRadius: RolderRadius.xl,
     padding: Spacing.three,
     gap: Spacing.two,
   },
@@ -789,7 +789,7 @@ const styles = StyleSheet.create({
     backgroundColor: Rolder.input,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.15)',
-    borderRadius: 14,
+    borderRadius: RolderRadius.md,
     paddingHorizontal: 14,
     paddingVertical: 10,
     color: '#fff',
@@ -806,7 +806,7 @@ const styles = StyleSheet.create({
   editButton: {
     paddingVertical: 8,
     paddingHorizontal: 14,
-    borderRadius: 10,
+    borderRadius: RolderRadius.md,
   },
   editCancelLabel: {
     color: Rolder.textSecondary,

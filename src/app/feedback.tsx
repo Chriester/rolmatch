@@ -11,7 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppHeader } from '@/components/app-header';
 import { ThemedView } from '@/components/themed-view';
 import { PrimaryButton, ScreenBlurb, ScreenTitle } from '@/components/ui';
-import { MaxContentWidth, Rolder, RolderFonts, Spacing } from '@/constants/theme';
+import { MaxContentWidth, Rolder, RolderFonts, RolderRadius, Spacing } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
 import { showAlert } from '@/lib/alert';
 import { FEEDBACK_KINDS, sendFeedback, type FeedbackKind } from '@/lib/feedback';
@@ -114,7 +114,7 @@ const styles = StyleSheet.create({
     gap: 4,
     borderWidth: 1,
     borderColor: Rolder.surfaceBorder,
-    borderRadius: 14,
+    borderRadius: RolderRadius.md,
     paddingVertical: 12,
     backgroundColor: Rolder.surface,
   },

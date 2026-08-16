@@ -25,6 +25,7 @@ import {
 import { Dimensions, StyleSheet, Text, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 
+import { RolderRadius } from '@/constants/theme';
 import { hapticArm, hapticSwipe } from '@/lib/haptics';
 import Animated, {
   Easing,
@@ -438,7 +439,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   frame: {
-    borderRadius: 20,
+    borderRadius: RolderRadius.xl,
     overflow: 'hidden',
   },
   strip: {
@@ -493,7 +494,7 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: RolderRadius.xl,
     backgroundColor: 'rgba(11,11,18,0.75)',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.25)',

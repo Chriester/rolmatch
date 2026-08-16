@@ -143,7 +143,7 @@ const styles = StyleSheet.create({
   },
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.55)',
+    backgroundColor: Rolder.scrim,
   },
   panel: {
     width: 300,

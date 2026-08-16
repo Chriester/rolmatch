@@ -11,7 +11,7 @@ import { AppHeader } from '@/components/app-header';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { ScreenBlurb, ScreenTitle } from '@/components/ui';
-import { MaxContentWidth, Rolder, RolderFonts, Spacing } from '@/constants/theme';
+import { MaxContentWidth, Rolder, RolderFonts, RolderRadius, Spacing } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
 import { showAlert } from '@/lib/alert';
 import { FEEDBACK_KINDS, fetchFeedback, setFeedbackStatus, type FeedbackItem } from '@/lib/feedback';
@@ -280,7 +280,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: Rolder.surfaceBorder,
-    borderRadius: 14,
+    borderRadius: RolderRadius.md,
     paddingVertical: 10,
     backgroundColor: Rolder.surface,
   },
@@ -291,7 +291,7 @@ const styles = StyleSheet.create({
   filter: {
     borderWidth: 1,
     borderColor: Rolder.surfaceBorder,
-    borderRadius: 999,
+    borderRadius: RolderRadius.pill,
     paddingVertical: 6,
     paddingHorizontal: 12,
   },

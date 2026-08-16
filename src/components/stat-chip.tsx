@@ -6,7 +6,7 @@
 
 import { StyleSheet, Text, View } from 'react-native';
 
-import { Rolder, RolderFonts } from '@/constants/theme';
+import { Rolder, RolderFonts, RolderRadius } from '@/constants/theme';
 
 export type StatChipTone = 'green' | 'violet' | 'amber' | 'coral';
 
@@ -37,7 +37,7 @@ export function StatChip({ label, tone = 'violet' }: { label: string; tone?: Sta
 const styles = StyleSheet.create({
   chip: {
     height: 26,
-    borderRadius: 999,
+    borderRadius: RolderRadius.pill,
     borderWidth: 1,
     paddingHorizontal: 10,
     justifyContent: 'center',

@@ -10,7 +10,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppHeader } from '@/components/app-header';
 import { ThemedView } from '@/components/themed-view';
 import { ListRow, OutlineButton, ScreenBlurb, ScreenTitle, StatusPill } from '@/components/ui';
-import { MaxContentWidth, Rolder, RolderFonts, Spacing } from '@/constants/theme';
+import { MaxContentWidth, Rolder, RolderFonts, RolderRadius, Spacing } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
 import {
   characterMilestone,
@@ -205,7 +205,7 @@ const styles = StyleSheet.create({
   portrait: {
     width: 64,
     height: 64,
-    borderRadius: 14,
+    borderRadius: RolderRadius.lg,
   },
   portraitFallback: {
     backgroundColor: 'rgba(229,72,77,0.18)',

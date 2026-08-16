@@ -19,7 +19,7 @@ import { MatchOverlay } from '@/components/swipe/match-overlay';
 import { AppHeader } from '@/components/app-header';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Rolder, Spacing } from '@/constants/theme';
+import { Rolder, RolderRadius, Spacing } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
 import { getOrCreateDmThread } from '@/lib/dm';
 import { fetchGroupCandidates, type PlayerCandidate } from '@/lib/feed';
@@ -388,8 +388,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.four,
   },
   scoreBadge: {
-    backgroundColor: 'rgba(0,0,0,0.55)',
-    borderRadius: 999,
+    backgroundColor: Rolder.scrim,
+    borderRadius: RolderRadius.pill,
     paddingHorizontal: 12,
     paddingVertical: 5,
     borderWidth: 1,

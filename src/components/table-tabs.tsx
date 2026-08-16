@@ -19,7 +19,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import { Rolder, RolderFonts } from '@/constants/theme';
+import { Rolder, RolderFonts, RolderRadius } from '@/constants/theme';
 
 export type TableTabKey = 'mesa' | 'chat' | 'agenda' | 'diario';
 
@@ -116,7 +116,7 @@ const styles = StyleSheet.create({
     backgroundColor: Rolder.surface,
     borderWidth: 1,
     borderColor: Rolder.surfaceBorder,
-    borderRadius: 14,
+    borderRadius: RolderRadius.lg,
     padding: ROW_PADDING,
     gap: TAB_GAP,
   },
@@ -126,7 +126,7 @@ const styles = StyleSheet.create({
     left: ROW_PADDING,
     top: ROW_PADDING,
     bottom: ROW_PADDING,
-    borderRadius: 10,
+    borderRadius: RolderRadius.md,
     backgroundColor: 'rgba(199,125,255,0.22)',
   },
   tab: {
@@ -136,7 +136,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 5,
     minHeight: 38,
-    borderRadius: 10,
+    borderRadius: RolderRadius.md,
   },
   tabPressed: {
     opacity: 0.7,

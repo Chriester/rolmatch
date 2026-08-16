@@ -12,7 +12,7 @@ import Animated, { ReduceMotion, ZoomIn } from 'react-native-reanimated';
 import { showAlert } from '@/lib/alert';
 import { AppHeader } from '@/components/app-header';
 import { ThemedView } from '@/components/themed-view';
-import { Rolder, RolderFonts, Spacing } from '@/constants/theme';
+import { Rolder, RolderFonts, RolderRadius, Spacing } from '@/constants/theme';
 import { redeemPromoCode } from '@/lib/premium';
 
 export default function PromoScreen() {
@@ -137,7 +137,7 @@ const styles = StyleSheet.create({
     backgroundColor: Rolder.input,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.15)',
-    borderRadius: 14,
+    borderRadius: RolderRadius.md,
     paddingVertical: 14,
     color: '#fff',
     fontSize: 18,
@@ -151,7 +151,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   button: {
-    borderRadius: 14,
+    borderRadius: RolderRadius.md,
     paddingVertical: 14,
     alignItems: 'center',
   },
@@ -179,7 +179,7 @@ const styles = StyleSheet.create({
   successButton: {
     borderWidth: 1,
     borderColor: 'rgba(199,125,255,0.8)',
-    borderRadius: 14,
+    borderRadius: RolderRadius.md,
     paddingVertical: 12,
     paddingHorizontal: 24,
     marginTop: 8,

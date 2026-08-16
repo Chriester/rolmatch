@@ -37,6 +37,10 @@ Lee la documentación versionada exacta en https://docs.expo.dev/versions/v57.0.
 
 ## Reglas transversales
 
+- **graft primero**: el repo está indexado (`graft/INDEX.md`, CLI y tools MCP).
+  Para localizar/entender código o medir el impacto de un cambio, usar graft
+  siempre que se pueda (`ask`/`grep`/`skeleton`/`callers`) antes que grep+read
+  a mano — sobre todo `callers` antes de renombrar o borrar campos/símbolos.
 - Comandos: `npm start` · `npm run typecheck` · `npm run lint` · `npm test` (los tres últimos antes de cada commit).
 - UI en español; código e identificadores en inglés. Conventional Commits.
 - `Alert.alert` es no-op en web: usar `showAlert` de `src/lib/alert.ts`.

@@ -17,7 +17,7 @@ import {
   View,
 } from 'react-native';
 
-import { Rolder, RolderFonts } from '@/constants/theme';
+import { Rolder, RolderFonts, RolderRadius } from '@/constants/theme';
 
 export type PickerTab = 'emoji' | 'sticker' | 'gif';
 
@@ -168,7 +168,7 @@ const styles = StyleSheet.create({
     backgroundColor: Rolder.input,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.12)',
-    borderRadius: 14,
+    borderRadius: RolderRadius.lg,
     marginBottom: 8,
   },
   grid: {
@@ -198,7 +198,7 @@ const styles = StyleSheet.create({
     margin: 8,
     marginBottom: 4,
     backgroundColor: 'rgba(255,255,255,0.06)',
-    borderRadius: 10,
+    borderRadius: RolderRadius.md,
     paddingHorizontal: 12,
     paddingVertical: 7,
     color: '#fff',
@@ -213,7 +213,7 @@ const styles = StyleSheet.create({
   gif: {
     width: 140,
     height: 105,
-    borderRadius: 10,
+    borderRadius: RolderRadius.md,
     backgroundColor: 'rgba(255,255,255,0.06)',
   },
   gifLoading: {

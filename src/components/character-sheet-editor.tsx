@@ -469,7 +469,7 @@ const s = StyleSheet.create({
     fontFamily: RolderFonts.regular, minHeight: 64, textAlignVertical: 'top',
   },
   backdrop: {
-    flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', alignItems: 'center',
+    flex: 1, backgroundColor: Rolder.scrim, alignItems: 'center',
     justifyContent: 'center', padding: 24,
   },
   modal: {

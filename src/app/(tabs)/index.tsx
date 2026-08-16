@@ -42,7 +42,7 @@ import { DetailsFace, sheetText } from '@/components/swipe/details-face';
 import { MatchOverlay } from '@/components/swipe/match-overlay';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Rolder, RolderFonts, Spacing } from '@/constants/theme';
+import { Rolder, RolderFonts, RolderRadius, Spacing } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
 import { characterAgeLabel, fetchMyCharacters, type Character } from '@/lib/characters';
 import { fetchUnifiedFeed, type FeedItem } from '@/lib/feed';
@@ -888,7 +888,7 @@ const styles = StyleSheet.create({
   retryButton: {
     borderWidth: 1,
     borderColor: 'rgba(199,125,255,0.8)',
-    borderRadius: 14,
+    borderRadius: RolderRadius.md,
     paddingVertical: 12,
     paddingHorizontal: Spacing.four,
   },
@@ -904,8 +904,8 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   scoreBadge: {
-    backgroundColor: 'rgba(0,0,0,0.55)',
-    borderRadius: 999,
+    backgroundColor: Rolder.scrim,
+    borderRadius: RolderRadius.pill,
     paddingHorizontal: 12,
     paddingVertical: 5,
     borderWidth: 1,
@@ -923,7 +923,7 @@ const styles = StyleSheet.create({
   },
   // chips de esquina (2c): compactos, sin competir con los sellos del swipe
   cornerChip: {
-    borderRadius: 999,
+    borderRadius: RolderRadius.pill,
     paddingVertical: 6,
     paddingHorizontal: 12,
   },
@@ -976,7 +976,7 @@ const styles = StyleSheet.create({
     backgroundColor: Rolder.surface,
     borderWidth: 1,
     borderColor: Rolder.surfaceBorder,
-    borderRadius: 999,
+    borderRadius: RolderRadius.pill,
     paddingVertical: 6,
     paddingHorizontal: 14,
     maxWidth: '92%',

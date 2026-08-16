@@ -4,7 +4,7 @@
 
 import { StyleSheet, Text, View } from 'react-native';
 
-import { Rolder, RolderFonts } from '@/constants/theme';
+import { Rolder, RolderFonts, RolderRadius } from '@/constants/theme';
 import { formatMemberSince, type ServiceStats } from '@/lib/service';
 
 export function ServiceStatsRow({ stats }: { stats: ServiceStats }) {
@@ -54,7 +54,7 @@ const styles = StyleSheet.create({
     backgroundColor: Rolder.surface,
     borderWidth: 1,
     borderColor: Rolder.surfaceBorder,
-    borderRadius: 14,
+    borderRadius: RolderRadius.lg,
     paddingVertical: 10,
     paddingHorizontal: 6,
     alignItems: 'center',

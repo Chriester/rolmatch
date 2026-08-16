@@ -14,7 +14,7 @@ import { PhotoPicker } from '@/components/photo-picker';
 import { StyleAxis } from '@/components/style-axis';
 import { ThemedView } from '@/components/themed-view';
 import { OutlineButton, PrimaryButton, ScreenTitle, SectionLabel } from '@/components/ui';
-import { MaxContentWidth, Rolder, RolderFonts, Spacing } from '@/constants/theme';
+import { MaxContentWidth, Rolder, RolderFonts, RolderRadius, Spacing } from '@/constants/theme';
 import { useSession } from '@/hooks/use-session';
 import {
   SLOT_LABELS,
@@ -315,7 +315,7 @@ const styles = StyleSheet.create({
     backgroundColor: Rolder.input,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.15)',
-    borderRadius: 14,
+    borderRadius: RolderRadius.md,
     paddingHorizontal: 16,
     paddingVertical: 12,
     color: '#fff',

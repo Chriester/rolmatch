@@ -14,7 +14,7 @@ import { Chip } from '@/components/chip';
 import { PhotoPicker } from '@/components/photo-picker';
 import { ThemedText } from '@/components/themed-text';
 import { PrimaryButton, SectionLabel } from '@/components/ui';
-import { Rolder, RolderFonts, Spacing } from '@/constants/theme';
+import { Rolder, RolderFonts, RolderRadius, Spacing } from '@/constants/theme';
 import { showAlert } from '@/lib/alert';
 import {
   CHARACTER_STATUS_LABELS,
@@ -376,7 +376,7 @@ const styles = StyleSheet.create({
   themeSwatch: {
     width: 84,
     borderWidth: 1.5,
-    borderRadius: 14,
+    borderRadius: RolderRadius.md,
     paddingVertical: 9,
     paddingHorizontal: 6,
     alignItems: 'center',
@@ -409,7 +409,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.04)',
     borderWidth: 1.5,
     borderColor: 'rgba(255,255,255,0.14)',
-    borderRadius: 14,
+    borderRadius: RolderRadius.md,
     padding: 12,
     gap: 3,
   },

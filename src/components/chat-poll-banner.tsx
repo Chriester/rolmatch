@@ -6,7 +6,7 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { Rolder, RolderFonts } from '@/constants/theme';
+import { Rolder, RolderFonts, RolderRadius } from '@/constants/theme';
 import { setVote, type SessionPoll } from '@/lib/polls';
 import { formatSessionDate } from '@/lib/sessions';
 
@@ -82,7 +82,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(199,125,255,0.12)',
     borderWidth: 1,
     borderColor: 'rgba(199,125,255,0.45)',
-    borderRadius: 14,
+    borderRadius: RolderRadius.lg,
     marginBottom: 8,
     overflow: 'hidden',
   },
@@ -113,7 +113,7 @@ const styles = StyleSheet.create({
   option: {
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.12)',
-    borderRadius: 10,
+    borderRadius: RolderRadius.md,
     padding: 8,
     gap: 5,
   },

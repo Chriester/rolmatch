@@ -7,7 +7,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Swords, Undo2, X } from 'lucide-react-native';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { Rolder } from '@/constants/theme';
+import { Rolder, RolderShadow } from '@/constants/theme';
 
 type ActionBarProps = {
   onPass: () => void;
@@ -95,8 +95,9 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: Rolder.pass,
   },
+  // sombra casi-negra del sistema: el glow de color es exclusivo del CTA
   like: {
-    boxShadow: '0 6px 18px rgba(63,191,143,0.35)',
+    boxShadow: RolderShadow.floating,
   },
   infoGlyph: {
     color: Rolder.violet,
