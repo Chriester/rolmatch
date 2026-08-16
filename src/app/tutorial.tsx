@@ -42,7 +42,7 @@ type Part = string | { b: string };
 const SLIDES: { emoji: string; title: string; body: Part[] }[] = [
   {
     emoji: '🎲',
-    title: 'Bienvenida a rolder',
+    title: 'Bienvenida a Roldr',
     body: [
       'Desliza para encontrar ',
       { b: 'mesa' },

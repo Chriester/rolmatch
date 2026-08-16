@@ -61,7 +61,7 @@ export default function PublicCampaignScreen() {
         <Text style={styles.emptyBody}>
           O el enlace no existe, o la mesa ha preferido mantener su historia en privado.
         </Text>
-        <PrimaryButton label="Descubrir mesas en rolder" onPress={() => router.replace('/')} />
+        <PrimaryButton label="Descubrir mesas en Roldr" onPress={() => router.replace('/')} />
       </ThemedView>
     );
   }
@@ -125,7 +125,7 @@ export default function PublicCampaignScreen() {
 
           <View style={styles.cta}>
             <Text style={styles.ctaText}>
-              ¿Quieres vivir una historia como esta? En rolder hay mesas buscando gente como tú.
+              ¿Quieres vivir una historia como esta? En Roldr hay mesas buscando gente como tú.
             </Text>
             <PrimaryButton label="Encontrar mi mesa" onPress={() => router.replace('/')} />
           </View>

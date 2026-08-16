@@ -19,7 +19,7 @@ self.addEventListener('push', (event) => {
         if (existing.length > 0) count = (existing[0].data?.count ?? 1) + 1;
       }
       const body = data.body ?? '';
-      await self.registration.showNotification(data.title ?? 'rolder', {
+      await self.registration.showNotification(data.title ?? 'Roldr', {
         body: count > 1 ? `${body}\n💬 ${count} mensajes nuevos` : body,
         icon: '/icon-1024.png',
         badge: '/icon-1024.png',

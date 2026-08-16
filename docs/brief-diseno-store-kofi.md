@@ -31,14 +31,18 @@ Progresión de XP y niveles **cosmética** (títulos roleros). Web + Android
 
 ## 2. Identidad visual (exacta, no aproximar)
 
-- **Dark-only.** Fondo de página `#0B0B12` · superficie `#16161F` (borde
-  `rgba(255,255,255,.08)`).
-- **Gradiente de marca**: carmesí `#DE1458` → púrpura `#8E44AD` (el dado
-  del logo usa `#F50747` → `#7A4FC0`).
-- Acentos UI: violeta `#8B6CFF` · verde like `#3BD16F` · coral `#FF5A5F` ·
-  dorado premium `#F5A623`.
-- **Tipografía**: Sora (400/600/700/800) para todo; Nunito 900 solo en
-  sellos tipo sticker.
+⚠ ACTUALIZADO 2026-08-16: la app adoptó el design system Roldr (fases F1-F5,
+`docs/Roldr Design System/` manda). Paleta y tipografías vigentes:
+
+- **Dark-only.** Fondo de página `#0A090C` · superficie `#131119` (borde
+  sólido `#2E2839`).
+- **Gradiente de marca** (100°): carmesí `#B01B5E` → ciruela `#8A2B76` →
+  violeta `#5D4A93` (el dado del logo es arte entregado, no recrear).
+- Acentos UI: lila `#C77DFF` (acento/interactivo) · verde éxito `#3FBF8F` ·
+  rojo `#E5484D` · dorado premium `#E8A44C`.
+- **Tipografía**: Outfit 700 para display/titulares, Manrope (400/600/700)
+  para todo lo demás, JetBrains Mono para notación de dados; Nunito 900
+  solo en sellos tipo sticker.
 - **Tono de voz**: cercano, rolero y con humor ligero — en la app el like
   es «🎲 ¡CRÍTICO!» y el pass «💀 PIFIA»; se tutea siempre; español neutro
   con guiños de la afición (mesa, GM, one-shot, PJ). Nada corporativo.

@@ -68,7 +68,7 @@ function page(title: string, description: string, image: string, url: string): s
 <meta charset="utf-8">
 <title>${t}</title>
 <meta property="og:type" content="website">
-<meta property="og:site_name" content="rolder">
+<meta property="og:site_name" content="Roldr">
 <meta property="og:title" content="${t}">
 <meta property="og:description" content="${d}">
 <meta property="og:image" content="${i}">
@@ -115,7 +115,7 @@ export default async function handler(req: OgRequest, res: OgResponse) {
   res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=3600');
 
   const fallback = page(
-    'rolder — encuentra tu mesa de rol',
+    'Roldr — encuentra tu mesa de rol',
     'Swipe entre mesas y jugadores de rol online en español. Encuentra grupo para tu próxima campaña.',
     `${APP_URL}/icon-1024.png`,
     APP_URL
@@ -174,7 +174,7 @@ export default async function handler(req: OgRequest, res: OgResponse) {
 
   res.status(200).send(
     page(
-      `«${card.name}» en rolder`,
+      `«${card.name}» en Roldr`,
       `${details.join(' · ')}${blurb}`,
       card.image_url ?? `${APP_URL}/icon-1024.png`,
       `${APP_URL}/groups/${card.id}`
