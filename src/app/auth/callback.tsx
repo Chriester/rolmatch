@@ -13,7 +13,7 @@ import { supabase } from '@/lib/supabase';
  * - Web: supabase-js procesa el código de la URL solo (detectSessionInUrl)
  *   y aquí basta con esperar a que aparezca la sesión.
  * - Nativo: detectSessionInUrl está APAGADO (supabase.ts), así que el deep
- *   link del magic link (rolmatch://auth/callback?code=…) llega con el code
+ *   link del magic link (roldr://auth/callback?code=…) llega con el code
  *   sin canjear — se canjea aquí. El OAuth nativo NO pasa por esta pantalla
  *   (canjea dentro de signInWithProvider); sin este canje, entrar por email
  *   desde el APK dejaba un spinner infinito.
