@@ -7,12 +7,17 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:938669874838:android:700ef06ee784076146ecb7",
+        "mobilesdk_app_id": "1:938669874838:android:9fc4f3f099aeda5f46ecb7",
         "android_client_info": {
-          "package_name": "com.chriester.rolmatch"
+          "package_name": "com.captaingames.roldr"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "938669874838-7uucbttp0rq84kgdvqb2pbva4dg0ped9.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyCIY_tsw-HJcB0UPrxboZ1IBz8fO9qw8Z0"
@@ -20,7 +25,41 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "938669874838-7uucbttp0rq84kgdvqb2pbva4dg0ped9.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:938669874838:android:700ef06ee784076146ecb7",
+        "android_client_info": {
+          "package_name": "com.chriester.rolmatch"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "938669874838-7uucbttp0rq84kgdvqb2pbva4dg0ped9.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCIY_tsw-HJcB0UPrxboZ1IBz8fO9qw8Z0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "938669874838-7uucbttp0rq84kgdvqb2pbva4dg0ped9.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }
