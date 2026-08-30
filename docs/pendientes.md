@@ -14,11 +14,12 @@ proponer una mejora, mirar aquí: si ya está listada, no es un hallazgo nuevo.
   función» de los PRs ya no son tarea — desde el PR #114 Actions despliega
   las 7 Edge Functions en cada merge.)
 - **Migrar las fotos de chat viejas** del bucket público `avatars` a
-  `chat-media` (privado). No se puede desde SQL: script contra la API de
-  Storage, objeto a objeto. El cliente ya distingue ambas formas (URL completa
-  = vieja/pública; ruta = nueva/firmada), así que no corre prisa funcional —
-  es un tema de privacidad retroactiva. Sube de prioridad al publicar la
-  política de privacidad de Play (barrido 2026-08-16).
+  `chat-media` (privado). Ya con la política de privacidad de Play publicada
+  (PR #209), esto la contradice mientras no se haga. Script listo:
+  `scripts/migrate-chat-photos.js` (copia objeto a objeto vía la API de
+  Storage, repunta el mensaje y borra la copia vieja; `--execute` para que
+  haga algo, por defecto es dry-run). Falta que Chris lo ejecute con
+  `SB_SECRET_KEY` — no se puede correr con la anon key.
 
 ## Aplazado con motivo (del barrido de 2026-08)
 
