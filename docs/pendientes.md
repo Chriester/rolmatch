@@ -13,13 +13,13 @@ proponer una mejora, mirar aquí: si ya está listada, no es un hallazgo nuevo.
   la tanda de retención responden 200. (Nota histórica: los «redespliega la
   función» de los PRs ya no son tarea — desde el PR #114 Actions despliega
   las 7 Edge Functions en cada merge.)
-- **Migrar las fotos de chat viejas** del bucket público `avatars` a
-  `chat-media` (privado). Ya con la política de privacidad de Play publicada
-  (PR #209), esto la contradice mientras no se haga. Script listo:
-  `scripts/migrate-chat-photos.js` (copia objeto a objeto vía la API de
-  Storage, repunta el mensaje y borra la copia vieja; `--execute` para que
-  haga algo, por defecto es dry-run). Falta que Chris lo ejecute con
-  `SB_SECRET_KEY` — no se puede correr con la anon key.
+- ✔ **Fotos de chat viejas**: ejecutado el dry-run de
+  `scripts/migrate-chat-photos.js` (Ricardo, 2026-08-30) — 0 filas
+  encontradas en `messages` y `dm_messages` con `media_url` público de
+  `avatars`. La 00044 y el código que sube a `chat-media` llegaron a la vez,
+  así que nunca hubo una foto de chat expuesta en el bucket público. Nada
+  que ejecutar con `--execute`. El script se queda en el repo por si hiciera
+  falta en el futuro (p. ej. una restauración de un backup viejo).
 
 ## Aplazado con motivo (del barrido de 2026-08)
 
