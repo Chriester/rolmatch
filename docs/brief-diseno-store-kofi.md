@@ -68,7 +68,7 @@ Entregables que se piden al diseño, con sus límites duros:
 | Título | ≤ 30 caracteres | «Roldr» + coletilla corta si cabe |
 | Descripción corta | ≤ 80 caracteres | el gancho; aparece bajo el título |
 | Descripción larga | ≤ 4000 caracteres | estructura: gancho → qué hace (bullets con emoji) → cómo funciona (3 pasos) → para GMs → gratis/sin anuncios → cierre con tagline |
-| Icono | 512×512 px, PNG 32-bit | derivar de logoicon sobre `#0B0B12` |
+| Icono | 512×512 px, PNG 32-bit | derivar de logoicon sobre `#0A090C` |
 | Feature graphic | 1024×500 px | dado + wordmark + tagline sobre fondo de marca |
 | Capturas teléfono | mín. 2, ideal 6-8 · 1080×1920 aprox | capturas reales enmarcadas con un titular corto por captura («Desliza entre mesas», «Cuadra horarios solos», «Chat y dados incluidos»…) |
 
@@ -93,7 +93,7 @@ Entregables:
 
 | Pieza | Spec | Notas |
 |---|---|---|
-| Foto de perfil | cuadrada (≥400²) | logoicon sobre `#0B0B12` |
+| Foto de perfil | cuadrada (≥400²) | logoicon sobre `#0A090C` |
 | Banner/portada | ~1320×352 px | dado + wordmark + tagline |
 | Texto «About» | 2-4 párrafos | quiénes somos (dos personas construyendo la app en abierto), a qué va el dinero (servidores, sin anuncios jamás), tono rolero |
 | Nombre de objetivo | corto | p. ej. «Mantener los servidores tirando dados» |
